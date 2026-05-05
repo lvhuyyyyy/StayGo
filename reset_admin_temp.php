@@ -1,20 +1,19 @@
 <?php
-// FILE TẠM - XÓA NGAY SAU KHI DÙNG
 require_once __DIR__ . '/config/database.php';
 
-$newPass = password_hash('Admin@123', PASSWORD_DEFAULT);
-$email = 'admin@gmail.com';
+$email    = 'admin@gmail.com';
+$new_pass = password_hash('Admin@123', PASSWORD_BCRYPT);
 
-$stmt = $conn->prepare("UPDATE users SET password = ? WHERE email = ?");
-$stmt->bind_param("ss", $newPass, $email);
+$stmt = $conn->prepare("UPDATE users SET password=?, login_attempts=0, locked_until=NULL WHERE email=? AND role='admin'");
+$stmt->bind_param("ss", $new_pass, $email);
+$stmt->execute();
 
-if ($stmt->execute() && $stmt->affected_rows > 0) {
-    echo "✅ Đã reset mật khẩu admin@gmail.com thành Admin@123";
+if ($stmt->affected_rows > 0) {
+    echo "✅ Reset xong: admin@gmail.com → Admin@123, lockout đã xóa.";
 } else {
-    echo "❌ Lỗi hoặc không tìm thấy tài khoản";
+    $chk = $conn->query("SELECT id, role FROM users WHERE email='$email'")->fetch_assoc();
+    echo $chk ? "⚠️ User tồn tại nhưng không update. Role: {$chk['role']}" : "❌ Không tìm thấy admin@gmail.com.";
 }
-$stmt->close();
 
-// Tự xóa file sau khi chạy
 unlink(__FILE__);
 echo "<br>🗑️ File đã tự xóa.";
