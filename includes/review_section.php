@@ -112,10 +112,38 @@ if ($rv_valid) {
         <?php endif; ?>
     </div>
 
-    <!-- Form -->
+    <!-- Danh sách đánh giá — luôn hiển thị với mọi người -->
+    <div class="rv-list" id="rvList">
+        <?php if (empty($all_reviews)): ?>
+        <div class="rv-empty"><p>Chưa có đánh giá nào.</p></div>
+        <?php else: ?>
+        <?php foreach ($all_reviews as $rv):
+            $initial = mb_strtoupper(mb_substr($rv['full_name'], 0, 1));
+        ?>
+        <div class="rv-item">
+            <div class="rv-item-header">
+                <div class="rv-avatar"><?= htmlspecialchars($initial) ?></div>
+                <div class="rv-item-info">
+                    <p class="rv-item-name"><?= htmlspecialchars($rv['full_name']) ?></p>
+                    <p class="rv-item-date"><?= date('d/m/Y', strtotime($rv['created_at'])) ?></p>
+                </div>
+                <div class="rv-item-stars">
+                    <?php for ($s = 1; $s <= 5; $s++): ?>
+                    <svg class="rv-star-icon <?= $s <= $rv['rating'] ? 'filled' : '' ?>" width="16" height="16" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"/></svg>
+                    <?php endfor; ?>
+                    <span class="rv-item-rating"><?= $rv['rating'] ?>/5</span>
+                </div>
+            </div>
+            <p class="rv-item-comment"><?= nl2br(htmlspecialchars($rv['comment'])) ?></p>
+        </div>
+        <?php endforeach; ?>
+        <?php endif; ?>
+    </div>
+
+    <!-- Form viết đánh giá — chỉ cho người đã đặt phòng hoàn thành -->
     <?php if (!$current_user_id): ?>
     <div class="rv-login-notice">
-        <a href="/auth/login.php">Đăng nhập</a> để đánh giá khách sạn này.
+        <a href="/auth/login.php">Đăng nhập</a> để viết đánh giá của bạn.
     </div>
 
     <?php elseif (!empty($eligible_bookings)): ?>
@@ -171,38 +199,10 @@ if ($rv_valid) {
         <?php if ($has_booking > 0): ?>
             ✅ Bạn đã đánh giá tất cả các lần lưu trú tại khách sạn này.
         <?php else: ?>
-            ℹ️ Bạn chưa có lần lưu trú hoàn thành tại khách sạn này.
+            ℹ️ Chỉ khách đã lưu trú và hoàn thành đặt phòng mới có thể viết đánh giá.
         <?php endif; ?>
     </div>
     <?php endif; ?>
-
-    <!-- Danh sách đánh giá -->
-    <div class="rv-list" id="rvList">
-        <?php if (empty($all_reviews)): ?>
-        <div class="rv-empty"><p>Chưa có đánh giá nào.</p></div>
-        <?php else: ?>
-        <?php foreach ($all_reviews as $rv):
-            $initial = mb_strtoupper(mb_substr($rv['full_name'], 0, 1));
-        ?>
-        <div class="rv-item">
-            <div class="rv-item-header">
-                <div class="rv-avatar"><?= htmlspecialchars($initial) ?></div>
-                <div class="rv-item-info">
-                    <p class="rv-item-name"><?= htmlspecialchars($rv['full_name']) ?></p>
-                    <p class="rv-item-date"><?= date('d/m/Y', strtotime($rv['created_at'])) ?></p>
-                </div>
-                <div class="rv-item-stars">
-                    <?php for ($s = 1; $s <= 5; $s++): ?>
-                    <svg class="rv-star-icon <?= $s <= $rv['rating'] ? 'filled' : '' ?>" width="16" height="16" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"/></svg>
-                    <?php endfor; ?>
-                    <span class="rv-item-rating"><?= $rv['rating'] ?>/5</span>
-                </div>
-            </div>
-            <p class="rv-item-comment"><?= nl2br(htmlspecialchars($rv['comment'])) ?></p>
-        </div>
-        <?php endforeach; ?>
-        <?php endif; ?>
-    </div>
 </section>
 
 <script>
