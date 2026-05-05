@@ -289,27 +289,12 @@ function bed_icon(string $bed): string {
                 <div class="hd-rooms-header-row">
                     <h2 class="hd-card-title" style="margin:0">🛏️ Phòng trống</h2>
                 </div>
-                <form method="GET" action="" class="hd-date-picker">
-                    <input type="hidden" name="id" value="<?= $id ?>">
-                    <div class="hd-dp-field">
-                        <label>📅 Nhận phòng</label>
-                        <input type="date" name="checkin"  value="<?= htmlspecialchars($checkin) ?>"  onchange="this.form.submit()">
-                    </div>
-                    <div class="hd-dp-arrow">→</div>
-                    <div class="hd-dp-field">
-                        <label>📅 Trả phòng</label>
-                        <input type="date" name="checkout" value="<?= htmlspecialchars($checkout) ?>" onchange="this.form.submit()">
-                    </div>
-                    <?php if($nights > 1): ?>
-                    <div class="hd-dp-nights">🌙 <?= $nights ?> đêm</div>
-                    <?php endif; ?>
-                </form>
 
                 <div class="hd-table">
                     <div class="hd-table-head">
                         <div class="hd-th hd-th-room">Loại phòng</div>
                         <div class="hd-th hd-th-guest">Khách</div>
-                        <div class="hd-th hd-th-price">Giá <?= $nights > 1 ? "($nights đêm)" : "/đêm" ?></div>
+                        <div class="hd-th hd-th-price">Giá/đêm</div>
                         <div class="hd-th hd-th-opt">Lựa chọn</div>
                         <div class="hd-th hd-th-btn"></div>
                     </div>
@@ -318,13 +303,13 @@ function bed_icon(string $bed): string {
                         <div class="hd-no-rooms">Chưa có thông tin phòng cho khách sạn này</div>
                     <?php else: ?>
                         <?php foreach ($rooms as $room):
-                            $rn          = $room['room_name'] ?? '';
-                            $rc          = $room_config[$rn] ?? ['icon' => '🛏️', 'size' => '20m²', 'tag' => 'Tiêu chuẩn'];
-                            $bed         = $room['bed_type'] ?? '';
-                            $num_guests  = guests_from_bed($bed);
-                            $price_show  = $room['price'] * ($nights > 1 ? $nights : 1);
-                            $price_old   = round($price_show * 1.25);
-                            $urgent      = (int)($room['quantity'] ?? 0) <= 2;
+                            $rn         = $room['room_name'] ?? '';
+                            $rc         = $room_config[$rn] ?? ['icon' => '🛏️', 'size' => '20m²', 'tag' => 'Tiêu chuẩn'];
+                            $bed        = $room['bed_type'] ?? '';
+                            $num_guests = guests_from_bed($bed);
+                            $price_per  = $room['price'];
+                            $price_old  = round($price_per * 1.25);
+                            $urgent     = (int)($room['quantity'] ?? 0) <= 2;
                         ?>
                         <div class="hd-room-row <?= $urgent ? 'hd-room-urgent' : '' ?>">
                             <div class="hd-room-info">
@@ -349,10 +334,7 @@ function bed_icon(string $bed): string {
 
                             <div class="hd-room-price-wrap">
                                 <div class="hd-room-old"><?= number_format($price_old, 0, ',', '.') ?>đ</div>
-                                <div class="hd-room-price"><?= number_format($price_show, 0, ',', '.') ?>đ</div>
-                                <?php if ($nights > 1): ?>
-                                    <div class="hd-room-per"><?= number_format($room['price'], 0, ',', '.') ?>đ/đêm</div>
-                                <?php endif; ?>
+                                <div class="hd-room-price"><?= number_format($price_per, 0, ',', '.') ?>đ</div>
                                 <div class="hd-room-tax">Đã gồm thuế & phí</div>
                             </div>
 
@@ -368,8 +350,10 @@ function bed_icon(string $bed): string {
                             </div>
 
                             <div class="hd-room-action">
-                                <a href="payment.php?hotel_id=<?= $id ?>&room_id=<?= $room['id'] ?><?= $checkin ? '&checkin='.$checkin : '' ?><?= $checkout ? '&checkout='.$checkout : '' ?>"
-                                class="hd-btn-reserve">Đặt phòng này</a>
+                                <button class="hd-btn-reserve"
+                                    onclick="openBookModal(<?= $room['id'] ?>, '<?= htmlspecialchars($rn, ENT_QUOTES) ?>', <?= $price_per ?>)">
+                                    Đặt phòng này
+                                </button>
                             </div>
                         </div>
                         <?php endforeach; ?>
@@ -748,5 +732,166 @@ function showFavToast(msg) {
         </div>
     </div>
 </div>
+
+<!-- MODAL CHỌN NGÀY ĐẶT PHÒNG -->
+<div class="book-modal-overlay" id="bookModalOverlay" onclick="if(event.target===this) closeBookModal()">
+    <div class="book-modal-box">
+        <div class="book-modal-header">
+            <div class="book-modal-title">📅 Chọn ngày đặt phòng</div>
+            <button class="book-modal-close" onclick="closeBookModal()">✕</button>
+        </div>
+        <div class="book-modal-body">
+            <div class="book-modal-room" id="bmRoomName"></div>
+            <div class="book-modal-dates">
+                <div class="book-modal-field">
+                    <label>Ngày nhận phòng</label>
+                    <input type="date" id="bmCheckin" onchange="calcBookTotal()">
+                </div>
+                <div class="book-modal-arrow">→</div>
+                <div class="book-modal-field">
+                    <label>Ngày trả phòng</label>
+                    <input type="date" id="bmCheckout" onchange="calcBookTotal()">
+                </div>
+            </div>
+            <div class="book-modal-summary" id="bmSummary" style="display:none">
+                <div class="bms-row">
+                    <span id="bmNightsLabel"></span>
+                    <strong id="bmTotal"></strong>
+                </div>
+                <div class="bms-note">Đã gồm thuế & phí</div>
+            </div>
+        </div>
+        <div class="book-modal-footer">
+            <button class="bm-btn-cancel" onclick="closeBookModal()">Hủy</button>
+            <button class="bm-btn-confirm" id="bmConfirmBtn" onclick="goToPayment()">Tiến hành đặt phòng →</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let _bmRoomId = 0, _bmPrice = 0, _bmHotelId = <?= $id ?>;
+
+function openBookModal(roomId, roomName, pricePerNight) {
+    _bmRoomId = roomId;
+    _bmPrice  = pricePerNight;
+    document.getElementById('bmRoomName').textContent = '🛏️ ' + roomName + ' — ' + pricePerNight.toLocaleString('vi-VN') + 'đ/đêm';
+    // Set default dates: today & tomorrow
+    const today    = new Date();
+    const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
+    const fmt = d => d.toISOString().split('T')[0];
+    document.getElementById('bmCheckin').value  = fmt(today);
+    document.getElementById('bmCheckin').min    = fmt(today);
+    document.getElementById('bmCheckout').value = fmt(tomorrow);
+    document.getElementById('bmCheckout').min   = fmt(tomorrow);
+    calcBookTotal();
+    document.getElementById('bookModalOverlay').classList.add('open');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeBookModal() {
+    document.getElementById('bookModalOverlay').classList.remove('open');
+    document.body.style.overflow = '';
+}
+
+function calcBookTotal() {
+    const ci = document.getElementById('bmCheckin').value;
+    const co = document.getElementById('bmCheckout').value;
+    // Ensure checkout > checkin
+    if (ci && co) {
+        const minCo = new Date(ci); minCo.setDate(minCo.getDate() + 1);
+        document.getElementById('bmCheckout').min = minCo.toISOString().split('T')[0];
+        if (new Date(co) <= new Date(ci)) {
+            document.getElementById('bmCheckout').value = minCo.toISOString().split('T')[0];
+        }
+    }
+    const nights = ci && co ? Math.max(1, Math.round((new Date(co) - new Date(ci)) / 86400000)) : 1;
+    const total  = _bmPrice * nights;
+    document.getElementById('bmNightsLabel').textContent = nights + ' đêm × ' + _bmPrice.toLocaleString('vi-VN') + 'đ';
+    document.getElementById('bmTotal').textContent       = '= ' + total.toLocaleString('vi-VN') + 'đ';
+    document.getElementById('bmSummary').style.display   = 'flex';
+}
+
+function goToPayment() {
+    const ci = document.getElementById('bmCheckin').value;
+    const co = document.getElementById('bmCheckout').value;
+    if (!ci || !co) { alert('Vui lòng chọn ngày nhận và trả phòng!'); return; }
+    window.location.href = '/pages/payment.php?hotel_id=' + _bmHotelId + '&room_id=' + _bmRoomId + '&checkin=' + ci + '&checkout=' + co;
+}
+</script>
+
+<style>
+.book-modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,.5); z-index: 99999;
+    align-items: center; justify-content: center;
+}
+.book-modal-overlay.open { display: flex; }
+.book-modal-box {
+    background: #fff; border-radius: 16px;
+    width: 480px; max-width: calc(100vw - 32px);
+    box-shadow: 0 20px 60px rgba(0,0,0,.25);
+    overflow: hidden; animation: bmIn .22s ease;
+}
+@keyframes bmIn { from { opacity:0; transform:scale(.93) translateY(-10px); } to { opacity:1; transform:none; } }
+.book-modal-header {
+    background: linear-gradient(135deg,#0071c2,#005fa3);
+    padding: 16px 20px; display: flex; align-items: center; justify-content: space-between;
+}
+.book-modal-title { color:#fff; font-size:16px; font-weight:700; }
+.book-modal-close {
+    background: rgba(255,255,255,.18); border:none; border-radius:50%;
+    width:28px; height:28px; color:#fff; font-size:16px;
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+}
+.book-modal-close:hover { background:rgba(255,255,255,.32); }
+.book-modal-body { padding: 20px; }
+.book-modal-room {
+    background:#f0f7ff; border-radius:10px; padding:10px 14px;
+    font-size:14px; font-weight:600; color:#0071c2; margin-bottom:16px;
+}
+.book-modal-dates { display:flex; align-items:flex-end; gap:10px; }
+.book-modal-field { flex:1; display:flex; flex-direction:column; gap:5px; }
+.book-modal-field label { font-size:12px; font-weight:600; color:#4a5568; }
+.book-modal-field input[type=date] {
+    padding:10px 12px; border:1.5px solid #e2e8f0; border-radius:9px;
+    font-size:14px; color:#2d3748; width:100%; outline:none;
+    transition: border-color .2s;
+}
+.book-modal-field input[type=date]:focus { border-color:#0071c2; }
+.book-modal-arrow { font-size:18px; color:#a0aec0; padding-bottom:10px; }
+.book-modal-summary {
+    display:flex; flex-direction:column; gap:4px;
+    background:#f7fafc; border-radius:10px;
+    padding:12px 14px; margin-top:14px;
+}
+.bms-row { display:flex; align-items:center; justify-content:space-between; font-size:14px; }
+.bms-row strong { font-size:18px; color:#0071c2; }
+.bms-note { font-size:12px; color:#718096; }
+.book-modal-footer {
+    padding:16px 20px; display:flex; gap:10px;
+    border-top:1px solid #f0f0f0;
+}
+.bm-btn-cancel {
+    flex:1; padding:11px 0; border-radius:9px;
+    border:1.5px solid #e2e8f0; background:#fff; color:#4a5568;
+    font-size:14px; font-weight:600; cursor:pointer;
+}
+.bm-btn-cancel:hover { background:#f7fafc; }
+.bm-btn-confirm {
+    flex:2; padding:11px 0; border-radius:9px; border:none;
+    background:#0071c2; color:#fff;
+    font-size:14px; font-weight:700; cursor:pointer;
+    transition: background .18s;
+}
+.bm-btn-confirm:hover { background:#005fa3; }
+/* Fix nút Đặt phòng này dạng button */
+.hd-btn-reserve {
+    display:inline-block; padding:10px 16px; border-radius:9px;
+    background:#0071c2; color:#fff; font-size:13px; font-weight:600;
+    border:none; cursor:pointer; white-space:nowrap;
+    transition: background .18s;
+}
+.hd-btn-reserve:hover { background:#005fa3; }
+</style>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>

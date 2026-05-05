@@ -27,6 +27,11 @@ if (isset($_SESSION['user_id'])
     $has_new_discount  = true;
 }
 
+// Pre-fill từ hotel_detail modal
+$prefill_room_id  = intval($_GET['room_id']  ?? 0);
+$prefill_checkin  = $_GET['checkin']  ?? '';
+$prefill_checkout = $_GET['checkout'] ?? '';
+
 $qr_data    = null;
 $booking_id = null;
 $error_msg  = null;
@@ -196,11 +201,13 @@ $is_hotel_pay = ($qr_data && $qr_data['method'] === 'hotel');
                 <div class="field-wrap">
                     <label>Ngày nhận phòng <span class="req">*</span></label>
                     <input type="date" name="checkin" id="checkin" required
+                        value="<?= htmlspecialchars($prefill_checkin) ?>"
                         min="" max="" onchange="updateCheckout()">
                 </div>
                 <div class="field-wrap">
                     <label>Ngày trả phòng <span class="req">*</span></label>
                     <input type="date" name="checkout" id="checkout" required
+                        value="<?= htmlspecialchars($prefill_checkout) ?>"
                         min="" max="">
                 </div>
             </div>
@@ -210,7 +217,8 @@ $is_hotel_pay = ($qr_data && $qr_data['method'] === 'hotel');
                     <option value="">-- Chọn phòng --</option>
                     <?php foreach($rooms_data as $rm): ?>
                         <?php if($rm['quantity'] > 0): ?>
-                            <option value="<?php echo $rm['id']; ?>" data-price="<?php echo $rm['price']; ?>">
+                            <option value="<?php echo $rm['id']; ?>" data-price="<?php echo $rm['price']; ?>"
+                                <?= ($prefill_room_id && $prefill_room_id == $rm['id']) ? 'selected' : '' ?>>
                                 <?php echo htmlspecialchars($rm['room_name']); ?> – <?php echo number_format($rm['price'],0,',','.'); ?> VNĐ/đêm
                             </option>
                         <?php else: ?>
@@ -817,6 +825,9 @@ function copyOrderCode() {
 <script>
 var HAS_DISCOUNT = <?= $has_new_discount ? 'true' : 'false' ?>;
 var DISCOUNT_PCT = <?= $new_user_discount ?>;
+<?php if ($prefill_room_id && $prefill_checkin && $prefill_checkout): ?>
+document.addEventListener('DOMContentLoaded', function() { calcPrice(); });
+<?php endif; ?>
 </script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
