@@ -1,0 +1,49 @@
+<?php
+if (session_status() === PHP_SESSION_NONE) session_start();
+include("../config/database.php");
+
+
+
+if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
+    header('Location: /tour_khach_san_project/admin_lvhuy_kontum/rooms.php?error=invalid_id');
+    exit;
+}
+
+$id = (int)$_GET['id'];
+
+$res  = $conn->query("SELECT * FROM rooms WHERE id = $id");
+$room = $res ? $res->fetch_assoc() : null;
+if (!$room) {
+    header('Location: /tour_khach_san_project/admin_lvhuy_kontum/rooms.php?error=not_found');
+    exit;
+}
+
+$res2 = $conn->query("SELECT COUNT(*) as total FROM bookings WHERE room_id = $id AND status IN ('pending', 'confirmed')");
+$active_bookings = $res2 ? (int)$res2->fetch_assoc()['total'] : 0;
+
+if ($active_bookings > 0) {
+    header('Location: /tour_khach_san_project/admin_lvhuy_kontum/rooms.php?error=has_bookings&count=' . $active_bookings);
+    exit;
+}
+
+$conn->query("SET FOREIGN_KEY_CHECKS = 0");
+$conn->query("DELETE p FROM payments p INNER JOIN bookings b ON p.booking_id = b.id WHERE b.room_id = $id");
+$conn->query("DELETE FROM bookings WHERE room_id = $id");
+
+if (!empty($room['image'])) {
+    $img_path = __DIR__ . '/../assets/images/' . $room['image'];
+    if (file_exists($img_path)) @unlink($img_path);
+}
+
+$conn->query("DELETE FROM rooms WHERE id = $id");
+$deleted = $conn->affected_rows;
+$conn->query("SET FOREIGN_KEY_CHECKS = 1");
+if ($deleted > 0) log_activity($conn, 'delete_room', 'room', $id, "Xóa phòng: {$room['room_name']}");
+
+if ($deleted > 0) {
+    header('Location: /tour_khach_san_project/admin_lvhuy_kontum/rooms.php?success=deleted');
+} else {
+    header('Location: /tour_khach_san_project/admin_lvhuy_kontum/rooms.php?error=failed');
+}
+exit;
+

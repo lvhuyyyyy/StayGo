@@ -1,0 +1,11 @@
+# Bảo mật - không đưa lên GitHub
+config/secrets.php
+
+# XAMPP / môi trường local
+.env
+*.log
+
+# Hệ thống
+.DS_Store
+Thumbs.db
+desktop.ini

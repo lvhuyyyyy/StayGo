@@ -1,0 +1,101 @@
+Options -Indexes
+ServerSignature Off
+
+# ══════════════════════════════════════════
+# 1. CHẶN FILE NHẠY CẢM
+# ══════════════════════════════════════════
+<FilesMatch "\.(sql|log|env|bak|backup|sh|git|ini|conf|config|htpasswd|DS_Store)$">
+    Order deny,allow
+    Deny from all
+</FilesMatch>
+
+# Chặn file ẩn (bắt đầu bằng dấu chấm)
+<FilesMatch "^\.">
+    Order deny,allow
+    Deny from all
+</FilesMatch>
+
+# ══════════════════════════════════════════
+# 2. SECURITY HEADERS
+# ══════════════════════════════════════════
+<IfModule mod_headers.c>
+    Header set X-XSS-Protection "1; mode=block"
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header unset Server
+    Header unset X-Powered-By
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+    Header set Content-Security-Policy "default-src 'self' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.google.com https://www.gstatic.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; frame-src https://www.google.com"
+</IfModule>
+
+# ══════════════════════════════════════════
+# 3. CHẶN TẤN CÔNG PHỔ BIẾN
+# ══════════════════════════════════════════
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Chặn SQL Injection — dùng cặp từ khóa, tránh false positive với ?id=
+    RewriteCond %{QUERY_STRING} (union(\s|%20|%09)+select) [NC]
+    RewriteRule .* - [F,L]
+
+    RewriteCond %{QUERY_STRING} (insert(\s|%20|%09)+into) [NC]
+    RewriteRule .* - [F,L]
+
+    RewriteCond %{QUERY_STRING} (drop(\s|%20|%09)+(table|database)) [NC]
+    RewriteRule .* - [F,L]
+
+    RewriteCond %{QUERY_STRING} (delete(\s|%20|%09)+from) [NC]
+    RewriteRule .* - [F,L]
+
+    RewriteCond %{QUERY_STRING} (update(\s|%20|%09)+\w+(\s|%20|%09)+set) [NC]
+    RewriteRule .* - [F,L]
+
+    RewriteCond %{QUERY_STRING} (benchmark\s*\(|load_file\s*\(|unhex\s*\() [NC]
+    RewriteRule .* - [F,L]
+
+    # Chặn XSS
+    RewriteCond %{QUERY_STRING} (<script|%3Cscript|javascript:|vbscript:) [NC]
+    RewriteRule .* - [F,L]
+
+    # Chặn path traversal
+    RewriteCond %{QUERY_STRING} (\.\./|\.\.\\) [NC]
+    RewriteRule .* - [F,L]
+
+    # Chặn null byte
+    RewriteCond %{QUERY_STRING} (%00|%0d%0a) [NC]
+    RewriteRule .* - [F,L]
+
+    # Chặn dấu nháy kết hợp từ khóa SQL
+    RewriteCond %{QUERY_STRING} ('(\s|%20)*(or|and|union)(\s|%20)) [NC]
+    RewriteRule .* - [F,L]
+</IfModule>
+
+# ══════════════════════════════════════════
+# 4. CHẶN BAD BOTS & USER AGENTS
+# ══════════════════════════════════════════
+<IfModule mod_rewrite.c>
+    RewriteCond %{HTTP_USER_AGENT} (havij|nikto|sqlmap|nmap|nessus|masscan|acunetix|burpsuite|w3af) [NC]
+    RewriteRule .* - [F,L]
+</IfModule>
+
+# ══════════════════════════════════════════
+# 5. GIỚI HẠN REQUEST SIZE
+# ══════════════════════════════════════════
+<IfModule mod_php.c>
+    php_value upload_max_filesize 5M
+    php_value post_max_size 6M
+    php_value max_execution_time 30
+    php_value max_input_time 30
+</IfModule>
+
+# ══════════════════════════════════════════
+# 6. CACHE TĨNH (tăng tốc độ)
+# ══════════════════════════════════════════
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType image/jpeg "access plus 1 month"
+    ExpiresByType image/png  "access plus 1 month"
+    ExpiresByType image/webp "access plus 1 month"
+    ExpiresByType text/css   "access plus 1 week"
+    ExpiresByType application/javascript "access plus 1 week"
+</IfModule>

@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem \"C:\\\\xampp\\\\htdocs\\\\tour_khach_san_project\" -Name)",
+      "PowerShell(Get-Process -Name \"httpd\" -ErrorAction SilentlyContinue)",
+      "Bash(Get-ChildItem -Path \"c:\\\\xampp\\\\htdocs\\\\tour_khach_san_project\" -Recurse -Directory)",
+      "Bash(Select-Object FullName)"
+    ]
+  }
+}

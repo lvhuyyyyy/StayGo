@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip show:*)",
+      "Bash(pip install:*)",
+      "Bash(php --version)",
+      "Bash(php -r ':*)",
+      "Bash(/c/xampp/php/php -r ':*)"
+    ]
+  }
+}
