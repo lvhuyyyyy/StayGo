@@ -11,6 +11,6 @@ unset($_SESSION['admin_name']);
 session_destroy();
 
 // Về trang login admin
-header("Location: /tour_khach_san_project/auth/login_admin.php?logout=1");
+header("Location: /auth/login_admin.php?logout=1");
 exit;
 ?>

@@ -75,7 +75,7 @@ $page_subtitle = 'Chào mừng trở lại · ' . date('d/m/Y');
 include("../includes/admin_header.php");
 ?>
 
-<link rel="stylesheet" href="/tour_khach_san_project/assets/css/dashboard.css">
+<link rel="stylesheet" href="/assets/css/dashboard.css">
 
 <!-- Stat cards -->
 <div class="stat-grid">
@@ -151,7 +151,7 @@ include("../includes/admin_header.php");
             <div class="stat-value"><?= $support_pending ?></div>
             <div class="stat-label">Hỗ trợ chờ xử lý</div>
             <div class="stat-sub">
-                <a href="/tour_khach_san_project/admin_lvhuy_kontum/support_requests.php"
+                <a href="/admin_lvhuy_kontum/support_requests.php"
                    style="color:#7c3aed;font-weight:600;text-decoration:none">
                     Xem tất cả →
                 </a>

@@ -157,7 +157,7 @@ function submitSupport(e) {
 
     const data = new FormData(form);
 
-    fetch('/tour_khach_san_project/api/contact_support.php', {
+    fetch('/api/contact_support.php', {
         method: 'POST',
         body: data
     })

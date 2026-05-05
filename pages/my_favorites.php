@@ -195,7 +195,7 @@ $favorites = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
             <div class="fav-empty-icon">🤍</div>
             <h3>Chưa có khách sạn yêu thích</h3>
             <p>Nhấn nút tim trên trang chi tiết khách sạn để lưu vào đây.</p>
-            <a href="/tour_khach_san_project/pages/hotels.php" class="fav-empty-btn">Khám phá khách sạn</a>
+            <a href="/pages/hotels.php" class="fav-empty-btn">Khám phá khách sạn</a>
         </div>
     <?php else: ?>
         <div class="fav-grid" id="favGrid">
@@ -217,9 +217,9 @@ $favorites = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
                 <?php if ($fav['is_weekend_deal']): ?>
                     <span class="fav-deal-tag">🔥 Deal cuối tuần</span>
                 <?php endif; ?>
-                <img src="/tour_khach_san_project/assets/images/<?= htmlspecialchars($fav['image'] ?? '') ?>"
+                <img src="/assets/images/<?= htmlspecialchars($fav['image'] ?? '') ?>"
                      alt="<?= htmlspecialchars($fav['name']) ?>"
-                     onerror="this.src='/tour_khach_san_project/assets/images/placeholder.jpg'">
+                     onerror="this.src='/assets/images/placeholder.jpg'">
                 <button class="fav-remove-btn"
                         onclick="removeFavorite(<?= $fav['hotel_id'] ?>, this)"
                         title="Xóa khỏi yêu thích">
@@ -247,8 +247,8 @@ $favorites = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
                     <?php endif; ?>
                 </div>
                 <div class="fav-card-actions">
-                    <a href="/tour_khach_san_project/pages/hotel_detail.php?id=<?= $fav['hotel_id'] ?>" class="fav-btn-detail">Xem chi tiết</a>
-                    <a href="/tour_khach_san_project/pages/payment.php?hotel_id=<?= $fav['hotel_id'] ?>" class="fav-btn-book">Đặt ngay</a>
+                    <a href="/pages/hotel_detail.php?id=<?= $fav['hotel_id'] ?>" class="fav-btn-detail">Xem chi tiết</a>
+                    <a href="/pages/payment.php?hotel_id=<?= $fav['hotel_id'] ?>" class="fav-btn-book">Đặt ngay</a>
                 </div>
             </div>
         </div>
@@ -274,7 +274,7 @@ function removeFavorite(hotelId, btn) {
     const fd = new FormData();
     fd.append('hotel_id', hotelId);
 
-    fetch('/tour_khach_san_project/pages/toggle_favorite.php', {
+    fetch('/pages/toggle_favorite.php', {
         method: 'POST',
         body: fd
     })
@@ -301,7 +301,7 @@ function removeFavorite(hotelId, btn) {
                             <div class="fav-empty-icon">🤍</div>
                             <h3>Chưa có khách sạn yêu thích</h3>
                             <p>Nhấn nút tim trên trang chi tiết khách sạn để lưu vào đây.</p>
-                            <a href="/tour_khach_san_project/pages/hotels.php" class="fav-empty-btn">Khám phá khách sạn</a>
+                            <a href="/pages/hotels.php" class="fav-empty-btn">Khám phá khách sạn</a>
                         </div>`;
                 }
             }, 350);

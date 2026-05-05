@@ -43,7 +43,7 @@ $fb_user_id = $data['user_id'] ?? null;
 $confirmation_code = md5($fb_user_id . time());
 
 // Trả về response theo yêu cầu của Facebook
-$base_url = "https://superadaptable-noneffusively-evon.ngrok-free.dev/tour_khach_san_project";
+$base_url = "https://staygo-local.up.railway.app";
 
 echo json_encode([
     'url'  => $base_url . '/pages/delete_confirm.php?code=' . $confirmation_code,

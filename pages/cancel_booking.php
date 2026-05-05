@@ -3,7 +3,7 @@ require_once __DIR__ . '/../config/database.php';
 if (session_status() === PHP_SESSION_NONE) session_start();
 
 if (!isset($_SESSION['user_id'])) {
-    header("Location: /tour_khach_san_project/auth/login.php");
+    header("Location: /auth/login.php");
     exit();
 }
 

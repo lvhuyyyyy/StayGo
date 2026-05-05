@@ -130,7 +130,7 @@ include("../includes/admin_header.php");
                     </div>
                 </td>
                 <td>
-                    <a href="/tour_khach_san_project/pages/hotel_detail.php?id=<?= $rv['hotel_id'] ?>"
+                    <a href="/pages/hotel_detail.php?id=<?= $rv['hotel_id'] ?>"
                     target="_blank" class="rv-hotel-link">
                         <?= htmlspecialchars($rv['hotel_name']) ?>
                     </a>

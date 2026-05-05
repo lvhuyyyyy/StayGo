@@ -23,7 +23,7 @@ $featured_blogs = isset($blogs) ? array_slice($blogs, 0, 3) : [];
                     Khám phá những câu chuyện du lịch hấp dẫn về Kon Tum, Măng Đen &amp; Quảng Ngãi
                 </p>
             </div>
-            <a href="/tour_khach_san_project/pages/blog-list.php" class="hs-blog-viewall">
+            <a href="/pages/blog-list.php" class="hs-blog-viewall">
                 Xem tất cả
                 <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/>
@@ -35,7 +35,7 @@ $featured_blogs = isset($blogs) ? array_slice($blogs, 0, 3) : [];
             <?php foreach ($featured_blogs as $blog): ?>
             <article class="hs-blog-card">
 
-                <a href="/tour_khach_san_project/pages/blog-detail.php?id=<?= $blog['id'] ?>" class="hs-blog-img-link">
+                <a href="/pages/blog-detail.php?id=<?= $blog['id'] ?>" class="hs-blog-img-link">
                     <div class="hs-blog-img">
                         <img src="<?= htmlspecialchars($blog['thumb']) ?>"
                             alt="<?= htmlspecialchars($blog['title']) ?>" loading="lazy">
@@ -54,7 +54,7 @@ $featured_blogs = isset($blogs) ? array_slice($blogs, 0, 3) : [];
                     </div>
 
                     <h3 class="hs-blog-post-title">
-                        <a href="/tour_khach_san_project/pages/blog-detail.php?id=<?= $blog['id'] ?>">
+                        <a href="/pages/blog-detail.php?id=<?= $blog['id'] ?>">
                             <?= htmlspecialchars($blog['title']) ?>
                         </a>
                     </h3>
@@ -63,7 +63,7 @@ $featured_blogs = isset($blogs) ? array_slice($blogs, 0, 3) : [];
                         <?= htmlspecialchars(mb_substr($blog['summary'], 0, 100)) ?>...
                     </p>
 
-                    <a href="/tour_khach_san_project/pages/blog-detail.php?id=<?= $blog['id'] ?>"
+                    <a href="/pages/blog-detail.php?id=<?= $blog['id'] ?>"
                     class="hs-blog-btn">XEM THÊM</a>
                 </div>
 

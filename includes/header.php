@@ -19,7 +19,7 @@ if (($_maintenance_row['value'] ?? '0') === '1') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bảo trì hệ thống – StayGo</title>
-    <link rel="icon" type="image/png" href="/tour_khach_san_project/assets/images/StayGo.png">
+    <link rel="icon" type="image/png" href="/assets/images/StayGo.png">
     <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
         *{margin:0;padding:0;box-sizing:border-box}
@@ -61,13 +61,13 @@ $blog_pages = ['blog-list.php', 'blog-detail.php'];
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= $page_title ?? 'StayGo' ?></title>
-    <link rel="icon" type="image/png" href="/tour_khach_san_project/assets/images/StayGo.png">
+    <link rel="icon" type="image/png" href="/assets/images/StayGo.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Be+Vietnam+Pro:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/tour_khach_san_project/assets/css/style.css">
-    <script src="/tour_khach_san_project/assets/js/main.js" defer></script>
-    <script src="/tour_khach_san_project/assets/js/payment.js" defer></script>
+    <link rel="stylesheet" href="/assets/css/style.css">
+    <script src="/assets/js/main.js" defer></script>
+    <script src="/assets/js/payment.js" defer></script>
 </head>
 <body>
 
@@ -75,26 +75,26 @@ $blog_pages = ['blog-list.php', 'blog-detail.php'];
     <div class="container header-flex">
 
         <!-- LOGO -->
-        <a href="/tour_khach_san_project/" class="logo-link">
-            <img src="/tour_khach_san_project/assets/images/StayGo.png"
+        <a href="/" class="logo-link">
+            <img src="/assets/images/StayGo.png"
                 alt="StayGo"
                 style="width:auto;height:60px;object-fit:contain;">
         </a>
 
         <nav>
-            <a href="/tour_khach_san_project/"
+            <a href="/"
             class="<?= in_array($current_page, ['index.php','home.php']) ? 'active' : '' ?>">
             Trang chủ
             </a>
-            <a href="/tour_khach_san_project/pages/hotels.php"
+            <a href="/pages/hotels.php"
             class="<?= $current_page === 'hotels.php' ? 'active' : '' ?>">
             Khách sạn
             </a>
-            <a href="/tour_khach_san_project/pages/blog-list.php"
+            <a href="/pages/blog-list.php"
             class="<?= in_array($current_page, $blog_pages) ? 'active' : '' ?>">
             Bài Viết
             </a>
-            <a href="/tour_khach_san_project/pages/deals.php"
+            <a href="/pages/deals.php"
             class="<?= $current_page === 'deals.php' ? 'active' : '' ?>">
             Ưu Đãi
             </a>
@@ -129,23 +129,23 @@ $blog_pages = ['blog-list.php', 'blog-detail.php'];
                             </div>
                         </div>
                         <div class="dropdown-items">
-                            <a href="/tour_khach_san_project/pages/profile.php" class="dropdown-item">
+                            <a href="/pages/profile.php" class="dropdown-item">
                                 <span class="item-icon"><svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="#1e73be" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg></span>
                                 Thông tin tài khoản
                             </a>
-                            <a href="/tour_khach_san_project/pages/edit_profile.php" class="dropdown-item">
+                            <a href="/pages/edit_profile.php" class="dropdown-item">
                                 <span class="item-icon"><svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="#1e73be" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z"/></svg></span>
                                 Chỉnh sửa thông tin
                             </a>
-                            <a href="/tour_khach_san_project/pages/change_password.php" class="dropdown-item">
+                            <a href="/pages/change_password.php" class="dropdown-item">
                                 <span class="item-icon"><svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="#1e73be" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/></svg></span>
                                 Đổi mật khẩu
                             </a>
-                            <a href="/tour_khach_san_project/pages/my_bookings.php" class="dropdown-item">
+                            <a href="/pages/my_bookings.php" class="dropdown-item">
                                 <span class="item-icon"><svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="#1e73be" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg></span>
                                 Lịch sử đặt phòng
                             </a>
-                            <a href="/tour_khach_san_project/pages/my_favorites.php" class="dropdown-item">
+                            <a href="/pages/my_favorites.php" class="dropdown-item">
                                 <span class="item-icon"><svg width="15" height="15" fill="#e53e3e" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></span>
                                 Yêu thích
                             </a>
@@ -157,7 +157,7 @@ $blog_pages = ['blog-list.php', 'blog-detail.php'];
                             </a>
                             <?php endif; ?>
                             <div class="dropdown-divider"></div>
-                            <a href="/tour_khach_san_project/auth/logout.php" class="dropdown-item danger">
+                            <a href="/auth/logout.php" class="dropdown-item danger">
                                 <span class="item-icon danger-icon"><svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="#e53e3e" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9"/></svg></span>
                                 Đăng xuất
                             </a>
@@ -165,7 +165,7 @@ $blog_pages = ['blog-list.php', 'blog-detail.php'];
                     </div>
                 </div>
             <?php else: ?>
-                <a href="/tour_khach_san_project/auth/login.php" class="btn-login-nav">Đăng nhập</a>
+                <a href="/auth/login.php" class="btn-login-nav">Đăng nhập</a>
             <?php endif; ?>
         </nav>
     </div>
@@ -175,7 +175,7 @@ $blog_pages = ['blog-list.php', 'blog-detail.php'];
 $uri = rtrim(parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH), '/');
 $show_hero = in_array($current_page, ['index.php','home.php'])
         || $uri === '/tour_khach_san_project'
-        || $uri === '/tour_khach_san_project/';
+        || $uri === '/';
 
 if ($show_hero):
 // Lấy danh sách địa điểm + số khách sạn từ DB (tự động cập nhật khi thêm mới)
@@ -192,7 +192,7 @@ if ($hl) $hero_locations = $hl->fetch_all(MYSQLI_ASSOC);
 <div class="hero-search-section">
     <div class="hero-search-title">Tìm khách sạn hoàn hảo cho bạn</div>
     <div class="hero-search-sub">Hàng trăm khách sạn tại Kon Tum, Măng Đen & Quảng Ngãi</div>
-    <form action="/tour_khach_san_project/pages/hotels.php" method="GET" class="hero-search-box" id="heroSearchForm">
+    <form action="/pages/hotels.php" method="GET" class="hero-search-box" id="heroSearchForm">
         <input type="hidden" name="location_id" id="heroLocationId" value="">
         <div class="hsb-field hsb-keyword" style="position:relative;">
             <span class="hsb-label">📍 Địa điểm / Tên khách sạn</span>
@@ -236,10 +236,10 @@ if ($hl) $hero_locations = $hl->fetch_all(MYSQLI_ASSOC);
         </button>
     </form>
     <div class="hero-quick-tags">
-        <a href="/tour_khach_san_project/pages/hotels.php?rating=9">⭐ Tuyệt vời 9+</a>
-        <a href="/tour_khach_san_project/pages/hotels.php?max_price=500000">💰 Dưới 500k</a>
-        <a href="/tour_khach_san_project/pages/hotels.php?sort=popular">🔥 Phổ biến nhất</a>
-        <a href="/tour_khach_san_project/pages/hotels.php?sort=price_asc">📊 Giá thấp nhất</a>
+        <a href="/pages/hotels.php?rating=9">⭐ Tuyệt vời 9+</a>
+        <a href="/pages/hotels.php?max_price=500000">💰 Dưới 500k</a>
+        <a href="/pages/hotels.php?sort=popular">🔥 Phổ biến nhất</a>
+        <a href="/pages/hotels.php?sort=price_asc">📊 Giá thấp nhất</a>
     </div>
 </div>
 <?php endif; ?>

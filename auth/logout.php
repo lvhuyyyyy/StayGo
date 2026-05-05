@@ -14,6 +14,6 @@ unset($_SESSION['user_cache']);
 // vì sẽ xóa cả session admin đang đăng nhập
 
 // Chuyển về trang chủ
-header("Location: /tour_khach_san_project/index.php");
+header("Location: /index.php");
 exit();
 ?>

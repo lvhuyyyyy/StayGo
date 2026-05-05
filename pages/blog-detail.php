@@ -1,7 +1,7 @@
 <?php
 // --------------------------------------------------------
 //  blog-detail.php  —  Đặt tại: pages/blog-detail.php
-//  URL: /tour_khach_san_project/pages/blog-detail.php?id=1
+//  URL: /pages/blog-detail.php?id=1
 // --------------------------------------------------------
 
 require_once __DIR__ . '/../config/database.php';
@@ -17,7 +17,7 @@ $current = $stmt->get_result()->fetch_assoc();
 
 // Nếu không tìm thấy → redirect
 if (!$current) {
-    header('Location: /tour_khach_san_project/index.php');
+    header('Location: /index.php');
     exit;
 }
 
@@ -105,7 +105,7 @@ include __DIR__ . '/../includes/header.php';
                 <div class="bd-tags">
                     <span class="bd-tags-label">Tags:</span>
                     <?php foreach ($current['tags'] as $tag): ?>
-                    <a href="/tour_khach_san_project/pages/blog-list.php?category=<?= urlencode($tag) ?>" class="bd-tag">
+                    <a href="/pages/blog-list.php?category=<?= urlencode($tag) ?>" class="bd-tag">
                         <?= htmlspecialchars($tag) ?>
                     </a>
                     <?php endforeach; ?>
@@ -124,7 +124,7 @@ include __DIR__ . '/../includes/header.php';
                 <?php if ($prev_row || $next_row): ?>
                 <div class="bd-nav">
                     <?php if ($prev_row): ?>
-                    <a href="/tour_khach_san_project/pages/blog-detail.php?id=<?= $prev_row['id'] ?>"
+                    <a href="/pages/blog-detail.php?id=<?= $prev_row['id'] ?>"
                     class="bd-nav-btn bd-nav-prev">
                         <div>
                             <span>Bài trước</span>
@@ -136,7 +136,7 @@ include __DIR__ . '/../includes/header.php';
                     <?php endif; ?>
 
                     <?php if ($next_row): ?>
-                    <a href="/tour_khach_san_project/pages/blog-detail.php?id=<?= $next_row['id'] ?>"
+                    <a href="/pages/blog-detail.php?id=<?= $next_row['id'] ?>"
                     class="bd-nav-btn bd-nav-next">
                         <div>
                             <span>Bài tiếp theo</span>
@@ -172,7 +172,7 @@ include __DIR__ . '/../includes/header.php';
                 <div class="bd-widget">
                     <h4 class="bd-widget-title">Bài viết liên quan</h4>
                     <?php foreach ($related as $r): ?>
-                    <a href="/tour_khach_san_project/pages/blog-detail.php?id=<?= $r['id'] ?>"
+                    <a href="/pages/blog-detail.php?id=<?= $r['id'] ?>"
                     class="bd-related-item">
                         <img src="<?= htmlspecialchars($r['thumb']) ?>" loading="lazy">
                         <div>
@@ -189,7 +189,7 @@ include __DIR__ . '/../includes/header.php';
                 <div class="bd-widget">
                     <h4 class="bd-widget-title">Danh mục</h4>
                     <?php foreach ($categories as $cat): ?>
-                    <a href="/tour_khach_san_project/pages/blog-list.php?category=<?= urlencode($cat['category']) ?>"
+                    <a href="/pages/blog-list.php?category=<?= urlencode($cat['category']) ?>"
                     class="bd-cat-item">
                         <span><?= htmlspecialchars($cat['category']) ?></span>
                         <span><?= $cat['cnt'] ?></span>
@@ -210,7 +210,7 @@ include __DIR__ . '/../includes/header.php';
         <h3 class="bd-more-title">Có thể bạn cũng thích</h3>
         <div class="bd-more-grid">
             <?php foreach ($related as $r): ?>
-            <a href="/tour_khach_san_project/pages/blog-detail.php?id=<?= $r['id'] ?>"
+            <a href="/pages/blog-detail.php?id=<?= $r['id'] ?>"
             class="bd-more-card">
                 <div class="bd-more-img">
                     <img src="<?= htmlspecialchars($r['thumb']) ?>" loading="lazy">
@@ -225,7 +225,7 @@ include __DIR__ . '/../includes/header.php';
             <?php endforeach; ?>
         </div>
         <div style="text-align:center;margin-top:36px;">
-            <a href="/tour_khach_san_project/pages/blog-list.php"
+            <a href="/pages/blog-list.php"
             class="bd-back-btn">← Quay lại danh sách bài viết</a>
         </div>
     </div>

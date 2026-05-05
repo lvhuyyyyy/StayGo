@@ -153,7 +153,7 @@ $is_hotel_pay = ($qr_data && $qr_data['method'] === 'hotel');
     </div>
     <?php elseif (!isset($_SESSION['user_id'])): ?>
     <div class="login-hint-banner">
-        <a href="/tour_khach_san_project/auth/register.php"><strong>Tạo tài khoản mới</strong></a>
+        <a href="/auth/register.php"><strong>Tạo tài khoản mới</strong></a>
         để nhận <strong>giảm 10%</strong> cho lần đặt đầu tiên!
     </div>
     <?php endif; ?>
@@ -252,7 +252,7 @@ $is_hotel_pay = ($qr_data && $qr_data['method'] === 'hotel');
                 <label class="method-card" id="m_momo" onclick="showMethodDetail('momo')">
                     <input type="radio" name="payment_method" value="momo" onchange="selectMethod(this)">
                     <div class="method-logo">
-                        <img src="/tour_khach_san_project/assets/images/momo.png" alt="MoMo" style="width:46px;height:46px;object-fit:contain;border-radius:10px;">
+                        <img src="/assets/images/momo.png" alt="MoMo" style="width:46px;height:46px;object-fit:contain;border-radius:10px;">
                     </div>
                     <div class="method-info">
                         <div class="method-name">Ví MoMo</div>
@@ -265,7 +265,7 @@ $is_hotel_pay = ($qr_data && $qr_data['method'] === 'hotel');
                 <label class="method-card" id="m_vnpay" onclick="showMethodDetail('vnpay')">
                     <input type="radio" name="payment_method" value="vnpay" onchange="selectMethod(this)">
                     <div class="method-logo">
-                        <img src="/tour_khach_san_project/assets/images/vnpay.png" alt="VNPay" style="width:46px;height:46px;object-fit:contain;border-radius:8px;">
+                        <img src="/assets/images/vnpay.png" alt="VNPay" style="width:46px;height:46px;object-fit:contain;border-radius:8px;">
                     </div>
                     <div class="method-info">
                         <div class="method-name">VNPay</div>
@@ -291,7 +291,7 @@ $is_hotel_pay = ($qr_data && $qr_data['method'] === 'hotel');
                 <label class="method-card" id="m_card" onclick="showMethodDetail('card')">
                     <input type="radio" name="payment_method" value="card" onchange="selectMethod(this)">
                     <div class="method-logo card-logo">
-                        <img src="/tour_khach_san_project/assets/images/thanh_toanqt.png" alt="Thẻ quốc tế" style="width:46px;height:46px;object-fit:contain;border-radius:8px;">
+                        <img src="/assets/images/thanh_toanqt.png" alt="Thẻ quốc tế" style="width:46px;height:46px;object-fit:contain;border-radius:8px;">
                     </div>
                     <div class="method-info">
                         <div class="method-name">Thẻ quốc tế</div>
@@ -343,7 +343,7 @@ $is_hotel_pay = ($qr_data && $qr_data['method'] === 'hotel');
                     <div class="bank-qr-col">
                         <div class="qr-placeholder-wrap">
                             <div class="qr-placeholder-box" id="bankQrBox">
-                                <img src="/tour_khach_san_project/assets/images/qr_vietinbank.jpg"
+                                <img src="/assets/images/qr_vietinbank.jpg"
                                     alt="qr_vietinbank"
                                     style="width:160px;height:160px;object-fit:contain;">
                             </div>
@@ -356,13 +356,13 @@ $is_hotel_pay = ($qr_data && $qr_data['method'] === 'hotel');
             <!-- PANEL: Ví MoMo -->
             <div id="detail_momo" class="method-detail-panel" style="display:none">
                 <div class="panel-header momo-panel-header">
-                    <img src="/tour_khach_san_project/assets/images/momo.png" alt="MoMo" style="width:20px;height:20px;border-radius:5px;object-fit:contain;">
+                    <img src="/assets/images/momo.png" alt="MoMo" style="width:20px;height:20px;border-radius:5px;object-fit:contain;">
                     Thanh toán qua Ví MoMo
                 </div>
                 <div class="momo-detail-layout">
                     <div class="momo-qr-col">
                         <div class="qr-placeholder-box momo-qr-box">
-                            <img src="/tour_khach_san_project/assets/images/qr_momo.jpg"
+                            <img src="/assets/images/qr_momo.jpg"
                                 alt="QR MoMo"
                                 style="width:160px;height:160px;object-fit:contain;border-radius:12px;">
                         </div>
@@ -395,13 +395,13 @@ $is_hotel_pay = ($qr_data && $qr_data['method'] === 'hotel');
             <!-- PANEL: VNPay -->
             <div id="detail_vnpay" class="method-detail-panel" style="display:none">
                 <div class="panel-header vnpay-panel-header">
-                    <img src="/tour_khach_san_project/assets/images/vnpay.png" alt="VNPay" style="width:20px;height:20px;border-radius:4px;object-fit:contain;">
+                    <img src="/assets/images/vnpay.png" alt="VNPay" style="width:20px;height:20px;border-radius:4px;object-fit:contain;">
                     Cổng thanh toán VNPay
                 </div>
                 <div class="vnpay-layout">
                     <div class="vnpay-explain">
                         <div class="vnpay-logo-row">
-                            <img src="/tour_khach_san_project/assets/images/vnpay.png" alt="VNPay" style="height:36px;object-fit:contain;">
+                            <img src="/assets/images/vnpay.png" alt="VNPay" style="height:36px;object-fit:contain;">
                             <span class="vnpay-badge">Cổng thanh toán bảo mật</span>
                         </div>
                         <p class="vnpay-desc">

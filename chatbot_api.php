@@ -275,7 +275,7 @@ switch ($intent) {
     case 'my_booking':
         if (!$userId) {
             echo "Bạn cần <b>đăng nhập</b> để xem thông tin đặt phòng của mình.<br><br>";
-            echo '<a href="/tour_khach_san_project/auth/login.php" style="color:#2563eb;font-weight:600">Đăng nhập ngay</a>';
+            echo '<a href="/auth/login.php" style="color:#2563eb;font-weight:600">Đăng nhập ngay</a>';
             break;
         }
         $uid = (int)$userId;
@@ -308,7 +308,7 @@ switch ($intent) {
             }
         } else {
             echo "Bạn chưa có đơn đặt phòng nào.<br><br>";
-            echo '<a href="/tour_khach_san_project/pages/hotels.php" style="color:#2563eb;font-weight:600">Xem khách sạn ngay</a>';
+            echo '<a href="/pages/hotels.php" style="color:#2563eb;font-weight:600">Xem khách sạn ngay</a>';
         }
         break;
 
@@ -367,7 +367,7 @@ switch ($intent) {
         if ($booking['status'] === 'confirmed') {
             echo "Đơn <b>#$orderCode</b> đã được xác nhận.<br>";
             echo "Vui lòng truy cập trang quản lý để hủy hoặc liên hệ hỗ trợ:<br><br>";
-            echo '<a href="/tour_khach_san_project/pages/my_bookings.php" style="color:#2563eb;font-weight:600">Trang quản lý đặt phòng</a>';
+            echo '<a href="/pages/my_bookings.php" style="color:#2563eb;font-weight:600">Trang quản lý đặt phòng</a>';
             break;
         }
         // pending -> hủy
@@ -375,7 +375,7 @@ switch ($intent) {
         $mysqli->query("UPDATE bookings SET status = 'cancelled' WHERE id = $bookingId");
         echo "<b>Đã hủy thành công đơn #$orderCode!</b><br><br>";
         echo "Nếu đã thanh toán, vui lòng liên hệ hỗ trợ để được hoàn tiền.<br><br>";
-        echo '<a href="/tour_khach_san_project/pages/my_bookings.php" style="color:#2563eb">Xem lịch sử đặt phòng</a>';
+        echo '<a href="/pages/my_bookings.php" style="color:#2563eb">Xem lịch sử đặt phòng</a>';
         break;
 
     // ------------------------------------------------
@@ -396,7 +396,7 @@ switch ($intent) {
             } else {
                 echo "Hiện không còn phòng trống.<br><br>";
             }
-            echo '<a href="/tour_khach_san_project/pages/hotel_detail.php?id=' . $hotelId . '" style="background:#2563eb;color:white;padding:8px 16px;border-radius:8px;text-decoration:none;font-weight:600;display:inline-block">Đặt phòng ngay</a>';
+            echo '<a href="/pages/hotel_detail.php?id=' . $hotelId . '" style="background:#2563eb;color:white;padding:8px 16px;border-radius:8px;text-decoration:none;font-weight:600;display:inline-block">Đặt phòng ngay</a>';
         } else {
             $result = $mysqli->query(
                 "SELECT l.name, COUNT(h.id) AS cnt FROM locations l
@@ -441,7 +441,7 @@ switch ($intent) {
                 echo "<b>{$row['hotel_name']}</b> - {$row['rating']} ({$row['review_text']})<br>";
                 echo "{$row['room_name']}: <b>" . number_format($row['price']) . " VNĐ/đêm</b> (còn {$row['quantity']} phòng)<br>";
                 echo "?? {$row['loc']}<br>";
-                echo '<a href="/tour_khach_san_project/pages/hotel_detail.php?id=' . $row['hotel_id'] . '" style="color:#2563eb;font-size:12px">Xem & đặt phòng</a><br><br>';
+                echo '<a href="/pages/hotel_detail.php?id=' . $row['hotel_id'] . '" style="color:#2563eb;font-size:12px">Xem & đặt phòng</a><br><br>';
             }
         } else {
             echo "Không tìm thấy phòng phù hợp với tiêu chí của bạn.<br>";
@@ -525,7 +525,7 @@ switch ($intent) {
             echo "{$row['rating']} - {$row['review_text']} ({$row['review_count']} đánh giá)<br>";
             echo "Từ <b>" . number_format($row['price']) . " VNĐ/đêm</b>$discount<br><br>";
             if ($row['description']) echo "?? {$row['description']}<br><br>";
-            echo '<a href="/tour_khach_san_project/pages/hotel_detail.php?id=' . $hotelId . '" style="color:#2563eb;font-weight:600">Xem chi tiết & đặt phòng</a>';
+            echo '<a href="/pages/hotel_detail.php?id=' . $hotelId . '" style="color:#2563eb;font-weight:600">Xem chi tiết & đặt phòng</a>';
         }
         break;
 
@@ -562,7 +562,7 @@ switch ($intent) {
                 echo "<s style='color:#999'>" . number_format($row['old_price']) . "</s> ";
                 echo "<span style='color:#e53e3e;font-weight:600'>Giảm {$row['discount_pct']}%</span><br>";
                 echo "{$row['rating']} - {$row['review_text']}<br>";
-                echo '<a href="/tour_khach_san_project/pages/hotel_detail.php?id=' . $row['id'] . '" style="color:#2563eb;font-size:12px">Xem & đặt ngay</a><br><br>';
+                echo '<a href="/pages/hotel_detail.php?id=' . $row['id'] . '" style="color:#2563eb;font-size:12px">Xem & đặt ngay</a><br><br>';
             }
         } else {
             echo "Hiện chưa có ưu đãi nào" . ($foundLocation ? " tại {$foundLocation['name']}" : "") . ".";
@@ -589,7 +589,7 @@ switch ($intent) {
                 echo "<b>{$row['name']}</b><br>";
                 echo "{$row['rating']} - {$row['review_text']} ({$row['review_count']} đánh giá)<br>";
                 echo "Từ <b>" . number_format($row['price']) . " VNĐ/đêm</b>$discount<br>";
-                echo '<a href="/tour_khach_san_project/pages/hotel_detail.php?id=' . $row['id'] . '" style="color:#2563eb;font-size:12px">Xem chi tiết</a><br><br>';
+                echo '<a href="/pages/hotel_detail.php?id=' . $row['id'] . '" style="color:#2563eb;font-size:12px">Xem chi tiết</a><br><br>';
             }
         } else {
             $result = $mysqli->query(
@@ -602,7 +602,7 @@ switch ($intent) {
                 echo "<b>{$row['name']}</b> - {$row['loc']}<br>";
                 echo "{$row['rating']} - {$row['review_text']}<br>";
                 echo "Từ " . number_format($row['price']) . " VNĐ/đêm<br>";
-                echo '<a href="/tour_khach_san_project/pages/hotel_detail.php?id=' . $row['id'] . '" style="color:#2563eb;font-size:12px">Xem chi tiết</a><br><br>';
+                echo '<a href="/pages/hotel_detail.php?id=' . $row['id'] . '" style="color:#2563eb;font-size:12px">Xem chi tiết</a><br><br>';
             }
         }
         break;
@@ -624,7 +624,7 @@ switch ($intent) {
             while ($row = $result->fetch_assoc()) {
                 echo "?? {$row['name']} ({$row['loc']})<br>";
                 echo "{$row['room_name']}: <b>" . number_format($row['price']) . " VNĐ/đêm</b><br>";
-                echo '<a href="/tour_khach_san_project/pages/hotel_detail.php?id=' . $row['id'] . '" style="color:#2563eb;font-size:12px">Đặt phòng</a><br><br>';
+                echo '<a href="/pages/hotel_detail.php?id=' . $row['id'] . '" style="color:#2563eb;font-size:12px">Đặt phòng</a><br><br>';
             }
         } else {
             echo "Hiện chưa có dữ liệu phòng.";

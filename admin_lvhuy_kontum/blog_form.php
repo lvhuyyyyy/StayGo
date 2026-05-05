@@ -31,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image'])) {
     $filepath = $upload_dir . $filename;
 
     if (move_uploaded_file($file['tmp_name'], $filepath)) {
-        echo json_encode(['url' => '/tour_khach_san_project/assets/images/blog/' . $filename]);
+        echo json_encode(['url' => '/assets/images/blog/' . $filename]);
     } else {
         echo json_encode(['error' => 'Lưu file thất bại, kiểm tra quyền thư mục']);
     }
@@ -155,7 +155,7 @@ tinymce.init({
         </div>
         <div style="display:flex;gap:8px">
             <?php if ($mode === 'edit'): ?>
-            <a href="/tour_khach_san_project/pages/blog-detail.php?id=<?= $id ?>"
+            <a href="/pages/blog-detail.php?id=<?= $id ?>"
             target="_blank" class="btn btn-edit">👁️ Xem bài viết</a>
             <?php endif; ?>
             <a href="blog_list.php" class="btn btn-edit">← Quay lại</a>

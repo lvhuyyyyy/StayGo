@@ -15,13 +15,13 @@ if (!isset($_SESSION['user_id'])): ?>
         Đăng nhập để xem toàn bộ lịch sử đặt phòng,<br>
         theo dõi trạng thái và quản lý chuyến đi của bạn.
     </p>
-    <a href="/tour_khach_san_project/auth/login.php"
+    <a href="/auth/login.php"
     style="display:inline-block;background:linear-gradient(135deg,#1e73be,#2d9cdb);color:#fff;padding:14px 36px;border-radius:12px;font-weight:700;font-size:15px;text-decoration:none;box-shadow:0 4px 16px rgba(30,115,190,.35);transition:all .2s">
         🚀 Đăng nhập ngay
     </a>
     <div style="margin-top:16px;font-size:13px;color:#a0aec0">
         Chưa có tài khoản?
-        <a href="/tour_khach_san_project/auth/register.php"
+        <a href="/auth/register.php"
         style="color:#1e73be;font-weight:700;text-decoration:none">
             Đăng ký miễn phí →
         </a>

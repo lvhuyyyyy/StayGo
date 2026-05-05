@@ -59,8 +59,8 @@ $rating_label = function($r) {
 <div class="guest-hint-bar">
     🎁 <strong>Tạo tài khoản miễn phí</strong> để nhận <strong>giảm 10%</strong> cho lần đặt phòng đầu tiên!
     <div class="guest-hint-actions">
-        <a href="/tour_khach_san_project/auth/register.php" class="hint-btn-register">Tạo tài khoản</a>
-        <a href="/tour_khach_san_project/auth/login.php" class="hint-btn-login">Đăng nhập</a>
+        <a href="/auth/register.php" class="hint-btn-register">Tạo tài khoản</a>
+        <a href="/auth/login.php" class="hint-btn-login">Đăng nhập</a>
     </div>
 </div>
 <?php endif; ?>
@@ -90,7 +90,7 @@ $rating_label = function($r) {
             </div>
         </div>
         <div class="deals-hero-img">
-            <img src="/tour_khach_san_project/assets/images/promo.jpg" alt="">
+            <img src="/assets/images/promo.jpg" alt="">
         </div>
     </div>
 </div>
@@ -157,7 +157,7 @@ $rating_label = function($r) {
         <div class="deal-card-v2 <?= $is_hot ? 'hot' : '' ?>">
 
             <div class="dcv2-img">
-                <img src="/tour_khach_san_project/assets/images/<?= htmlspecialchars($h['image'] ?? '') ?>"
+                <img src="/assets/images/<?= htmlspecialchars($h['image'] ?? '') ?>"
                     alt="<?= htmlspecialchars($h['name']) ?>"
                     loading="lazy"
                     onerror="this.style.background='#e2e8f0'">
@@ -191,11 +191,11 @@ $rating_label = function($r) {
                     </div>
                 </div>
                 <div class="dcv2-btn-group">
-                    <a href="/tour_khach_san_project/pages/hotel_detail.php?id=<?= $h['id'] ?>"
+                    <a href="/pages/hotel_detail.php?id=<?= $h['id'] ?>"
                        class="dcv2-btn-detail">🔍 Xem chi tiết</a>
                     <!-- Gọi bookNow() để kiểm tra đăng nhập trước khi đặt -->
                     <a href="javascript:void(0)"
-                       onclick="bookNow('/tour_khach_san_project/pages/payment.php?hotel_id=<?= $h['id'] ?>')"
+                       onclick="bookNow('/pages/payment.php?hotel_id=<?= $h['id'] ?>')"
                        class="dcv2-btn">Đặt ngay</a>
                 </div>
             </div>
@@ -210,7 +210,7 @@ $rating_label = function($r) {
             <h3>🏨 Không bỏ lỡ ưu đãi nào!</h3>
             <p>Khám phá toàn bộ danh sách khách sạn để tìm lựa chọn hoàn hảo cho bạn</p>
         </div>
-        <a href="/tour_khach_san_project/pages/hotels.php" class="deals-cta-btn">
+        <a href="/pages/hotels.php" class="deals-cta-btn">
             Xem tất cả khách sạn →
         </a>
     </div>
@@ -226,7 +226,7 @@ function bookNow(url) {
         window.location.href = url;
     } else {
         if (confirm('Bạn cần đăng nhập để đặt phòng.\nĐăng nhập ngay?')) {
-            window.location.href = '/tour_khach_san_project/auth/login.php';
+            window.location.href = '/auth/login.php';
         }
     }
 }

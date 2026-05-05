@@ -189,7 +189,7 @@ include __DIR__ . '/../includes/admin_header.php';
                     </td>
                     <td>
                         <div style="display:flex;gap:5px;flex-wrap:wrap">
-                            <a href="/tour_khach_san_project/pages/blog-detail.php?id=<?= $row['id'] ?>"
+                            <a href="/pages/blog-detail.php?id=<?= $row['id'] ?>"
                                target="_blank" class="btn btn-edit" style="background:#f0f9ff;color:#0369a1;border-color:#bae6fd;">👁️</a>
                             <a href="blog_form.php?id=<?= $row['id'] ?>" class="btn btn-edit">✏️ Sửa</a>
                             <a href="blog_list.php?delete=<?= $row['id'] ?>&<?= blog_qs(['p' => $page]) ?>"

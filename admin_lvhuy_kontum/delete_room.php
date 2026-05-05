@@ -5,7 +5,7 @@ include("../config/database.php");
 
 
 if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
-    header('Location: /tour_khach_san_project/admin_lvhuy_kontum/rooms.php?error=invalid_id');
+    header('Location: /admin_lvhuy_kontum/rooms.php?error=invalid_id');
     exit;
 }
 
@@ -14,7 +14,7 @@ $id = (int)$_GET['id'];
 $res  = $conn->query("SELECT * FROM rooms WHERE id = $id");
 $room = $res ? $res->fetch_assoc() : null;
 if (!$room) {
-    header('Location: /tour_khach_san_project/admin_lvhuy_kontum/rooms.php?error=not_found');
+    header('Location: /admin_lvhuy_kontum/rooms.php?error=not_found');
     exit;
 }
 
@@ -22,7 +22,7 @@ $res2 = $conn->query("SELECT COUNT(*) as total FROM bookings WHERE room_id = $id
 $active_bookings = $res2 ? (int)$res2->fetch_assoc()['total'] : 0;
 
 if ($active_bookings > 0) {
-    header('Location: /tour_khach_san_project/admin_lvhuy_kontum/rooms.php?error=has_bookings&count=' . $active_bookings);
+    header('Location: /admin_lvhuy_kontum/rooms.php?error=has_bookings&count=' . $active_bookings);
     exit;
 }
 
@@ -41,9 +41,9 @@ $conn->query("SET FOREIGN_KEY_CHECKS = 1");
 if ($deleted > 0) log_activity($conn, 'delete_room', 'room', $id, "Xóa phòng: {$room['room_name']}");
 
 if ($deleted > 0) {
-    header('Location: /tour_khach_san_project/admin_lvhuy_kontum/rooms.php?success=deleted');
+    header('Location: /admin_lvhuy_kontum/rooms.php?success=deleted');
 } else {
-    header('Location: /tour_khach_san_project/admin_lvhuy_kontum/rooms.php?error=failed');
+    header('Location: /admin_lvhuy_kontum/rooms.php?error=failed');
 }
 exit;
 

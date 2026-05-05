@@ -12,7 +12,11 @@
       "Bash(/c/xampp/mysql/bin/mysql -u root -e ' *)",
       "Bash(/c/xampp/mysql/bin/mysql -u root tour_khach_san -e ' *)",
       "Bash(/c/xampp/mysql/bin/mysql -u root tour_khach_san -e \"SELECT COUNT\\(*\\) as users FROM users; SELECT COUNT\\(*\\) as reviews FROM reviews; SELECT COUNT\\(*\\) as vouchers FROM vouchers; SELECT COUNT\\(*\\) as bookings FROM bookings;\")",
-      "Bash(grep -c \"INSERT INTO \\\\`users\\\\`\\\\|INSERT INTO \\\\`reviews\\\\`\\\\|INSERT INTO \\\\`bookings\\\\`\\\\|INSERT INTO \\\\`vouchers\\\\`\" \"c:/xampp/htdocs/tour_khach_san_project/database/tour_khach_san.sql\")"
+      "Bash(grep -c \"INSERT INTO \\\\`users\\\\`\\\\|INSERT INTO \\\\`reviews\\\\`\\\\|INSERT INTO \\\\`bookings\\\\`\\\\|INSERT INTO \\\\`vouchers\\\\`\" \"c:/xampp/htdocs/tour_khach_san_project/database/tour_khach_san.sql\")",
+      "Bash(xargs sed *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)"
     ]
   }
 }

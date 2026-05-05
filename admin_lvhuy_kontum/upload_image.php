@@ -30,7 +30,7 @@ $filename = 'blog_' . time() . '_' . rand(1000, 9999) . '.' . $ext;
 $filepath = $upload_dir . $filename;
 
 if (move_uploaded_file($file['tmp_name'], $filepath)) {
-    echo json_encode(['url' => '/tour_khach_san_project/assets/images/blog/' . $filename]);
+    echo json_encode(['url' => '/assets/images/blog/' . $filename]);
 } else {
     echo json_encode(['error' => 'Lưu file thất bại, kiểm tra quyền thư mục']);
 }

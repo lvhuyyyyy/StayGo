@@ -2,7 +2,7 @@
 // --------------------------------------------------------
 //  blog-list.php  —  Trang danh sách tất cả bài viết
 //  Đặt tại: pages/blog-list.php
-//  URL: /tour_khach_san_project/pages/blog-list.php
+//  URL: /pages/blog-list.php
 // --------------------------------------------------------
 
 $page_title = 'Bài viết du lịch - StayGo';
@@ -61,12 +61,12 @@ $blogs = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
 <div class="bl-filter-bar">
     <div class="bl-container">
         <div class="bl-tabs">
-            <a href="/tour_khach_san_project/pages/blog-list.php"
+            <a href="/pages/blog-list.php"
             class="bl-tab <?= $filter_cat === '' ? 'active' : '' ?>">
                 Tất cả
             </a>
             <?php foreach ($categories as $cat): ?>
-            <a href="/tour_khach_san_project/pages/blog-list.php?category=<?= urlencode($cat['category']) ?>"
+            <a href="/pages/blog-list.php?category=<?= urlencode($cat['category']) ?>"
             class="bl-tab <?= $filter_cat === $cat['category'] ? 'active' : '' ?>">
                 <?= htmlspecialchars($cat['category']) ?>
                 <span class="bl-tab-count"><?= $cat['cnt'] ?></span>
@@ -88,14 +88,14 @@ $blogs = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
             </svg>
             Đang xem: <strong><?= htmlspecialchars($filter_cat) ?></strong>
             &nbsp;•&nbsp; <?= count($blogs) ?> bài viết
-            <a href="/tour_khach_san_project/pages/blog-list.php" class="bl-filter-clear">✕ Xóa bộ lọc</a>
+            <a href="/pages/blog-list.php" class="bl-filter-clear">✕ Xóa bộ lọc</a>
         </div>
         <?php endif; ?>
 
         <?php if (empty($blogs)): ?>
         <div class="bl-empty">
             <p>Chưa có bài viết nào trong danh mục này.</p>
-            <a href="/tour_khach_san_project/pages/blog-list.php" class="bl-btn" style="margin-top:12px">
+            <a href="/pages/blog-list.php" class="bl-btn" style="margin-top:12px">
                 Xem tất cả bài viết
             </a>
         </div>
@@ -105,7 +105,7 @@ $blogs = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
             <article class="bl-card">
 
                 <!-- Ảnh -->
-                <a href="/tour_khach_san_project/pages/blog-detail.php?id=<?= $blog['id'] ?>"
+                <a href="/pages/blog-detail.php?id=<?= $blog['id'] ?>"
                 class="bl-img-link">
                     <div class="bl-img-wrap">
                         <img src="<?= htmlspecialchars($blog['thumb']) ?>"
@@ -126,7 +126,7 @@ $blogs = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
                 <div class="bl-body">
                     <span class="bl-cat"><?= htmlspecialchars($blog['category']) ?></span>
                     <h2 class="bl-title">
-                        <a href="/tour_khach_san_project/pages/blog-detail.php?id=<?= $blog['id'] ?>">
+                        <a href="/pages/blog-detail.php?id=<?= $blog['id'] ?>">
                             <?= htmlspecialchars($blog['title']) ?>
                         </a>
                     </h2>
@@ -135,7 +135,7 @@ $blogs = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
                         <span class="bl-read-time">
                             <?= htmlspecialchars($blog['read_time']) ?>
                         </span>
-                        <a href="/tour_khach_san_project/pages/blog-detail.php?id=<?= $blog['id'] ?>"
+                        <a href="/pages/blog-detail.php?id=<?= $blog['id'] ?>"
                         class="bl-btn">
                             Xem thêm
                         </a>

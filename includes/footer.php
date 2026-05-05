@@ -5,7 +5,7 @@
             <!-- Cột 1: Logo + mô tả -->
             <div class="footer-col footer-brand">
                 <div class="footer-logo" style="margin-bottom:4px;">
-                    <img src="/tour_khach_san_project/assets/images/StayGo.png"
+                    <img src="/assets/images/StayGo.png"
                         alt="StayGo"
                         style="width:160px;height:auto;object-fit:contain;">
                 </div>
@@ -47,11 +47,11 @@
             <div class="footer-col">
                 <h4 class="footer-heading">Khám phá</h4>
                 <ul class="footer-links">
-                    <li><a href="/tour_khach_san_project/">🏠 Trang chủ</a></li>
-                    <li><a href="/tour_khach_san_project/pages/hotels.php">🏨 Khách sạn</a></li>
-                    <li><a href="/tour_khach_san_project/pages/deals.php">🔥 Ưu đãi đặc biệt</a></li>
-                    <li><a href="/tour_khach_san_project/pages/hotels.php?filter=top_rated">⭐ Đánh giá cao nhất</a></li>
-                    <li><a href="/tour_khach_san_project/pages/hotels.php?sort=price_asc">💰 Giá thấp nhất</a></li>
+                    <li><a href="/">🏠 Trang chủ</a></li>
+                    <li><a href="/pages/hotels.php">🏨 Khách sạn</a></li>
+                    <li><a href="/pages/deals.php">🔥 Ưu đãi đặc biệt</a></li>
+                    <li><a href="/pages/hotels.php?filter=top_rated">⭐ Đánh giá cao nhất</a></li>
+                    <li><a href="/pages/hotels.php?sort=price_asc">💰 Giá thấp nhất</a></li>
                 </ul>
             </div>
 
@@ -59,11 +59,11 @@
             <div class="footer-col">
                 <h4 class="footer-heading">Tài khoản</h4>
                 <ul class="footer-links">
-                    <li><a href="/tour_khach_san_project/auth/login.php">🔐 Đăng nhập</a></li>
-                    <li><a href="/tour_khach_san_project/auth/register.php">📝 Đăng ký</a></li>
-                    <li><a href="/tour_khach_san_project/pages/profile.php">👤 Trang cá nhân</a></li>
-                    <li><a href="/tour_khach_san_project/pages/my_bookings.php">📖 Lịch sử đặt phòng</a></li>
-                    <li><a href="/tour_khach_san_project/pages/edit_profile.php">⚙️ Chỉnh sửa thông tin</a></li>
+                    <li><a href="/auth/login.php">🔐 Đăng nhập</a></li>
+                    <li><a href="/auth/register.php">📝 Đăng ký</a></li>
+                    <li><a href="/pages/profile.php">👤 Trang cá nhân</a></li>
+                    <li><a href="/pages/my_bookings.php">📖 Lịch sử đặt phòng</a></li>
+                    <li><a href="/pages/edit_profile.php">⚙️ Chỉnh sửa thông tin</a></li>
                 </ul>
             </div>
 
@@ -98,11 +98,11 @@
                         </span>
                         <!-- MoMo -->
                         <span class="fp-badge fp-badge-logo" title="MoMo">
-                            <img src="/tour_khach_san_project/assets/images/momo.png" alt="MoMo" height="22">
+                            <img src="/assets/images/momo.png" alt="MoMo" height="22">
                         </span>
                         <!-- VNPay -->
                         <span class="fp-badge fp-badge-logo" title="VNPay">
-                            <img src="/tour_khach_san_project/assets/images/vnpay.png" alt="VNPay" height="22">
+                            <img src="/assets/images/vnpay.png" alt="VNPay" height="22">
                         </span>
                         <!-- Tien mat -->
                         <span class="fp-badge fp-badge-logo" title="Tien mat">
@@ -186,7 +186,7 @@ function submitFooterSupport(e) {
     const btn  = form.querySelector('.sp-submit');
     btn.disabled = true;
     btn.textContent = 'Đang gửi...';
-    fetch('/tour_khach_san_project/api/contact_support.php', {
+    fetch('/api/contact_support.php', {
         method: 'POST', body: new FormData(form)
     })
     .then(r => r.json())

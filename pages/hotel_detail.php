@@ -475,12 +475,12 @@ function bed_icon(string $bed): string {
             <div class="hd-widget-card">
                 <div class="hd-wc-title">📝 Bài viết về <?= htmlspecialchars($hotel['location_name']) ?></div>
                 <?php foreach ($blogs_nearby as $bl): ?>
-                <a href="/tour_khach_san_project/pages/blog-detail.php?id=<?= $bl['id'] ?>"
+                <a href="/pages/blog-detail.php?id=<?= $bl['id'] ?>"
                 class="hd-wc-item">
                     <img src="<?= htmlspecialchars($bl['thumb']) ?>"
                         alt="<?= htmlspecialchars($bl['title']) ?>"
                         loading="lazy"
-                        onerror="this.src='/tour_khach_san_project/assets/images/hotel1.jpg'">
+                        onerror="this.src='/assets/images/hotel1.jpg'">
                     <div>
                         <span class="hd-wc-loc">📅 <?= $bl['date'] ?></span>
                         <p class="hd-wc-name"><?= htmlspecialchars(mb_substr($bl['title'], 0, 50)) ?>...</p>
@@ -581,7 +581,7 @@ function toggleFavorite(hotelId) {
     const fd = new FormData();
     fd.append('hotel_id', hotelId);
 
-    fetch('/tour_khach_san_project/pages/toggle_favorite.php', { method: 'POST', body: fd })
+    fetch('/pages/toggle_favorite.php', { method: 'POST', body: fd })
         .then(r => r.json())
         .then(data => {
             if (data.success) {
@@ -607,7 +607,7 @@ function closeFavLoginModal() {
     document.getElementById('favLoginModal').style.display = 'none';
 }
 function goToLogin() {
-    window.location.href = '/tour_khach_san_project/auth/login.php';
+    window.location.href = '/auth/login.php';
 }
 
 function showFavToast(msg) {
@@ -729,7 +729,7 @@ function showFavToast(msg) {
     <div class="fav-modal-box">
         <div class="fav-modal-header">
             <div class="fav-modal-title">
-                <img src="/tour_khach_san_project/assets/images/StayGo.png"
+                <img src="/assets/images/StayGo.png"
                      alt="StayGo" style="height:24px;object-fit:contain;">
                 StayGo
             </div>

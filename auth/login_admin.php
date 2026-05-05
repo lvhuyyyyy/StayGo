@@ -3,7 +3,7 @@ session_start();
 include("../config/database.php");
 
 if (isset($_SESSION['user_id']) && $_SESSION['role'] === 'admin') {
-    header("Location: /tour_khach_san_project/admin_lvhuy_kontum/dashboard.php");
+    header("Location: /admin_lvhuy_kontum/dashboard.php");
     exit;
 }
 
@@ -54,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error)) {
             // Xóa session user nếu đang đăng nhập user trước đó
             unset($_SESSION['user_id'], $_SESSION['role'], $_SESSION['full_name']);
 
-            header("Location: /tour_khach_san_project/admin_lvhuy_kontum/dashboard.php");
+            header("Location: /admin_lvhuy_kontum/dashboard.php");
             exit;
 
         } else {
@@ -80,7 +80,7 @@ $attempts_used = $_SESSION[$attempt_key] ?? 0;
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Login - StayGo</title>
-    <link rel="stylesheet" href="/tour_khach_san_project/assets/css/login_admin.css">
+    <link rel="stylesheet" href="/assets/css/login_admin.css">
 </head>
 <body>
 <div class="login-wrap">
@@ -138,7 +138,7 @@ $attempts_used = $_SESSION[$attempt_key] ?? 0;
     </div>
 
     <div class="login-footer">
-        <a href="/tour_khach_san_project/index.php">← Về trang chủ</a>
+        <a href="/index.php">← Về trang chủ</a>
     </div>
 </div>
 </body>

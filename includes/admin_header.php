@@ -4,7 +4,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 
 // FIX: Dùng admin_id và admin_role thay vì user_id và role
 if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_role']) || $_SESSION['admin_role'] !== 'admin') {
-    header("Location: /tour_khach_san_project/auth/login_admin.php");
+    header("Location: /auth/login_admin.php");
     exit;
 }
 
@@ -35,8 +35,8 @@ $admin_avatar = strtoupper(mb_substr($_SESSION['admin_name'] ?? 'A', 0, 1));
 <head>
     <meta charset="UTF-8">
     <title><?= $page_title ?? 'Admin' ?> - StayGo</title>
-    <link rel="stylesheet" href="/tour_khach_san_project/assets/css/admin.css">
-    <script src="/tour_khach_san_project/assets/js/admin.js" defer></script>
+    <link rel="stylesheet" href="/assets/css/admin.css">
+    <script src="/assets/js/admin.js" defer></script>
 </head>
 <body>
 <div class="admin-wrapper">
@@ -58,29 +58,29 @@ $admin_avatar = strtoupper(mb_substr($_SESSION['admin_name'] ?? 'A', 0, 1));
     <nav class="sidebar-menu">
         <div class="menu-label">Tổng quan</div>
 
-        <a href="/tour_khach_san_project/admin_lvhuy_kontum/dashboard.php"
+        <a href="/admin_lvhuy_kontum/dashboard.php"
            class="<?= $current_page === 'dashboard.php' ? 'active' : '' ?>">
             Dashboard
         </a>
 
         <div class="menu-label">Quản lý</div>
 
-        <a href="/tour_khach_san_project/admin_lvhuy_kontum/users.php"
+        <a href="/admin_lvhuy_kontum/users.php"
            class="<?= $current_page === 'users.php' ? 'active' : '' ?>">
             Quản lý User
         </a>
 
-        <a href="/tour_khach_san_project/admin_lvhuy_kontum/hotels.php"
+        <a href="/admin_lvhuy_kontum/hotels.php"
            class="<?= $current_page === 'hotels.php' ? 'active' : '' ?>">
             Khách sạn
         </a>
 
-        <a href="/tour_khach_san_project/admin_lvhuy_kontum/rooms.php"
+        <a href="/admin_lvhuy_kontum/rooms.php"
            class="<?= $current_page === 'rooms.php' ? 'active' : '' ?>">
             Phòng
         </a>
 
-        <a href="/tour_khach_san_project/admin_lvhuy_kontum/bookings.php"
+        <a href="/admin_lvhuy_kontum/bookings.php"
            class="<?= $current_page === 'bookings.php' ? 'active' : '' ?>">
             Đặt phòng
             <?php if($pending_count > 0): ?>
@@ -88,12 +88,12 @@ $admin_avatar = strtoupper(mb_substr($_SESSION['admin_name'] ?? 'A', 0, 1));
             <?php endif; ?>
         </a>
 
-        <a href="/tour_khach_san_project/admin_lvhuy_kontum/payments.php"
+        <a href="/admin_lvhuy_kontum/payments.php"
            class="<?= $current_page === 'payments.php' ? 'active' : '' ?>">
             Thanh toán
         </a>
 
-        <a href="/tour_khach_san_project/admin_lvhuy_kontum/refund_requests.php"
+        <a href="/admin_lvhuy_kontum/refund_requests.php"
            class="<?= $current_page === 'refund_requests.php' ? 'active' : '' ?>">
             Hoàn tiền
             <?php if($refund_pending > 0): ?>
@@ -101,17 +101,17 @@ $admin_avatar = strtoupper(mb_substr($_SESSION['admin_name'] ?? 'A', 0, 1));
             <?php endif; ?>
         </a>
 
-        <a href="/tour_khach_san_project/admin_lvhuy_kontum/blog_list.php"
+        <a href="/admin_lvhuy_kontum/blog_list.php"
            class="<?= in_array($current_page, ['blog_list.php', 'blog_form.php']) ? 'active' : '' ?>">
             Bài viết
         </a>
 
-        <a href="/tour_khach_san_project/admin_lvhuy_kontum/reviews.php"
+        <a href="/admin_lvhuy_kontum/reviews.php"
            class="<?= $current_page === 'reviews.php' ? 'active' : '' ?>">
             Đánh giá
         </a>
 
-        <a href="/tour_khach_san_project/admin_lvhuy_kontum/support_requests.php"
+        <a href="/admin_lvhuy_kontum/support_requests.php"
            class="<?= $current_page === 'support_requests.php' ? 'active' : '' ?>">
             Hỗ trợ
             <?php if($support_pending > 0): ?>
@@ -121,33 +121,33 @@ $admin_avatar = strtoupper(mb_substr($_SESSION['admin_name'] ?? 'A', 0, 1));
 
         <div class="menu-label">Công cụ</div>
 
-        <a href="/tour_khach_san_project/admin_lvhuy_kontum/hotel_stats.php"
+        <a href="/admin_lvhuy_kontum/hotel_stats.php"
            class="<?= $current_page === 'hotel_stats.php' ? 'active' : '' ?>">
             📊 Thống kê khách sạn
         </a>
 
-        <a href="/tour_khach_san_project/admin_lvhuy_kontum/vouchers.php"
+        <a href="/admin_lvhuy_kontum/vouchers.php"
            class="<?= $current_page === 'vouchers.php' ? 'active' : '' ?>">
             🏷️ Voucher
         </a>
 
-        <a href="/tour_khach_san_project/admin_lvhuy_kontum/activity_log.php"
+        <a href="/admin_lvhuy_kontum/activity_log.php"
            class="<?= $current_page === 'activity_log.php' ? 'active' : '' ?>">
             📋 Nhật ký hoạt động
         </a>
 
-        <a href="/tour_khach_san_project/admin_lvhuy_kontum/site_settings.php"
+        <a href="/admin_lvhuy_kontum/site_settings.php"
            class="<?= $current_page === 'site_settings.php' ? 'active' : '' ?>">
             ⚙️ Cài đặt hệ thống
         </a>
 
-        <a href="/tour_khach_san_project/download_report.php" target="_blank">
+        <a href="/download_report.php" target="_blank">
             📥 Tải báo cáo Word
         </a>
     </nav>
 
     <div class="sidebar-footer">
-        <a href="/tour_khach_san_project/auth/logout_admin.php">
+        <a href="/auth/logout_admin.php">
             Đăng xuất
         </a>
     </div>

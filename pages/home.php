@@ -14,10 +14,10 @@
                 <span class="promo-small">Ưu Đãi Đầu Năm 2026</span>
                 <h3>Giảm giá ít nhất 10%</h3>
                 <p>Tiết kiệm cho đặt lưu trú tiếp theo với Ưu Đãi Đầu Năm 2026. Đặt ngay, lưu trú theo ý muốn đến 1/4/2026.</p>
-                <a href="/tour_khach_san_project/pages/deals.php" class="promo-button">Khám phá ưu đãi</a>
+                <a href="/pages/deals.php" class="promo-button">Khám phá ưu đãi</a>
             </div>
             <div class="promo-right">
-                <img src="/tour_khach_san_project/assets/images/promo.jpg" alt="Khuyến mãi">
+                <img src="/assets/images/promo.jpg" alt="Khuyến mãi">
             </div>
         </div>
     </div>
@@ -40,7 +40,7 @@
             ");
             while ($row = $result->fetch_assoc()): ?>
                 <!-- Click vào card → mở trang khách sạn lọc theo vùng -->
-                <a href="/tour_khach_san_project/pages/hotels.php?location_id=<?= $row['id'] ?>"
+                <a href="/pages/hotels.php?location_id=<?= $row['id'] ?>"
                 class="destination-card"
                 style="background-image: url('assets/images/<?= htmlspecialchars($row['image']) ?>');">
                     <div class="destination-overlay">
@@ -106,9 +106,9 @@
                         <span class="per">/đêm</span>
                     </div>
                     <div class="card-actions">
-                        <a href="/tour_khach_san_project/pages/hotel_detail.php?id=<?= $row['id'] ?>"
+                        <a href="/pages/hotel_detail.php?id=<?= $row['id'] ?>"
                         class="btn-outline">🔍 Xem chi tiết</a>
-                        <a href="/tour_khach_san_project/pages/payment.php?hotel_id=<?= $row['id'] ?>"
+                        <a href="/pages/payment.php?hotel_id=<?= $row['id'] ?>"
                         class="btn-deal">Đặt ngay</a>
                     </div>
                 </div>
@@ -128,7 +128,7 @@
                 <h2 class="fh-title">Khách sạn nổi bật</h2>
                 <p class="fh-sub">Những lựa chọn được yêu thích nhất</p>
             </div>
-            <a href="/tour_khach_san_project/pages/hotels.php" class="fh-view-all">
+            <a href="/pages/hotels.php" class="fh-view-all">
                 Xem tất cả
                 <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/>
@@ -187,9 +187,9 @@
                         <span class="fh-per">/đêm</span>
                     </div>
                     <div class="card-actions">
-                        <a href="/tour_khach_san_project/pages/hotel_detail.php?id=<?= $f['id'] ?>"
+                        <a href="/pages/hotel_detail.php?id=<?= $f['id'] ?>"
                         class="btn-outline">🔍 Xem chi tiết</a>
-                        <a href="/tour_khach_san_project/pages/payment.php?hotel_id=<?= $f['id'] ?>"
+                        <a href="/pages/payment.php?hotel_id=<?= $f['id'] ?>"
                         class="fh-book-btn">Đặt ngay</a>
                     </div>
                 </div>

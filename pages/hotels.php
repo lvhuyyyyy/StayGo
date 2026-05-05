@@ -117,7 +117,7 @@ $rating_label = function($r) {
         <?php if ($current_location): ?>
             <!-- Breadcrumb + tiêu đề động theo vùng -->
             <div class="loc-breadcrumb">
-                <a href="/tour_khach_san_project/pages/hotels.php">📍 Tất cả khách sạn</a>
+                <a href="/pages/hotels.php">📍 Tất cả khách sạn</a>
                 <span>›</span>
                 <span><?= htmlspecialchars($current_location['name']) ?></span>
             </div>
@@ -132,12 +132,12 @@ $rating_label = function($r) {
     <!-- Tabs lọc nhanh theo địa điểm -->
     <div class="loc-tabs-wrap">
         <div class="loc-tabs">
-            <a href="/tour_khach_san_project/pages/hotels.php?sort=<?= urlencode($sort) ?>"
+            <a href="/pages/hotels.php?sort=<?= urlencode($sort) ?>"
             class="loc-tab <?= $location_id === 0 ? 'active' : '' ?>">
                 🗺️ Tất cả
             </a>
             <?php foreach ($all_locations as $loc): ?>
-                <a href="/tour_khach_san_project/pages/hotels.php?location_id=<?= $loc['id'] ?>&sort=<?= urlencode($sort) ?>"
+                <a href="/pages/hotels.php?location_id=<?= $loc['id'] ?>&sort=<?= urlencode($sort) ?>"
                 class="loc-tab <?= $location_id === (int)$loc['id'] ? 'active' : '' ?>">
                     <?= htmlspecialchars($loc['name']) ?>
                     <span class="loc-tab-count"><?= $loc['hotel_count'] ?></span>

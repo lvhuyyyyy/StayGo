@@ -97,7 +97,7 @@ $attempts_used = $_SESSION[$attempt_key] ?? 0;
 <head>
     <meta charset="UTF-8">
     <title>Đăng nhập - StayGo</title>
-    <link rel="stylesheet" href="/tour_khach_san_project/assets/css/login.css">
+    <link rel="stylesheet" href="/assets/css/login.css">
     <script src="https://www.google.com/recaptcha/api.js" async defer></script>
 </head>
 <body>

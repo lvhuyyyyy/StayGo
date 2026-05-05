@@ -115,7 +115,7 @@ if ($rv_valid) {
     <!-- Form -->
     <?php if (!$current_user_id): ?>
     <div class="rv-login-notice">
-        <a href="/tour_khach_san_project/auth/login.php">Đăng nhập</a> để đánh giá khách sạn này.
+        <a href="/auth/login.php">Đăng nhập</a> để đánh giá khách sạn này.
     </div>
 
     <?php elseif (!empty($eligible_bookings)): ?>
@@ -207,7 +207,7 @@ if ($rv_valid) {
 
 <script>
 const RV_HOTEL_ID = <?= (int)$hotel_id ?>;
-const RV_HANDLER  = '/tour_khach_san_project/pages/reviews_handler.php';
+const RV_HANDLER  = '/pages/reviews_handler.php';
 const rvStarLabels = ['', 'Tệ', 'Không tốt', 'Bình thường', 'Tốt', 'Tuyệt vời'];
 
 function rvToggleForm() {
