@@ -4,7 +4,15 @@
       "Bash(Get-ChildItem \"C:\\\\xampp\\\\htdocs\\\\tour_khach_san_project\" -Name)",
       "PowerShell(Get-Process -Name \"httpd\" -ErrorAction SilentlyContinue)",
       "Bash(Get-ChildItem -Path \"c:\\\\xampp\\\\htdocs\\\\tour_khach_san_project\" -Recurse -Directory)",
-      "Bash(Select-Object FullName)"
+      "Bash(Select-Object FullName)",
+      "Bash(mysql -u root -e \"SHOW TABLES FROM tour_khach_san;\")",
+      "Bash(/c/xampp/mysql/bin/mysql -u root -e \"SHOW TABLES FROM tour_khach_san;\")",
+      "Bash(grep -o \"INSERT INTO \\\\`[^']*\\\\` VALUES \\([^;]*\\)\" \"c:/xampp/htdocs/tour_khach_san_project/database/tour_khach_san.sql\")",
+      "Bash(awk '{print length\\($0\\), $0}')",
+      "Bash(/c/xampp/mysql/bin/mysql -u root -e ' *)",
+      "Bash(/c/xampp/mysql/bin/mysql -u root tour_khach_san -e ' *)",
+      "Bash(/c/xampp/mysql/bin/mysql -u root tour_khach_san -e \"SELECT COUNT\\(*\\) as users FROM users; SELECT COUNT\\(*\\) as reviews FROM reviews; SELECT COUNT\\(*\\) as vouchers FROM vouchers; SELECT COUNT\\(*\\) as bookings FROM bookings;\")",
+      "Bash(grep -c \"INSERT INTO \\\\`users\\\\`\\\\|INSERT INTO \\\\`reviews\\\\`\\\\|INSERT INTO \\\\`bookings\\\\`\\\\|INSERT INTO \\\\`vouchers\\\\`\" \"c:/xampp/htdocs/tour_khach_san_project/database/tour_khach_san.sql\")"
     ]
   }
 }
