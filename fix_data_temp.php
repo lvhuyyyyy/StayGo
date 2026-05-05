@@ -3,7 +3,11 @@ require_once __DIR__ . '/config/database.php';
 $conn->set_charset('utf8mb4');
 $r = [];
 
-// ── 1. Sửa tên người dùng bị lỗi encoding ──────────────────────────────────
+// ── 0. Mở rộng cột rating tránh "Out of range" khi lưu 10.0 ─────────────────
+$conn->query("ALTER TABLE hotels MODIFY COLUMN rating DECIMAL(3,1) DEFAULT 0.0");
+$r[] = $conn->error ? "⚠️ ALTER rating: " . $conn->error : "✅ hotels.rating → DECIMAL(3,1)";
+
+// ── 1. Sửa tên người dùng bị lỗi encoding ────────────────────────────────────
 $users = [
     16 => 'Nguyễn Thị Mai',
     17 => 'Trần Văn Nam',
@@ -17,9 +21,7 @@ foreach ($users as $uid => $name) {
     $r[] = $stmt->execute() ? "✅ User #$uid → $name" : "❌ User #$uid: " . $conn->error;
 }
 
-// ── 2. Sửa đánh giá: rating về thang 1-5 + comment đúng tiếng Việt ─────────
-// Các review này được chèn thủ công với thang 0-10 → chia đôi về 1-5
-// 10→5, 9→5, 8→4, 7→4
+// ── 2. Sửa đánh giá: rating về thang 1-5 + comment đúng tiếng Việt ──────────
 $reviews = [
     27 => [4, 'Khách sạn sạch sẽ, vị trí trung tâm Kon Tum, thuận tiện đi lại. Nhân viên thân thiện và nhiệt tình.'],
     28 => [5, 'Phòng rộng rãi, view đẹp nhìn ra biển. Bữa sáng buffet đa dạng và ngon. Rất hài lòng, sẽ quay lại!'],
@@ -35,10 +37,10 @@ $reviews = [
 foreach ($reviews as $rid => [$rating, $comment]) {
     $stmt = $conn->prepare("UPDATE reviews SET rating = ?, comment = ? WHERE id = ?");
     $stmt->bind_param("isi", $rating, $comment, $rid);
-    $r[] = $stmt->execute() ? "✅ Review #$rid → {$rating}⭐ OK" : "❌ Review #$rid: " . $conn->error;
+    $r[] = $stmt->execute() ? "✅ Review #$rid → {$rating}⭐" : "❌ Review #$rid: " . $conn->error;
 }
 
-// ── 3. Cập nhật lại hotels.rating cho các khách sạn liên quan ───────────────
+// ── 3. Cập nhật lại hotels.rating cho các khách sạn liên quan ────────────────
 $hotel_ids = [17, 18, 19, 25, 26, 27, 31, 32];
 foreach ($hotel_ids as $hid) {
     $res = $conn->query("
@@ -48,7 +50,7 @@ foreach ($hotel_ids as $hid) {
 
     $avg_raw = (float)($res['avg_r'] ?? 0);
     $cnt     = (int)($res['cnt']    ?? 0);
-    $avg     = round($avg_raw * 2, 1); // 1-5 → 0-10
+    $avg     = round($avg_raw * 2, 1);
 
     $text = 'Chưa có đánh giá';
     if ($avg >= 9)     $text = 'Trên cả tuyệt vời';
@@ -65,8 +67,7 @@ foreach ($hotel_ids as $hid) {
         : "❌ Hotel #$hid: " . $conn->error;
 }
 
-// ── 4. Hiển thị kết quả ──────────────────────────────────────────────────────
-echo '<pre style="font-family:monospace;font-size:14px;line-height:1.7">';
+echo '<pre style="font-family:monospace;font-size:14px;line-height:1.8">';
 foreach ($r as $line) echo $line . "\n";
 echo '</pre>';
 
