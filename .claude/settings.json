@@ -19,7 +19,9 @@
       "Bash(git push *)",
       "Bash(grep -A3 \"INSERT INTO \\\\`blog_posts\\\\`\" c:/xampp/htdocs/tour_khach_san_project/database/tour_khach_san.sql)",
       "Bash(mysql -h trolley.proxy.rlwy.net -u root -pFAfebXOgloLEEFJhUDTlrFgdzwNPyLhR --port 38045 --protocol=TCP railway -e ' *)",
-      "Bash(mysql -h trolley.proxy.rlwy.net -u root -pFAfebXOgloLEEFJhUDTlrFgdzwNPyLhR --port 38045 --protocol=TCP railway -e \"DESCRIBE hotel_images;\")"
+      "Bash(mysql -h trolley.proxy.rlwy.net -u root -pFAfebXOgloLEEFJhUDTlrFgdzwNPyLhR --port 38045 --protocol=TCP railway -e \"DESCRIBE hotel_images;\")",
+      "Bash(findstr /S /I \"otp_code\\\\s*=\" \"c:\\\\xampp\\\\htdocs\\\\tour_khach_san_project\")",
+      "Bash(grep -v \"secrets\\\\|config\\\\|callback\\\\|delete\\\\|login\\\\.php$\\\\|facebook_login\\\\|facebook_callback\")"
     ]
   }
 }

@@ -143,7 +143,9 @@ $attempts_used = $_SESSION[$attempt_key] ?? 0;
         <div class="divider"><span>hoặc sử dụng một trong các lựa chọn này</span></div>
         <div class="social-login">
             <a href="google_login.php" class="social-btn google"><img src="/assets/images/google.png" alt="Google"></a>
+            <?php if (!empty(FB_APP_ID)): ?>
             <a href="facebook_login.php" class="social-btn facebook"><img src="/assets/images/facebook.png" alt="Facebook"></a>
+            <?php endif; ?>
         </div>
 
         <div class="login-footer">
