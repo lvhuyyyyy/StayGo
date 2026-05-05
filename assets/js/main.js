@@ -489,7 +489,12 @@ function calcPrice() {
     var co   = document.getElementById('checkout')?.value;
     var sel  = document.getElementById('roomSelect');
     var box  = document.getElementById('priceBox');
-    if (!ci || !co || !sel || !sel.value) { if (box) box.style.display = 'none'; return; }
+    var vWrap = document.getElementById('voucherWrap');
+    if (!ci || !co || !sel || !sel.value) {
+        if (box) box.style.display = 'none';
+        if (vWrap) vWrap.style.display = 'none';
+        return;
+    }
 
     var nights = Math.round((new Date(co) - new Date(ci)) / 86400000);
     if (nights <= 0) { if (box) box.style.display = 'none'; return; }
@@ -503,7 +508,22 @@ function calcPrice() {
     if (window.HAS_DISCOUNT && window.DISCOUNT_PCT > 0) {
         discount = Math.round(total * window.DISCOUNT_PCT / 100);
     }
-    var finalTotal = total - discount;
+    var afterDiscount = total - discount;
+    window._baseTotalForVoucher = afterDiscount;
+
+    // Voucher discount
+    var voucherDisc = 0;
+    if (window.VOUCHER_TYPE && window.VOUCHER_VALUE > 0) {
+        if (afterDiscount < (window.VOUCHER_MIN_ORDER || 0)) {
+            // Đơn không còn đủ điều kiện → tự bỏ voucher
+            if (typeof removeVoucher === 'function') removeVoucher(true);
+        } else {
+            voucherDisc = (window.VOUCHER_TYPE === 'percent')
+                ? Math.round(afterDiscount * window.VOUCHER_VALUE / 100)
+                : Math.min(window.VOUCHER_VALUE, afterDiscount);
+        }
+    }
+    var finalTotal = afterDiscount - voucherDisc;
 
     document.getElementById('nightCount').textContent    = nights + ' đêm';
     document.getElementById('pricePerNight').textContent  = price.toLocaleString('vi-VN') + 'đ';
@@ -513,8 +533,20 @@ function calcPrice() {
     if (origEl) origEl.textContent = total.toLocaleString('vi-VN') + 'đ';
     if (discEl) discEl.textContent = '-' + discount.toLocaleString('vi-VN') + 'đ';
 
+    var vRow = document.getElementById('voucherDiscountRow');
+    var vAmt = document.getElementById('voucherDiscountAmt');
+    if (vRow && vAmt) {
+        if (voucherDisc > 0) {
+            vAmt.textContent = '-' + voucherDisc.toLocaleString('vi-VN') + 'đ';
+            vRow.style.display = '';
+        } else {
+            vRow.style.display = 'none';
+        }
+    }
+
     document.getElementById('totalPrice').textContent = finalTotal.toLocaleString('vi-VN') + 'đ';
     if (box) box.style.display = 'block';
+    if (vWrap) vWrap.style.display = 'block';
 }
 
 // -- Copy STK ngân hàng --

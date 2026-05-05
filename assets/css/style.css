@@ -4490,6 +4490,19 @@ TABLET NGANG - 768px đến 1024px
 .discount-row span { color:#38a169; }
 .discount-text { color:#38a169 !important; }
 .order-discount-info { background:#f0fff4; border:1px solid #9ae6b4; border-radius:8px; padding:9px 14px; font-size:13px; color:#276749; margin-bottom:14px; }
+.voucher-wrap { margin-top:12px; padding-top:12px; border-top:1px dashed #c9def4; }
+.voucher-wrap label { font-size:13px; font-weight:600; color:#2d3748; display:block; margin-bottom:6px; }
+.voucher-row { display:flex; gap:8px; }
+.voucher-row input { flex:1; padding:9px 12px; border:1.5px solid #cbd5e0; border-radius:8px; font-size:13px; outline:none; transition:border .2s; }
+.voucher-row input:focus { border-color:#1e73be; box-shadow:0 0 0 3px rgba(30,115,190,.1); }
+.voucher-row input:disabled { background:#f7fafc; color:#718096; }
+.btn-apply-voucher { padding:9px 16px; background:#1e73be; color:#fff; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap; transition:background .2s; }
+.btn-apply-voucher:hover { background:#1558a0; }
+.btn-remove-voucher { padding:9px 16px; background:#e53e3e; color:#fff; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap; transition:background .2s; }
+.btn-remove-voucher:hover { background:#c53030; }
+.voucher-msg { margin-top:6px; font-size:12.5px; padding:6px 10px; border-radius:6px; }
+.voucher-msg.success { background:#f0fff4; color:#276749; border:1px solid #9ae6b4; }
+.voucher-msg.error   { background:#fff5f5; color:#c53030; border:1px solid #feb2b2; }
 
 /* --- PAYMENT METHOD CARDS --- */
 .method-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }

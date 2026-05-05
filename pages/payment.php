@@ -71,6 +71,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $total_price = $original_price;
     }
 
+    // Voucher
+    $voucher_code = strtoupper(trim($_POST['voucher_code'] ?? ''));
+    $voucher_disc = 0;
+    $voucher_row  = null;
+    if ($voucher_code) {
+        $vs = $conn->prepare("
+            SELECT * FROM vouchers
+            WHERE code = ? AND is_active = 1
+            AND (expires_at IS NULL OR expires_at >= CURDATE())
+            AND used_count < max_uses
+        ");
+        $vs->bind_param("s", $voucher_code);
+        $vs->execute();
+        $voucher_row = $vs->get_result()->fetch_assoc();
+        if ($voucher_row && $total_price >= $voucher_row['min_order']) {
+            $voucher_disc = ($voucher_row['type'] === 'percent')
+                ? round($total_price * $voucher_row['value'] / 100)
+                : min((float)$voucher_row['value'], $total_price);
+            $total_price     -= $voucher_disc;
+            $discount_amount += $voucher_disc;
+        }
+    }
+
     $stmt = $conn->prepare("INSERT INTO bookings (order_code, user_id, room_id, full_name, email, phone, check_in, check_out, total_price, payment_method, note, status, created_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())");
     $user_id = $_SESSION['user_id'] ?? null;
@@ -119,6 +142,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['new_user_discount_used'] = true;
     }
 
+    // Tăng used_count voucher
+    if ($voucher_row) {
+        $conn->query("UPDATE vouchers SET used_count = used_count + 1 WHERE id = " . (int)$voucher_row['id']);
+    }
+
     $qr_content = urlencode("StayGo | Ma don: $order_code | Ho ten: $full_name | Email: $email | SDT: $phone | Tong tien: " . number_format($total_price, 0, ',', '.') . "d | PT: $payment_method");
     $qr_data = [
         'content'         => $qr_content,
@@ -131,6 +159,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'original_price'  => $original_price,
         'discount_amount' => $discount_amount,
         'discount_pct'    => $new_user_discount,
+        'voucher_code'    => $voucher_code,
+        'voucher_disc'    => $voucher_disc,
         'checkin'         => $checkin,
         'checkout'        => $checkout,
     ];
@@ -234,7 +264,23 @@ $is_hotel_pay = ($qr_data && $qr_data['method'] === 'hotel');
                 <div class="price-row original"><span>Giá gốc:</span><strong id="originalPrice" class="line-through-price">–</strong></div>
                 <div class="price-row discount-row"><span>Giảm <?= $new_user_discount ?>% (tài khoản mới):</span><strong id="discountAmount" class="discount-text">–</strong></div>
                 <?php endif; ?>
+                <div id="voucherDiscountRow" class="price-row discount-row" style="display:none">
+                    <span>Voucher (<span id="voucherCodeLabel"></span>):</span>
+                    <strong id="voucherDiscountAmt" class="discount-text">–</strong>
+                </div>
                 <div class="price-row total"><span>Tổng tiền:</span><strong id="totalPrice">–</strong></div>
+            </div>
+
+            <!-- Voucher -->
+            <div id="voucherWrap" class="voucher-wrap" style="display:none">
+                <label>Mã giảm giá <span style="font-weight:400;color:#718096">(tùy chọn)</span></label>
+                <div class="voucher-row">
+                    <input type="text" id="voucherInput" placeholder="Nhập mã voucher..." maxlength="30"
+                           style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">
+                    <button type="button" id="voucherApplyBtn" onclick="applyVoucher()" class="btn-apply-voucher">Áp dụng</button>
+                </div>
+                <div id="voucherMsg" class="voucher-msg" style="display:none"></div>
+                <input type="hidden" name="voucher_code" id="voucherCodeHidden" value="">
             </div>
         </div>
 
@@ -825,6 +871,69 @@ function copyOrderCode() {
 <script>
 var HAS_DISCOUNT = <?= $has_new_discount ? 'true' : 'false' ?>;
 var DISCOUNT_PCT = <?= $new_user_discount ?>;
+
+window.VOUCHER_TYPE     = '';
+window.VOUCHER_VALUE    = 0;
+window.VOUCHER_MIN_ORDER= 0;
+window.VOUCHER_CODE     = '';
+
+function applyVoucher() {
+    var code  = document.getElementById('voucherInput').value.trim();
+    var msgEl = document.getElementById('voucherMsg');
+    if (!code) { showVoucherMsg('Vui lòng nhập mã voucher.', false); return; }
+
+    var amount = window._baseTotalForVoucher || 0;
+    showVoucherMsg('Đang kiểm tra...', null);
+
+    var fd = new FormData();
+    fd.append('code', code);
+    fd.append('amount', amount);
+
+    fetch('/pages/voucher_check.php', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(res => {
+            if (res.success) {
+                window.VOUCHER_TYPE      = res.type;
+                window.VOUCHER_VALUE     = res.value;
+                window.VOUCHER_MIN_ORDER = res.min_order;
+                window.VOUCHER_CODE      = res.code;
+                document.getElementById('voucherCodeHidden').value = res.code;
+                document.getElementById('voucherCodeLabel').textContent = res.code;
+                document.getElementById('voucherInput').disabled = true;
+                var btn = document.getElementById('voucherApplyBtn');
+                btn.textContent = '✕ Bỏ mã';
+                btn.className = 'btn-remove-voucher';
+                btn.onclick = function(){ removeVoucher(); };
+                showVoucherMsg('✓ ' + res.message, true);
+                calcPrice();
+            } else {
+                showVoucherMsg(res.message, false);
+            }
+        })
+        .catch(() => showVoucherMsg('Có lỗi, vui lòng thử lại.', false));
+}
+
+function removeVoucher(silent) {
+    window.VOUCHER_TYPE = window.VOUCHER_VALUE = window.VOUCHER_MIN_ORDER = 0;
+    window.VOUCHER_CODE = '';
+    document.getElementById('voucherCodeHidden').value = '';
+    document.getElementById('voucherInput').value = '';
+    document.getElementById('voucherInput').disabled = false;
+    var btn = document.getElementById('voucherApplyBtn');
+    btn.textContent = 'Áp dụng';
+    btn.className = 'btn-apply-voucher';
+    btn.onclick = function(){ applyVoucher(); };
+    if (!silent) { document.getElementById('voucherMsg').style.display = 'none'; }
+    calcPrice();
+}
+
+function showVoucherMsg(text, ok) {
+    var el = document.getElementById('voucherMsg');
+    el.textContent = text;
+    el.className = 'voucher-msg' + (ok === true ? ' success' : ok === false ? ' error' : '');
+    el.style.display = 'block';
+}
+
 <?php if ($prefill_room_id && $prefill_checkin && $prefill_checkout): ?>
 document.addEventListener('DOMContentLoaded', function() { calcPrice(); });
 <?php endif; ?>
