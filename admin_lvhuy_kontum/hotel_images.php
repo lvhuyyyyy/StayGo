@@ -96,7 +96,7 @@ include("../includes/admin_header.php");
             $cnt = $img_counts[$h['id']] ?? 0;
         ?>
         <a class="hi-ks-item <?= $act ?>" href="hotel_images.php?hotel_id=<?= $h['id'] ?>">
-            <img class="hi-ks-thumb" src="../assets/images/<?= htmlspecialchars($h['image'] ?? '') ?>" onerror="this.style.visibility='hidden'" alt="">
+            <img class="hi-ks-thumb" src="/assets/images/<?= htmlspecialchars($h['image'] ?? '') ?>" onerror="this.style.visibility='hidden'" alt="">
             <span class="hi-ks-name"><?= htmlspecialchars(mb_substr($h['name'], 0, 30)) ?></span>
             <span class="hi-ks-cnt"><?= $cnt ?></span>
         </a>
@@ -162,7 +162,7 @@ include("../includes/admin_header.php");
             <div class="hi-img-grid">
                 <?php foreach ($images as $img): ?>
                 <div class="hi-img-item">
-                    <img src="../assets/images/<?= htmlspecialchars($img['image']) ?>"
+                    <img src="/assets/images/<?= htmlspecialchars($img['image']) ?>"
                         alt=""
                         onerror="this.parentElement.style.background='#f0f4f8'">
                     <div class="hi-img-ov">

@@ -243,7 +243,7 @@ include("../includes/admin_header.php");
             <?php if ($action === 'edit' && !empty($room['image'])): ?>
                 <div class="current-img">
                     <small style="color:#276749;font-weight:600">✅ Ảnh hiện tại:</small>
-                    <img src="../assets/images/<?= htmlspecialchars($room['image']) ?>"
+                    <img src="/assets/images/<?= htmlspecialchars($room['image']) ?>"
                         alt="<?= htmlspecialchars($room['room_name']) ?>"
                         onerror="this.src='https://placehold.co/200x120?text=No+Image'">
                 </div>

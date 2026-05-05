@@ -266,7 +266,7 @@ $rating_label = function($r) {
         <div class="hotel-card" onclick="window.location='<?= $detail_url ?>'" style="cursor:pointer">
 
             <div class="hotel-img">
-                <img src="../assets/images/<?= htmlspecialchars($row['image'] ?? '') ?>"
+                <img src="/assets/images/<?= htmlspecialchars($row['image'] ?? '') ?>"
                     alt="<?= htmlspecialchars($row['name']) ?>"
                     loading="lazy"
                     onerror="this.src='../assets/images/placeholder.jpg';this.onerror=null;">

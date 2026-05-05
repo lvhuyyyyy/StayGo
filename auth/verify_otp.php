@@ -29,7 +29,7 @@ $msg="OTP sai ho?c h?t h?n";
 }
 ?>
 
-<link rel="stylesheet" href="../assets/css/otp.css">
+<link rel="stylesheet" href="/assets/css/otp.css">
 
 <h2>Nhập mã xác nhận</h2>
 

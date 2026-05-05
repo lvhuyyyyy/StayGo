@@ -232,7 +232,7 @@ if ($err==='no_file') {
         <?php foreach($gallery as $gi): ?>
         <div class="img-item">
             <div class="img-item-wrap">
-                <img src="../assets/images/<?= htmlspecialchars($gi['image']) ?>"
+                <img src="/assets/images/<?= htmlspecialchars($gi['image']) ?>"
                     alt=""
                     onerror="this.src='https://placehold.co/190x130?text=No+Image'">
                 <span class="img-order-badge">#<?= $gi['sort_order'] ?></span>

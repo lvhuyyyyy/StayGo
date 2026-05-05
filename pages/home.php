@@ -42,7 +42,7 @@
                 <!-- Click vào card → mở trang khách sạn lọc theo vùng -->
                 <a href="/pages/hotels.php?location_id=<?= $row['id'] ?>"
                 class="destination-card"
-                style="background-image: url('assets/images/<?= htmlspecialchars($row['image']) ?>');">
+                style="background-image: url('/assets/images/<?= htmlspecialchars($row['image']) ?>');">
                     <div class="destination-overlay">
                         <span class="dest-hotel-count">🏨 <?= $row['hotel_count'] ?> khách sạn</span>
                         <h3><?= htmlspecialchars($row['name']) ?></h3>
@@ -84,7 +84,7 @@
                         <span class="discount-badge">-<?= $discount ?>%</span>
                     <?php endif; ?>
                     <span class="deal-badge">🔥 Deal</span>
-                    <img src="assets/images/<?= htmlspecialchars($row['image']) ?>" alt="" loading="lazy">
+                    <img src="/assets/images/<?= htmlspecialchars($row['image']) ?>" alt="" loading="lazy">
                 </div>
                 <div class="deal-body">
                     <div class="deal-location">📍 <?= htmlspecialchars($row['location_name']) ?>, Việt Nam</div>
@@ -160,7 +160,7 @@
         ?>
             <div class="fh-card">
                 <div class="fh-img-wrap">
-                    <img src="assets/images/<?= htmlspecialchars($f['image'] ?? '') ?>"
+                    <img src="/assets/images/<?= htmlspecialchars($f['image'] ?? '') ?>"
                         alt="<?= htmlspecialchars($f['name']) ?>"
                         loading="lazy"
                         onerror="this.style.background='#e2e8f0'">

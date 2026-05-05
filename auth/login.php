@@ -65,7 +65,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && empty($error)) {
                     $conn->query("UPDATE bookings SET user_id={$user['id']} WHERE user_id IS NULL AND email='$email_safe'");
 
                     if ($user['role'] === 'admin') {
-                        header("Location: ../admin_lvhuy_kontum/dashboard.php");
+                        header("Location: /admin_lvhuy_kontum/dashboard.php");
                     } else {
                         $redirect = $_SESSION['redirect_after_login'] ?? '../index.php';
                         unset($_SESSION['redirect_after_login']);
@@ -142,8 +142,8 @@ $attempts_used = $_SESSION[$attempt_key] ?? 0;
 
         <div class="divider"><span>hoặc sử dụng một trong các lựa chọn này</span></div>
         <div class="social-login">
-            <a href="google_login.php" class="social-btn google"><img src="../assets/images/google.png" alt="Google"></a>
-            <a href="facebook_login.php" class="social-btn facebook"><img src="../assets/images/facebook.png" alt="Facebook"></a>
+            <a href="google_login.php" class="social-btn google"><img src="/assets/images/google.png" alt="Google"></a>
+            <a href="facebook_login.php" class="social-btn facebook"><img src="/assets/images/facebook.png" alt="Facebook"></a>
         </div>
 
         <div class="login-footer">
