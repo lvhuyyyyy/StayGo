@@ -198,7 +198,7 @@ function submitReview(hotelId) {
     fd.append('booking_id', bookingId);
     fd.append('rating',     rating);
     fd.append('comment',    comment);
-    fetch('/tour_khach_san_project/pages/reviews_handler.php', { method: 'POST', body: fd })
+    fetch('/pages/reviews_handler.php', { method: 'POST', body: fd })
         .then(r => r.json())
         .then(data => {
             if (data.success) {
@@ -299,7 +299,7 @@ function sendMessage() {
     showTyping();
     let formData = new FormData();
     formData.append("message", message);
-    fetch("/tour_khach_san_project/chatbot_api.php", { method:"POST", body:formData })
+    fetch("/chatbot_api.php", { method:"POST", body:formData })
     .then(r => r.json())
     .then(data => {
         removeTyping();
@@ -352,7 +352,7 @@ function showSuggestions() {
             appendMessage(text, "user"); showTyping();
             let formData = new FormData();
             formData.append("message", text);
-            fetch("/tour_khach_san_project/chatbot_api.php", { method:"POST", body:formData })
+            fetch("/chatbot_api.php", { method:"POST", body:formData })
                 .then(r => r.json())
                 .then(data => {
                     removeTyping();
@@ -687,7 +687,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var pollInterval = setInterval(function () {
         if (timerDone) return;
 
-        fetch('/tour_khach_san_project/pages/check_payment.php?booking_id=' + bookingId)
+        fetch('/pages/check_payment.php?booking_id=' + bookingId)
             .then(function (r) { return r.json(); })
             .then(function (data) {
                 if (data.status === 'paid') {
@@ -724,7 +724,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             if (redirectEl) redirectEl.textContent = redirectCount;
                             if (redirectCount <= 0) {
                                 clearInterval(redirectInterval);
-                                window.location.href = '/tour_khach_san_project/pages/hotels.php';
+                                window.location.href = '/pages/hotels.php';
                             }
                         }, 1000);
                     }

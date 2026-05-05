@@ -13,7 +13,7 @@ body {
 
 .hotel-wrapper {
     background: linear-gradient(135deg, rgba(240, 245, 251, 0.95), rgba(255, 255, 255, 0.98)),
-                url('/tour_khach_san_project/assets/images/background_ks.jpg');
+                url('/assets/images/background_ks.jpg');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -3559,7 +3559,7 @@ html, body {
 .danger-icon { background:#fff0f0 !important; }
 .dropdown-item.danger:hover .danger-icon { background:#ffe0e0 !important; }
 /* -- SEARCH BOX -- */
-.hero-search-section { background: linear-gradient(rgba(0,30,80,0.55), rgba(0,53,128,0.55)), url('/tour_khach_san_project/assets/images/anhbien.jpg'); background-size: cover;
+.hero-search-section { background: linear-gradient(rgba(0,30,80,0.55), rgba(0,53,128,0.55)), url('/assets/images/anhbien.jpg'); background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
     padding: 28px 20px 32px;

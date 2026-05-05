@@ -38,7 +38,7 @@
         fd.append('action',    'delete');
         fd.append('review_id', reviewId);
 
-        fetch('/tour_khach_san_project/pages/reviews_handler.php', { method: 'POST', body: fd })
+        fetch('/pages/reviews_handler.php', { method: 'POST', body: fd })
             .then(r => r.json())
             .then(data => {
                 if (data.success) {
@@ -396,7 +396,7 @@
         formData.append('image', file);
 
         try {
-            const res  = await fetch('/tour_khach_san_project/admin_lvhuy_kontum/blog_form.php', { method: 'POST', body: formData });
+            const res  = await fetch('/admin_lvhuy_kontum/blog_form.php', { method: 'POST', body: formData });
             const data = await res.json();
             if (data.url) {
                 document.getElementById(targetId).value = data.url;
