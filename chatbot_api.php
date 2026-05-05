@@ -659,6 +659,11 @@ switch ($intent) {
     // ------------------------------------------------
     fallback_label:
     default:
+        // Nếu không có API key, trả về thông báo thân thiện
+        if (empty($apiKey)) {
+            echo "Xin lỗi, tôi chưa hiểu câu hỏi này. Bạn có thể hỏi về: giá phòng, khách sạn tại Kon Tum/Măng Đen/Quảng Ngãi, hoặc các ưu đãi hiện có nhé!";
+            break;
+        }
         // GPT với lịch sử session
         $gptMessages = [
             [

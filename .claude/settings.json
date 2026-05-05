@@ -16,7 +16,10 @@
       "Bash(xargs sed *)",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(grep -A3 \"INSERT INTO \\\\`blog_posts\\\\`\" c:/xampp/htdocs/tour_khach_san_project/database/tour_khach_san.sql)",
+      "Bash(mysql -h trolley.proxy.rlwy.net -u root -pFAfebXOgloLEEFJhUDTlrFgdzwNPyLhR --port 38045 --protocol=TCP railway -e ' *)",
+      "Bash(mysql -h trolley.proxy.rlwy.net -u root -pFAfebXOgloLEEFJhUDTlrFgdzwNPyLhR --port 38045 --protocol=TCP railway -e \"DESCRIBE hotel_images;\")"
     ]
   }
 }
