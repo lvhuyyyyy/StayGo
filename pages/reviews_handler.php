@@ -115,17 +115,20 @@ function _update_hotel_rating($conn, $hotel_id) {
         WHERE hotel_id = $hotel_id AND is_active = 1
     ")->fetch_assoc();
 
-    $avg = $res['avg_r'] ?? 0;
-    $cnt = $res['cnt']   ?? 0;
+    $avg_raw = $res['avg_r'] ?? 0;
+    $cnt     = $res['cnt']   ?? 0;
 
-    // Map rating số → text
+    // Chuyển từ thang 1-5 sao → thang 0-10 để đồng nhất với hotels.php display
+    $avg = round($avg_raw * 2, 1);
+
+    // Map rating 0-10 → text (đồng nhất với hotels.php)
     $text = 'Chưa có đánh giá';
-    if ($avg >= 4.5)     $text = 'Trên cả tuyệt vời';
-    elseif ($avg >= 4.0) $text = 'Tuyệt vời';
-    elseif ($avg >= 3.5) $text = 'Rất tốt';
-    elseif ($avg >= 3.0) $text = 'Tốt';
-    elseif ($avg >= 2.0) $text = 'Khá';
-    elseif ($avg > 0)    $text = 'Trung bình';
+    if ($avg >= 9)      $text = 'Trên cả tuyệt vời';
+    elseif ($avg >= 8)  $text = 'Tuyệt vời';
+    elseif ($avg >= 7)  $text = 'Rất tốt';
+    elseif ($avg >= 6)  $text = 'Tốt';
+    elseif ($avg >= 4)  $text = 'Khá';
+    elseif ($avg > 0)   $text = 'Bình thường';
 
     $stmt = $conn->prepare("
         UPDATE hotels SET rating = ?, review_text = ?, review_count = ? WHERE id = ?

@@ -84,10 +84,12 @@ $old_p    = $hotel['old_price'] ?? 0;
 $discount = ($old_p > $min_room_price) ? round((1 - $min_room_price/$old_p)*100) : 0;
 
 $rating_info = match(true) {
-    $hotel['rating'] >= 9 => ['Tuyệt vời',   '#16a34a'],
-    $hotel['rating'] >= 8 => ['Rất tốt',     '#0071c2'],
-    $hotel['rating'] >= 7 => ['Tốt',         '#2d9cdb'],
-    default               => ['Bình thường', '#718096'],
+    $hotel['rating'] >= 9.5 => ['Trên cả tuyệt vời', '#15803d'],
+    $hotel['rating'] >= 9   => ['Tuyệt vời',          '#16a34a'],
+    $hotel['rating'] >= 8   => ['Rất tốt',             '#0071c2'],
+    $hotel['rating'] >= 7   => ['Tốt',                 '#2d9cdb'],
+    $hotel['rating'] >= 5   => ['Khá',                 '#d97706'],
+    default                 => ['Bình thường',          '#718096'],
 };
 [$rating_lbl, $rating_color] = $rating_info;
 

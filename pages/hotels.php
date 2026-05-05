@@ -102,9 +102,11 @@ $hotels = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $total  = count($hotels);
 
 $rating_label = function($r) {
-    if ($r >= 9)   return ['Tuyệt vời', '#16a34a'];
-    if ($r >= 8)   return ['Rất tốt',   '#0071c2'];
-    if ($r >= 7)   return ['Tốt',        '#2d9cdb'];
+    if ($r >= 9.5) return ['Trên cả tuyệt vời', '#15803d'];
+    if ($r >= 9)   return ['Tuyệt vời',          '#16a34a'];
+    if ($r >= 8)   return ['Rất tốt',             '#0071c2'];
+    if ($r >= 7)   return ['Tốt',                 '#2d9cdb'];
+    if ($r >= 5)   return ['Khá',                 '#d97706'];
     return ['Bình thường', '#718096'];
 };
 ?>
