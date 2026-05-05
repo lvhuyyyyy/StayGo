@@ -2,6 +2,12 @@
 .env
 *.log
 
+# Google OAuth credentials (chứa secret, không commit)
+client_secret*.json
+
+# Claude Code internal memory (không cần thiết trên git)
+.claude/
+
 # Hệ thống
 .DS_Store
 Thumbs.db
