@@ -11,14 +11,19 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 // CSRF TOKEN
 // ========================================================
 
+// Secret dùng cho stateless CSRF (đổi nếu cần rotate)
+define('_CSRF_SECRET', 'staygo_csrf_lvhuy_2024_secure');
+
 /**
- * Tạo CSRF token mới hoặc lấy token hiện tại
+ * Tạo CSRF token stateless: HMAC(session_id + ngày).
+ * Hoạt động đúng kể cả khi Railway dùng nhiều instance vì
+ * session_id lấy từ cookie nên giống nhau trên mọi instance.
  */
 function csrf_token(): string {
-    if (empty($_SESSION['csrf_token'])) {
-        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-    }
-    return $_SESSION['csrf_token'];
+    $sid = session_id() ?: 'nosid';
+    $token = hash_hmac('sha256', $sid . '|' . date('Ymd'), _CSRF_SECRET);
+    $_SESSION['csrf_token'] = $token; // giữ cho tương thích
+    return $token;
 }
 
 /**
@@ -30,14 +35,28 @@ function csrf_field(): string {
 }
 
 /**
- * Kiểm tra CSRF token từ POST request
+ * Kiểm tra CSRF token từ POST request (stateless, cross-instance safe)
  */
 function csrf_verify(): bool {
-    $token = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
-    if (empty($token) || empty($_SESSION['csrf_token'])) {
-        return false;
+    $submitted = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+    if (empty($submitted)) return false;
+
+    $sid = session_id() ?: 'nosid';
+
+    // Chấp nhận token hôm nay và hôm qua (tránh lỗi khi qua 00:00)
+    $today     = hash_hmac('sha256', $sid . '|' . date('Ymd'), _CSRF_SECRET);
+    $yesterday = hash_hmac('sha256', $sid . '|' . date('Ymd', strtotime('-1 day')), _CSRF_SECRET);
+
+    if (hash_equals($today, $submitted) || hash_equals($yesterday, $submitted)) {
+        return true;
     }
-    return hash_equals($_SESSION['csrf_token'], $token);
+
+    // Fallback: so sánh với token cũ trong session (dev / backward compat)
+    if (!empty($_SESSION['csrf_token'])) {
+        return hash_equals($_SESSION['csrf_token'], $submitted);
+    }
+
+    return false;
 }
 
 /**
