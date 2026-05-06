@@ -123,7 +123,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $payment_method_label = $method_label_map[$payment_method] ?? $payment_method;
 
     // INSERT payments thêm hotel_id, hotel_name, room_name
-    $stmt2 = $conn->prepare("INSERT INTO payments (booking_id, hotel_id, hotel_name, room_name, method, amount, full_name, email, phone, payment_status, created_at)
+    $stmt2 = $conn->prepare("INSERT INTO payments (booking_id, hotel_id, hotel_name, room_name, payment_method, amount, full_name, email, phone, payment_status, created_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())");
     $stmt2->bind_param("iisssdsss",
         $booking_id,
