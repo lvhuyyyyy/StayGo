@@ -64,6 +64,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && empty($error)) {
                     $email_safe = $conn->real_escape_string($user['email']);
                     $conn->query("UPDATE bookings SET user_id={$user['id']} WHERE user_id IS NULL AND email='$email_safe'");
 
+                    // Giảm 10% cho lần đặt đầu tiên nếu chưa có booking nào
+                    if ($user['role'] === 'user') {
+                        $bk_cnt = $conn->query("SELECT COUNT(*) AS c FROM bookings WHERE user_id = {$user['id']}")->fetch_assoc()['c'];
+                        if ($bk_cnt == 0) {
+                            $_SESSION['new_user_discount']      = 10;
+                            $_SESSION['new_user_discount_used'] = false;
+                        }
+                    }
+
                     if ($user['role'] === 'admin') {
                         header("Location: /admin_lvhuy_kontum/dashboard.php");
                     } else {
