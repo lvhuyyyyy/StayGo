@@ -858,6 +858,14 @@ function copyOrderCode() {
                 ℹ️ Vui lòng thanh toán trong vòng <b>15 phút</b>.<br>
                 Đơn hàng sẽ được xác nhận ngay sau khi nhận được thanh toán.
             </div>
+
+            <!-- NÚT DEMO — xác nhận thanh toán mô phỏng -->
+            <button type="button" id="demoConfirmBtn" onclick="demoConfirmPayment()"
+                style="width:100%;margin-top:14px;padding:13px 0;background:linear-gradient(135deg,#276749,#38a169);color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:.3px">
+                ✅ Xác nhận đã thanh toán (Demo)
+            </button>
+            <div id="demoMsg" style="margin-top:8px;font-size:12.5px;color:#718096;text-align:center;display:none"></div>
+
             <a href="hotels.php" class="btn-back-hotels">← Quay lại khách sạn</a>
         </div>
     </div>
@@ -937,6 +945,45 @@ function showVoucherMsg(text, ok) {
 <?php if ($prefill_room_id && $prefill_checkin && $prefill_checkout): ?>
 document.addEventListener('DOMContentLoaded', function() { calcPrice(); });
 <?php endif; ?>
+
+function demoConfirmPayment() {
+    var bookingEl = document.getElementById('bookingIdData');
+    var bookingId = bookingEl ? bookingEl.dataset.id : 0;
+    if (!bookingId || bookingId == '0') {
+        alert('Không tìm thấy booking_id!');
+        return;
+    }
+
+    var btn  = document.getElementById('demoConfirmBtn');
+    var msg  = document.getElementById('demoMsg');
+    btn.disabled = true;
+    btn.textContent = '⏳ Đang xử lý...';
+
+    var fd = new FormData();
+    fd.append('booking_id', bookingId);
+
+    fetch('/pages/demo_pay_confirm.php', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(res => {
+            if (res.success) {
+                msg.textContent = '✅ Đã xác nhận! Đang tải kết quả...';
+                msg.style.color = '#276749';
+                msg.style.display = 'block';
+            } else {
+                msg.textContent = '⚠️ ' + res.message;
+                msg.style.color = '#c53030';
+                msg.style.display = 'block';
+                btn.disabled = false;
+                btn.textContent = '✅ Xác nhận đã thanh toán (Demo)';
+            }
+        })
+        .catch(() => {
+            msg.textContent = 'Có lỗi, vui lòng thử lại.';
+            msg.style.display = 'block';
+            btn.disabled = false;
+            btn.textContent = '✅ Xác nhận đã thanh toán (Demo)';
+        });
+}
 </script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
