@@ -70,7 +70,7 @@ if ($stmt2->execute()) {
     // ── Bước 5: INSERT payments (prepared statement) ──────────────────────────
     $stmt3 = $conn->prepare("
         INSERT INTO payments
-            (booking_id, hotel_id, hotel_name, room_name, method, full_name, email, phone, amount, payment_status)
+            (booking_id, hotel_id, hotel_name, room_name, payment_method, full_name, email, phone, amount, payment_status)
         VALUES
             (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
     ");
