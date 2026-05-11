@@ -46,8 +46,8 @@ function vnpay_build_url(string $order_code, float $amount): string {
         'vnp_Locale'     => 'vn',
         'vnp_ReturnUrl'  => site_url('pages/vnpay_return.php'),
         'vnp_IpAddr'     => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1',
-        'vnp_CreateDate' => date('YmdHis'),
-        'vnp_ExpireDate' => date('YmdHis', strtotime('+15 minutes')),
+        'vnp_CreateDate' => (new DateTime('now', new DateTimeZone('Asia/Ho_Chi_Minh')))->format('YmdHis'),
+        'vnp_ExpireDate' => (new DateTime('+15 minutes', new DateTimeZone('Asia/Ho_Chi_Minh')))->format('YmdHis'),
     ];
     ksort($params);
 
