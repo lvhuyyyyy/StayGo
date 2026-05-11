@@ -1,7 +1,8 @@
 ﻿<?php
-require_once __DIR__ . '/../includes/header.php';
+// Cần include database/security trước header.php để có thể redirect sang VNPay/MoMo
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/security.php';
+require_once __DIR__ . '/../config/payment_config.php';
 
 if (!isset($_GET['hotel_id'])) {
     header("Location: hotels.php");
@@ -147,6 +148,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $conn->query("UPDATE vouchers SET used_count = used_count + 1 WHERE id = " . (int)$voucher_row['id']);
     }
 
+    // ── Redirect sang cổng thanh toán thật ────────────────────────────
+    if ($payment_method === 'vnpay') {
+        header('Location: ' . vnpay_build_url($order_code, $total_price));
+        exit();
+    }
+    if ($payment_method === 'momo') {
+        $momo = momo_create_payment($order_code, $total_price, $booking_id);
+        if ($momo['success']) {
+            header('Location: ' . $momo['pay_url']);
+            exit();
+        }
+        $error_msg = 'MoMo: ' . $momo['message'];
+    }
+
     $qr_content = urlencode("StayGo | Ma don: $order_code | Ho ten: $full_name | Email: $email | SDT: $phone | Tong tien: " . number_format($total_price, 0, ',', '.') . "d | PT: $payment_method");
     $qr_data = [
         'content'         => $qr_content,
@@ -166,9 +181,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ];
 }
 $is_hotel_pay = ($qr_data && $qr_data['method'] === 'hotel');
+
+require_once __DIR__ . '/../includes/header.php';
 ?>
 
 <div class="pay-page">
+
+<?php if (!empty($error_msg)): ?>
+<div style="max-width:600px;margin:30px auto;padding:16px 20px;background:#fff5f5;border:1px solid #feb2b2;border-radius:12px;color:#c53030;font-size:14px;text-align:center">
+    ⚠️ <?= htmlspecialchars($error_msg) ?>
+    <br><br><a href="hotels.php" style="color:#c53030;font-weight:600">← Quay lại chọn phòng</a>
+</div>
+<?php endif; ?>
 
 <?php if (!$qr_data): ?>
 <div class="pay-wrap">
