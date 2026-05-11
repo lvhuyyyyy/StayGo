@@ -1,10 +1,10 @@
 ﻿<?php
-// session_start() và xử lý logic TRƯỚC KHI include header
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 require_once '../config/database.php';
 require_once __DIR__ . '/../includes/security.php';
+require_once __DIR__ . '/../includes/email_helper.php';
 
 $message = "";
 
@@ -12,14 +12,24 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     csrf_check();
     $email = trim($_POST['email']);
 
-    $stmt = $conn->prepare("SELECT * FROM users WHERE email=?");
+    $stmt = $conn->prepare("SELECT id, full_name FROM users WHERE email = ?");
     $stmt->bind_param("s", $email);
     $stmt->execute();
-    $result = $stmt->get_result();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
 
-    if ($result->num_rows == 1) {
-        // Redirect TRƯỚC khi include header (chưa có output)
-        header("Location: reset_password.php?email=" . urlencode($email));
+    if ($row) {
+        $otp    = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $expire = date('Y-m-d H:i:s', strtotime('+15 minutes'));
+
+        $upd = $conn->prepare("UPDATE users SET otp_code = ?, otp_expire = ? WHERE email = ?");
+        $upd->bind_param("sss", $otp, $expire, $email);
+        $upd->execute();
+        $upd->close();
+
+        send_otp_email($email, $row['full_name'], $otp);
+
+        header("Location: verify_otp.php?email=" . urlencode($email));
         exit();
     } else {
         $message = "Email không tồn tại hoặc chưa được đăng ký trong hệ thống!";

@@ -3,6 +3,7 @@
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/security.php';
 require_once __DIR__ . '/../config/payment_config.php';
+require_once __DIR__ . '/../includes/email_helper.php';
 
 if (!isset($_GET['hotel_id'])) {
     header("Location: hotels.php");
@@ -147,6 +148,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($voucher_row) {
         $conn->query("UPDATE vouchers SET used_count = used_count + 1 WHERE id = " . (int)$voucher_row['id']);
     }
+
+    // Gửi email xác nhận đặt phòng
+    send_booking_email($email, $full_name, [
+        'order_code'     => $order_code,
+        'hotel_name'     => $hotel['name'],
+        'room_name'      => $room_name_val,
+        'checkin'        => $checkin,
+        'checkout'       => $checkout,
+        'payment_method' => $payment_method,
+        'total_price'    => $total_price,
+        'full_name'      => $full_name,
+    ]);
 
     // ── Redirect sang cổng thanh toán thật ────────────────────────────
     if ($payment_method === 'vnpay') {

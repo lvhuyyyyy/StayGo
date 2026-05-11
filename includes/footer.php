@@ -78,7 +78,7 @@
                         <a href="tel:0373848395">📞 037 384 8395</a>
                     </li>
                     <li>
-                        <a href="mailto:hello.staygovn@gmail.com">📧 hello.staygovn@gmail.com</a>
+                        <a href="mailto:lvhuy.kontum@gmail.com">📧 lvhuy.kontum@gmail.com</a>
                     </li>
                     <li>
                         <span>⏰ Thứ 2 – CN: 7:00 – 22:00</span>

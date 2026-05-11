@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/payment_config.php';
+require_once __DIR__ . '/../includes/email_helper.php';
 
 // ── Xác minh chữ ký MoMo ─────────────────────────────────────────
 $params = [
@@ -64,7 +65,7 @@ $booking = null;
 if ($orderCode) {
     $s = $conn->prepare("
         SELECT b.order_code, b.check_in, b.check_out, b.total_price,
-               b.full_name, h.name AS hotel_name
+               b.full_name, b.email, h.name AS hotel_name
         FROM bookings b
         JOIN rooms r ON b.room_id = r.id
         JOIN hotels h ON r.hotel_id = h.id
@@ -74,6 +75,18 @@ if ($orderCode) {
     $s->bind_param('s', $orderCode);
     $s->execute();
     $booking = $s->get_result()->fetch_assoc();
+}
+
+if ($success && $booking) {
+    send_payment_email($booking['email'], $booking['full_name'], [
+        'order_code'     => $booking['order_code'],
+        'hotel_name'     => $booking['hotel_name'],
+        'checkin'        => $booking['check_in'],
+        'checkout'       => $booking['check_out'],
+        'payment_method' => 'Ví MoMo',
+        'amount'         => $booking['total_price'],
+        'full_name'      => $booking['full_name'],
+    ]);
 }
 
 require_once __DIR__ . '/../includes/header.php';
