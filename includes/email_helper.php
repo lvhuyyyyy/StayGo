@@ -1,86 +1,71 @@
 <?php
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\Exception;
-
-$autoload = __DIR__ . '/../vendor/autoload.php';
-if (file_exists($autoload)) {
-    require_once $autoload;
-}
-
-define('MAIL_FROM',      getenv('MAIL_USERNAME') ?: 'lvhuy.kontum@gmail.com');
+define('RESEND_API_KEY', getenv('RESEND_API_KEY') ?: '');
+define('MAIL_FROM',      'onboarding@resend.dev');
 define('MAIL_FROM_NAME', 'StayGo');
-define('MAIL_PASSWORD',  getenv('MAIL_PASSWORD')  ?: '');
 
-function _create_mailer(): PHPMailer {
-    $mail = new PHPMailer(true);
-    $mail->isSMTP();
-    $mail->Host       = 'smtp.gmail.com';
-    $mail->SMTPAuth   = true;
-    $mail->Username   = MAIL_FROM;
-    $mail->Password   = MAIL_PASSWORD;
-    $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
-    $mail->Port       = 465;
-    $mail->Timeout    = 10;
-    $mail->CharSet    = 'UTF-8';
-    $mail->setFrom(MAIL_FROM, MAIL_FROM_NAME);
-    return $mail;
+function _send_via_resend(string $to_email, string $subject, string $html_body): bool {
+    if (!RESEND_API_KEY) {
+        error_log('StayGo email: RESEND_API_KEY not set');
+        return false;
+    }
+    $payload = json_encode([
+        'from'    => MAIL_FROM_NAME . ' <' . MAIL_FROM . '>',
+        'to'      => [$to_email],
+        'subject' => $subject,
+        'html'    => $html_body,
+    ]);
+    $ch = curl_init('https://api.resend.com/emails');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => $payload,
+        CURLOPT_HTTPHEADER     => [
+            'Authorization: Bearer ' . RESEND_API_KEY,
+            'Content-Type: application/json',
+        ],
+        CURLOPT_TIMEOUT => 15,
+    ]);
+    $response  = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    if ($http_code < 200 || $http_code >= 300) {
+        error_log('StayGo Resend error: HTTP ' . $http_code . ' — ' . $response);
+        return false;
+    }
+    return true;
 }
 
 // ─────────────────────────────────────────────────────────────────
 // 1. Gửi OTP đặt lại mật khẩu
 // ─────────────────────────────────────────────────────────────────
 function send_otp_email(string $to_email, string $to_name, string $otp): bool {
-    if (!class_exists(PHPMailer::class)) return false;
-    try {
-        $mail = _create_mailer();
-        $mail->addAddress($to_email, $to_name);
-        $mail->isHTML(true);
-        $mail->Subject = '[StayGo] Mã xác nhận đặt lại mật khẩu';
-        $mail->Body    = _otp_template($to_name, $otp);
-        $mail->AltBody = "Mã OTP của bạn: $otp — Hết hạn sau 15 phút.";
-        return $mail->send();
-    } catch (Exception $e) {
-        error_log('StayGo OTP email error: ' . $e->getMessage());
-        return false;
-    }
+    return _send_via_resend(
+        $to_email,
+        '[StayGo] Mã xác nhận đặt lại mật khẩu',
+        _otp_template($to_name, $otp)
+    );
 }
 
 // ─────────────────────────────────────────────────────────────────
 // 2. Gửi xác nhận đặt phòng
 // ─────────────────────────────────────────────────────────────────
 function send_booking_email(string $to_email, string $to_name, array $d): bool {
-    if (!class_exists(PHPMailer::class)) return false;
-    try {
-        $mail = _create_mailer();
-        $mail->addAddress($to_email, $to_name);
-        $mail->isHTML(true);
-        $mail->Subject = '[StayGo] Xác nhận đặt phòng #' . $d['order_code'];
-        $mail->Body    = _booking_template($d);
-        $mail->AltBody = "Đặt phòng thành công! Mã đơn: {$d['order_code']}. Khách sạn: {$d['hotel_name']}.";
-        return $mail->send();
-    } catch (Exception $e) {
-        error_log('StayGo booking email error: ' . $e->getMessage());
-        return false;
-    }
+    return _send_via_resend(
+        $to_email,
+        '[StayGo] Xác nhận đặt phòng #' . $d['order_code'],
+        _booking_template($d)
+    );
 }
 
 // ─────────────────────────────────────────────────────────────────
 // 3. Gửi thông báo thanh toán thành công
 // ─────────────────────────────────────────────────────────────────
 function send_payment_email(string $to_email, string $to_name, array $d): bool {
-    if (!class_exists(PHPMailer::class)) return false;
-    try {
-        $mail = _create_mailer();
-        $mail->addAddress($to_email, $to_name);
-        $mail->isHTML(true);
-        $mail->Subject = '[StayGo] Thanh toán thành công #' . $d['order_code'];
-        $mail->Body    = _payment_template($d);
-        $mail->AltBody = "Thanh toán thành công! Mã đơn: {$d['order_code']}. Số tiền: " . number_format($d['amount'], 0, ',', '.') . "đ.";
-        return $mail->send();
-    } catch (Exception $e) {
-        error_log('StayGo payment email error: ' . $e->getMessage());
-        return false;
-    }
+    return _send_via_resend(
+        $to_email,
+        '[StayGo] Thanh toán thành công #' . $d['order_code'],
+        _payment_template($d)
+    );
 }
 
 // ═════════════════════════════════════════════════════════════════
