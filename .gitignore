@@ -2,6 +2,9 @@
 .env
 *.log
 
+# Composer dependencies (Railway tự chạy composer install)
+/vendor/
+
 # Google OAuth credentials (chứa secret, không commit)
 client_secret*.json
 
