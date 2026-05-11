@@ -149,18 +149,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $conn->query("UPDATE vouchers SET used_count = used_count + 1 WHERE id = " . (int)$voucher_row['id']);
     }
 
-    // Gửi email xác nhận đặt phòng
-    send_booking_email($email, $full_name, [
-        'order_code'     => $order_code,
-        'hotel_name'     => $hotel['name'],
-        'room_name'      => $room_name_val,
-        'checkin'        => $checkin,
-        'checkout'       => $checkout,
-        'payment_method' => $payment_method,
-        'total_price'    => $total_price,
-        'full_name'      => $full_name,
-    ]);
-
     // ── Redirect sang cổng thanh toán thật ────────────────────────────
     if ($payment_method === 'vnpay') {
         header('Location: ' . vnpay_build_url($order_code, $total_price));
@@ -174,6 +162,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $error_msg = 'MoMo: ' . $momo['message'];
     }
+
+    // Gửi email xác nhận đặt phòng cho thanh toán không qua gateway
+    send_booking_email($email, $full_name, [
+        'order_code'     => $order_code,
+        'hotel_name'     => $hotel['name'],
+        'room_name'      => $room_name_val,
+        'checkin'        => $checkin,
+        'checkout'       => $checkout,
+        'payment_method' => $payment_method,
+        'total_price'    => $total_price,
+        'full_name'      => $full_name,
+    ]);
 
     $qr_content = urlencode("StayGo | Ma don: $order_code | Ho ten: $full_name | Email: $email | SDT: $phone | Tong tien: " . number_format($total_price, 0, ',', '.') . "d | PT: $payment_method");
     $qr_data = [

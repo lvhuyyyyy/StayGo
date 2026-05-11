@@ -18,8 +18,9 @@ function _create_mailer(): PHPMailer {
     $mail->SMTPAuth   = true;
     $mail->Username   = MAIL_FROM;
     $mail->Password   = MAIL_PASSWORD;
-    $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-    $mail->Port       = 587;
+    $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
+    $mail->Port       = 465;
+    $mail->Timeout    = 10;
     $mail->CharSet    = 'UTF-8';
     $mail->setFrom(MAIL_FROM, MAIL_FROM_NAME);
     return $mail;
