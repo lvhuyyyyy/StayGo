@@ -80,12 +80,12 @@ $bookings = $conn->query("
     LIMIT 200
 ")->fetch_all(MYSQLI_ASSOC);
 
-function badge_status($s) {
+function badge_status(string $s): string {
     $map = ['pending'=>'badge-pending','confirmed'=>'badge-confirmed','completed'=>'badge-completed','cancelled'=>'badge-cancelled','checked_in'=>'badge-checked_in'];
     $lbl = ['pending'=>'Chờ xác nhận','confirmed'=>'Đã xác nhận','completed'=>'Hoàn thành','cancelled'=>'Đã hủy','checked_in'=>'Đang ở'];
     return '<span class="badge '.($map[$s]??'badge-pending').'">'.(($lbl[$s]??$s)).'</span>';
 }
-function badge_payout($s) {
+function badge_payout(string $s): string {
     $map = ['HOLDING'=>'badge-holding','READY'=>'badge-ready','FROZEN'=>'badge-frozen','PAID'=>'badge-paid'];
     $lbl = ['HOLDING'=>'Đang giữ','READY'=>'Sẵn sàng','FROZEN'=>'Đóng băng','PAID'=>'Đã giải ngân'];
     return '<span class="badge '.($map[$s]??'badge-holding').'">'.(($lbl[$s]??$s)).'</span>';

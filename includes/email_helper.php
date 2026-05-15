@@ -27,7 +27,7 @@ function _send_via_resend(string $to_email, string $subject, string $html_body):
     ]);
     $response  = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
+    unset($ch);
     if ($http_code < 200 || $http_code >= 300) {
         error_log('StayGo Resend error: HTTP ' . $http_code . ' — ' . $response);
         return false;

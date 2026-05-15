@@ -106,6 +106,7 @@ $rating_info = match(true) {
     default                 => ['Bình thường',          '#718096'],
 };
 [$rating_lbl, $rating_color] = $rating_info;
+$discount = (int)($hotel['discount'] ?? 0);
 
 // Cấu hình phòng map theo room_name từ DB
 $room_config = [
