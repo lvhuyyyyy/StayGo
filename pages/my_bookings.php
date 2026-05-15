@@ -75,6 +75,14 @@ $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $bookings = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
+// Booking IDs đang có dispute mở để hiển thị đúng trạng thái
+$dispute_booking_ids = [];
+if (!empty($bookings)) {
+    $bid_list = implode(',', array_map('intval', array_column($bookings, 'id')) ?: [0]);
+    $dr = $conn->query("SELECT booking_id FROM disputes WHERE booking_id IN ($bid_list) AND status IN ('OPEN','IN_PROGRESS')");
+    while ($dr && $row = $dr->fetch_assoc()) $dispute_booking_ids[] = (int)$row['booking_id'];
+}
+
 $count_all       = count($bookings);
 $count_pending   = count(array_filter($bookings, fn($b) => $b['status'] === 'pending'));
 $count_confirmed = count(array_filter($bookings, fn($b) => $b['status'] === 'confirmed' && empty($b['refund_requested'])));
@@ -316,20 +324,20 @@ $method_map = [
                     <?php elseif ($can_refund): ?>
                         <div class="refund-info-box">
                             <div class="refund-info-text">
-                                Hoàn tiền sẽ nhận được:
+                                Hủy phòng sẽ được hoàn lại:
                                 <strong style="color:#276749"><?= number_format($refund_amount,0,',','.') ?> VNĐ</strong><br>
                                 <span style="color:#c53030;font-size:11px">(trừ 20% phí hủy = <?= number_format($refund_fee,0,',','.') ?> VNĐ)</span>
                             </div>
                             <a href="javascript:void(0)"
-                               class="btn-refund-action"
-                               onclick="showRefundModal('request_refund.php?id=<?= $b['id'] ?>', '<?= number_format($refund_amount,0,',','.') ?>', '<?= number_format($refund_fee,0,',','.') ?>')">
-                                💰 Yêu cầu hoàn tiền
+                               class="btn-cancel-action"
+                               onclick="confirmCancelConfirmed(<?= $b['id'] ?>, '<?= htmlspecialchars($b['order_code'], ENT_QUOTES) ?>', '<?= number_format($refund_amount,0,',','.') ?>')">
+                                ❌ Hủy phòng
                             </a>
                         </div>
 
                     <?php elseif ($b['status'] === 'confirmed'): ?>
                         <div class="refund-notice refund-toolate">
-                            ⚠️ Không thể hoàn tiền (check-in trong vòng 24h)
+                            ⚠️ Không thể hủy (check-in trong vòng 24h)
                         </div>
 
                     <?php elseif ($b['status'] === 'pending'): ?>
@@ -342,6 +350,19 @@ $method_map = [
                             ❌ Hủy đơn (miễn phí)
                         </a>
 
+                    <?php endif; ?>
+
+                    <?php if ($b['status'] !== 'cancelled' && $b['status'] !== 'pending'): ?>
+                    <div style="margin-top:10px;padding-top:10px;border-top:1px solid #f0f4f8">
+                        <?php if (in_array($b['id'], $dispute_booking_ids)): ?>
+                        <span style="font-size:12.5px;color:#b7791f;font-weight:600">⚖️ Đang có khiếu nại đang xử lý</span>
+                        <?php else: ?>
+                        <a href="/pages/submit_dispute.php?booking_id=<?= $b['id'] ?>"
+                           style="font-size:12.5px;font-weight:600;color:#c53030;text-decoration:none">
+                            ⚖️ Gửi khiếu nại về đơn này
+                        </a>
+                        <?php endif; ?>
+                    </div>
                     <?php endif; ?>
 
                 </div>
@@ -383,6 +404,34 @@ $method_map = [
                 onmouseover="this.style.background='#c53030'"
                 onmouseout="this.style.background='#e53e3e'">
                 ✅ Xác nhận
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Modal hủy đơn confirmed (có phí) -->
+<div id="cancelConfirmedModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.5);align-items:center;justify-content:center">
+    <div style="background:#fff;border-radius:20px;padding:32px 28px;max-width:420px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.25);text-align:center;animation:popIn .2s ease">
+        <div style="width:64px;height:64px;background:#fff5f5;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:30px">💸</div>
+        <h3 style="font-size:18px;font-weight:800;color:#1a202c;margin:0 0 6px">Xác nhận hủy phòng?</h3>
+        <p style="font-size:13px;color:#718096;margin:0 0 14px">Đơn <strong id="cc-order-code"></strong> đã được xác nhận.</p>
+        <div style="background:#fff8f0;border:1.5px solid #fbd38d;border-radius:10px;padding:12px 16px;margin-bottom:20px;font-size:13px;color:#b7791f;text-align:left">
+            ⚠️ Phí hủy <strong>20%</strong> sẽ bị trừ.<br>
+            Bạn sẽ được hoàn lại: <strong id="cc-refund-amount" style="color:#276749;font-size:15px"></strong> VNĐ<br>
+            <span style="font-size:11.5px;color:#718096">Admin sẽ xử lý hoàn tiền trong 1–3 ngày.</span>
+        </div>
+        <div style="display:flex;gap:10px">
+            <button onclick="closeCancelConfirmedModal()"
+                style="flex:1;padding:12px;border-radius:10px;border:1.5px solid #e2e8f0;background:#fff;color:#718096;font-size:14px;font-weight:600;cursor:pointer"
+                onmouseover="this.style.background='#f1f5f9'"
+                onmouseout="this.style.background='#fff'">
+                Giữ đơn
+            </button>
+            <a id="cc-confirm-btn" href="#"
+                style="flex:1;padding:12px;border-radius:10px;background:#e53e3e;color:#fff;font-size:14px;font-weight:700;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:6px"
+                onmouseover="this.style.background='#c53030'"
+                onmouseout="this.style.background='#e53e3e'">
+                ❌ Xác nhận hủy
             </a>
         </div>
     </div>

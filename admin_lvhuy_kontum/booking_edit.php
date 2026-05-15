@@ -1,5 +1,5 @@
 <?php
-include("../config/database.php");
+include "../config/database.php";
 
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 if (!$id) { header("Location: bookings.php"); exit; }
@@ -61,7 +61,7 @@ $hotels_all = $conn->query("SELECT id, name FROM hotels WHERE is_active=1 ORDER 
 
 $page_title    = 'Sửa đặt phòng #' . htmlspecialchars($booking['order_code']);
 $page_subtitle = 'Chỉnh sửa ngày và loại phòng';
-include("../includes/admin_header.php");
+include "../includes/admin_header.php";
 ?>
 
 <div style="margin-bottom:18px">
@@ -183,4 +183,4 @@ function updatePrice() {
 document.addEventListener('DOMContentLoaded', updatePrice);
 </script>
 
-<?php include("../includes/admin_footer.php"); ?>
+<?php include "../includes/admin_footer.php"; ?>

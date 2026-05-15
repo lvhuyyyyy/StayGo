@@ -1,9 +1,9 @@
 <?php
-include("../config/database.php");
+include "../config/database.php";
 
 $page_title    = 'Nhật ký hoạt động';
 $page_subtitle = 'Lịch sử thao tác của Admin';
-include("../includes/admin_header.php");
+include "../includes/admin_header.php";
 
 // ---- Tham số lọc ----
 $search     = trim($_GET['search']  ?? '');
@@ -186,4 +186,4 @@ function log_qs($overrides = []) {
 </div>
 <?php endif; ?>
 
-<?php include("../includes/admin_footer.php"); ?>
+<?php include "../includes/admin_footer.php"; ?>

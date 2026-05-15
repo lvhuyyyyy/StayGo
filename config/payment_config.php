@@ -1,9 +1,23 @@
 <?php
 // ═══════════════════════════════════════════════════════════════════
+// Casso — kết nối tài khoản ngân hàng, tự động xác nhận chuyển khoản
+// Đăng ký tại: https://casso.vn → Lấy API Token trong Settings
+// Webhook URL cấu hình trong Casso: https://yourdomain.com/pages/casso_webhook.php
+// ═══════════════════════════════════════════════════════════════════
+define('CASSO_API_TOKEN',   getenv('CASSO_API_TOKEN')   ?: '');  // ← Điền token từ Casso dashboard
+
+// Thông tin tài khoản ngân hàng Platform nhận tiền
+define('BANK_ID',           getenv('BANK_ID')           ?: 'ICB');            // VietinBank = ICB
+define('BANK_ACCOUNT_NO',   getenv('BANK_ACCOUNT_NO')   ?: '107645394761');
+define('BANK_ACCOUNT_NAME', getenv('BANK_ACCOUNT_NAME') ?: 'LE VAN HUY');
+define('BANK_NAME',         getenv('BANK_NAME')         ?: 'VietinBank');
+define('BANK_BRANCH',       getenv('BANK_BRANCH')       ?: 'Kon Tum');
+
+// ═══════════════════════════════════════════════════════════════════
 // VNPay — đăng ký sandbox tại https://sandbox.vnpayment.vn/devreg/
 // ═══════════════════════════════════════════════════════════════════
-define('VNPAY_TMN_CODE',    getenv('VNPAY_TMN_CODE')    ?: 'DEMOV210');
-define('VNPAY_HASH_SECRET', getenv('VNPAY_HASH_SECRET') ?: 'RAOEXHYVSDDIIENYWSLDIIZTANXUXZFJ');
+define('VNPAY_TMN_CODE',    getenv('VNPAY_TMN_CODE')    ?: '7JMRFWZO');
+define('VNPAY_HASH_SECRET', getenv('VNPAY_HASH_SECRET') ?: 'KPR0UD30I0V4HOQ88ELFMOTN53K0QSSL');
 define('VNPAY_URL',         'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html');
 
 // ═══════════════════════════════════════════════════════════════════
@@ -45,7 +59,7 @@ function vnpay_build_url(string $order_code, float $amount): string {
         'vnp_OrderType'  => 'other',
         'vnp_Locale'     => 'vn',
         'vnp_ReturnUrl'  => site_url('pages/vnpay_return.php'),
-        'vnp_IpAddr'     => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1',
+        'vnp_IpAddr'     => (($_SERVER['REMOTE_ADDR'] ?? '') === '::1') ? '127.0.0.1' : ($_SERVER['REMOTE_ADDR'] ?? '127.0.0.1'),
         'vnp_CreateDate' => (new DateTime('now', new DateTimeZone('Asia/Ho_Chi_Minh')))->format('YmdHis'),
         'vnp_ExpireDate' => (new DateTime('+15 minutes', new DateTimeZone('Asia/Ho_Chi_Minh')))->format('YmdHis'),
     ];

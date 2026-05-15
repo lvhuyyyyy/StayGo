@@ -1,6 +1,6 @@
 ﻿<?php
-include("../config/database.php");
-include("../includes/admin_header.php");
+include "../config/database.php";
+include "../includes/admin_header.php";
 
 if(isset($_POST['submit'])){
 

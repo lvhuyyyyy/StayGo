@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/../includes/security.php';
-include("../config/database.php");
+include "../config/database.php";
 
 $action = $_GET['action'] ?? 'add';
 $id     = isset($_GET['id']) ? (int)$_GET['id'] : 0;
@@ -51,6 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_add'])) {
             $conn->query("INSERT INTO rooms (hotel_id, room_name, price, quantity, image)
                         VALUES ($hotel_id, '$room_name_esc', $price, $quantity, '$image_esc')");
             log_activity($conn, 'add_room', 'room', $conn->insert_id, "Thêm phòng: $room_name");
+            $conn->query("UPDATE hotels SET price = (SELECT MIN(price) FROM rooms WHERE hotel_id = $hotel_id) WHERE id = $hotel_id");
             header("Location: rooms.php?success=added");
             exit;
         }
@@ -111,6 +112,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_edit'])) {
                         price=$price, quantity=$quantity, image='$image_esc'
                         WHERE id=$id");
             log_activity($conn, 'edit_room', 'room', $id, "Sửa phòng #$id");
+            $conn->query("UPDATE hotels SET price = (SELECT MIN(price) FROM rooms WHERE hotel_id = $hotel_id) WHERE id = $hotel_id");
             header("Location: rooms.php?success=updated");
             exit;
         }
@@ -135,7 +137,7 @@ $hotels_list = $conn->query("SELECT id, name FROM hotels WHERE is_active=1 ORDER
 
 $page_title    = $action === 'edit' ? 'Chỉnh sửa phòng' : 'Thêm phòng mới';
 $page_subtitle = $action === 'edit' ? 'Cập nhật thông tin loại phòng' : 'Tạo loại phòng mới';
-include("../includes/admin_header.php");
+include "../includes/admin_header.php";
 ?>
 
 <!-- Header -->
@@ -278,4 +280,4 @@ include("../includes/admin_header.php");
     </form>
 </div>
 
-<?php include("../includes/admin_footer.php"); ?>
+<?php include "../includes/admin_footer.php"; ?>

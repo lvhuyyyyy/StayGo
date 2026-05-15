@@ -80,8 +80,7 @@ foreach ($gallery_rows as $gi) {
 $total_photos = count($all_photos);
 
 $min_room_price = !empty($rooms) ? min(array_column($rooms, 'price')) : $hotel['price'];
-$old_p    = $hotel['old_price'] ?? 0;
-$discount = ($old_p > $min_room_price) ? round((1 - $min_room_price/$old_p)*100) : 0;
+$max_room_price = !empty($rooms) ? max(array_column($rooms, 'price')) : $hotel['price'];
 
 $rating_info = match(true) {
     $hotel['rating'] >= 9.5 => ['Trên cả tuyệt vời', '#15803d'],
@@ -295,6 +294,7 @@ function bed_icon(string $bed): string {
                         <div class="hd-th hd-th-room">Loại phòng</div>
                         <div class="hd-th hd-th-guest">Khách</div>
                         <div class="hd-th hd-th-price">Giá/đêm</div>
+                        <div class="hd-th hd-th-avail" style="text-align:center">Phòng trống</div>
                         <div class="hd-th hd-th-opt">Lựa chọn</div>
                         <div class="hd-th hd-th-btn"></div>
                     </div>
@@ -338,15 +338,21 @@ function bed_icon(string $bed): string {
                                 <div class="hd-room-tax">Đã gồm thuế & phí</div>
                             </div>
 
+                            <div class="hd-room-avail" style="text-align:center;padding:0 8px">
+                                <?php $qty = (int)($room['quantity'] ?? 0); ?>
+                                <?php if ($qty === 0): ?>
+                                    <span style="display:inline-block;background:#fff5f5;color:#c53030;border:1px solid #fed7d7;border-radius:8px;padding:4px 10px;font-size:13px;font-weight:600">Hết phòng</span>
+                                <?php elseif ($urgent): ?>
+                                    <span style="display:inline-block;background:#fff8f0;color:#e05c1a;border:1px solid #fbd38d;border-radius:8px;padding:4px 10px;font-size:13px;font-weight:700">🔥 Còn <?= $qty ?></span>
+                                <?php else: ?>
+                                    <span style="display:inline-block;background:#f0fff4;color:#276749;border:1px solid #9ae6b4;border-radius:8px;padding:4px 10px;font-size:13px;font-weight:600">✅ <?= $qty ?> phòng</span>
+                                <?php endif; ?>
+                            </div>
+
                             <div class="hd-room-opts">
                                 <div class="hd-opt-item hd-opt-free">✅ Hủy miễn phí</div>
                                 <div class="hd-opt-item">💳 Không cần thẻ</div>
                                 <div class="hd-opt-item">🍳 Bữa sáng không bắt buộc</div>
-                                <?php if ($urgent): ?>
-                                    <div class="hd-opt-urgent">🔥 Còn <?= (int)$room['quantity'] ?> phòng!</div>
-                                <?php else: ?>
-                                    <div class="hd-opt-avail">✅ Còn <?= (int)$room['quantity'] ?> phòng</div>
-                                <?php endif; ?>
                             </div>
 
                             <div class="hd-room-action">
@@ -393,12 +399,9 @@ function bed_icon(string $bed): string {
         <div class="hd-sidebar">
             <div class="hd-price-card">
                 <div class="hd-pc-label">Giá chỉ từ</div>
-                <?php if($old_p > $min_room_price): ?>
-                    <div class="hd-pc-old"><?= number_format($old_p, 0, ',', '.') ?>đ</div>
-                <?php endif; ?>
                 <div class="hd-pc-price"><?= number_format($min_room_price, 0, ',', '.') ?>đ<span>/đêm</span></div>
-                <?php if($discount > 0): ?>
-                    <div class="hd-pc-save">🎉 Tiết kiệm <?= $discount ?>%</div>
+                <?php if($max_room_price > $min_room_price): ?>
+                    <div style="font-size:13px;color:#718096;margin-top:2px">đến <?= number_format($max_room_price, 0, ',', '.') ?>đ/đêm</div>
                 <?php endif; ?>
                 <?php if($nights > 1): ?>
                     <div class="hd-pc-total"><?= $nights ?> đêm = <strong><?= number_format($min_room_price * $nights, 0, ',', '.') ?>đ</strong></div>
@@ -770,19 +773,24 @@ function showFavToast(msg) {
 
 <script>
 let _bmRoomId = 0, _bmPrice = 0, _bmHotelId = <?= $id ?>;
+// Dates from search bar (may be empty string if not set)
+const _urlCheckin  = <?= json_encode($checkin) ?>;
+const _urlCheckout = <?= json_encode($checkout) ?>;
 
 function openBookModal(roomId, roomName, pricePerNight) {
     _bmRoomId = roomId;
     _bmPrice  = pricePerNight;
     document.getElementById('bmRoomName').textContent = '🛏️ ' + roomName + ' — ' + pricePerNight.toLocaleString('vi-VN') + 'đ/đêm';
-    // Set default dates: today & tomorrow
+    const fmt = d => d.toISOString().split('T')[0];
     const today    = new Date();
     const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
-    const fmt = d => d.toISOString().split('T')[0];
-    document.getElementById('bmCheckin').value  = fmt(today);
+    // Use dates from search bar if available, otherwise fall back to today/tomorrow
+    const ciVal = _urlCheckin  || fmt(today);
+    const coVal = _urlCheckout || fmt(tomorrow);
+    document.getElementById('bmCheckin').value  = ciVal;
     document.getElementById('bmCheckin').min    = fmt(today);
-    document.getElementById('bmCheckout').value = fmt(tomorrow);
-    document.getElementById('bmCheckout').min   = fmt(tomorrow);
+    document.getElementById('bmCheckout').value = coVal;
+    document.getElementById('bmCheckout').min   = ciVal;
     calcBookTotal();
     document.getElementById('bookModalOverlay').classList.add('open');
     document.body.style.overflow = 'hidden';

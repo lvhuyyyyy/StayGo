@@ -101,6 +101,28 @@ $admin_avatar = strtoupper(mb_substr($_SESSION['admin_name'] ?? 'A', 0, 1));
             <?php endif; ?>
         </a>
 
+        <div class="menu-label">Tài chính Platform</div>
+
+        <a href="/admin_lvhuy_kontum/finance.php"
+           class="<?= $current_page === 'finance.php' ? 'active' : '' ?>">
+            💰 Hoa hồng & Sao kê
+        </a>
+
+        <a href="/admin_lvhuy_kontum/payout.php"
+           class="<?= $current_page === 'payout.php' ? 'active' : '' ?>">
+            <?php
+            $payout_ready = 0;
+            if (isset($conn)) {
+                $pr = $conn->query("SELECT COUNT(*) as c FROM bookings WHERE payout_status='READY'");
+                if ($pr) $payout_ready = (int)$pr->fetch_assoc()['c'];
+            }
+            ?>
+            💸 Giải ngân
+            <?php if($payout_ready > 0): ?>
+                <span class="sidebar-badge"><?= $payout_ready ?></span>
+            <?php endif; ?>
+        </a>
+
         <a href="/admin_lvhuy_kontum/blog_list.php"
            class="<?= in_array($current_page, ['blog_list.php', 'blog_form.php']) ? 'active' : '' ?>">
             Bài viết
@@ -116,6 +138,21 @@ $admin_avatar = strtoupper(mb_substr($_SESSION['admin_name'] ?? 'A', 0, 1));
             Hỗ trợ
             <?php if($support_pending > 0): ?>
                 <span class="sidebar-badge"><?= $support_pending ?></span>
+            <?php endif; ?>
+        </a>
+
+        <?php
+        $dispute_open = 0;
+        if (isset($conn)) {
+            $dr = $conn->query("SELECT COUNT(*) as c FROM disputes WHERE status='OPEN'");
+            if ($dr) $dispute_open = (int)$dr->fetch_assoc()['c'];
+        }
+        ?>
+        <a href="/admin_lvhuy_kontum/disputes.php"
+           class="<?= $current_page === 'disputes.php' ? 'active' : '' ?>">
+            ⚖️ Khiếu nại
+            <?php if($dispute_open > 0): ?>
+                <span class="sidebar-badge"><?= $dispute_open ?></span>
             <?php endif; ?>
         </a>
 

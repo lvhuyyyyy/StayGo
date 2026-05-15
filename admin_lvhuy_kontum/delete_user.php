@@ -1,6 +1,6 @@
 ﻿<?php
 session_start();
-include("../config/database.php");
+include "../config/database.php";
 
 if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
     header("Location: users.php?error=invalid"); exit();

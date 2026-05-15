@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/../includes/security.php';
-include("../config/database.php");
+include "../config/database.php";
 
 $action = $_GET['action'] ?? 'add';
 $id     = isset($_GET['id']) ? intval($_GET['id']) : 0;
@@ -94,7 +94,7 @@ if ($action === 'edit' && $id > 0) {
 // ✅ Include header SAU KHI đã xử lý hết redirect
 $page_title    = $action === 'edit' ? 'Chỉnh sửa tài khoản' : 'Thêm tài khoản';
 $page_subtitle = $action === 'edit' ? 'Cập nhật thông tin user' : 'Tạo tài khoản mới';
-include("../includes/admin_header.php");
+include "../includes/admin_header.php";
 ?>
 
 <div class="form-card" style="max-width:640px;margin:40px auto;padding:40px 48px;">
@@ -166,4 +166,4 @@ include("../includes/admin_header.php");
     </form>
 </div>
 
-<?php include("../includes/admin_footer.php"); ?>
+<?php include "../includes/admin_footer.php"; ?>

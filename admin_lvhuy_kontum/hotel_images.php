@@ -1,6 +1,6 @@
 ﻿<?php
 require_once __DIR__ . '/../includes/security.php';
-include("../config/database.php");
+include "../config/database.php";
 
 // -- XỬ LÝ XÓA --
 if (isset($_GET['delete']) && isset($_GET['del_id']) && is_numeric($_GET['del_id'])) {
@@ -71,7 +71,7 @@ while ($r = $cr->fetch_assoc()) $img_counts[$r['hotel_id']] = $r['c'];
 
 $page_title = 'Quản lý ảnh KS';
 $page_subtitle = 'Upload & quản lý gallery ảnh khách sạn';
-include("../includes/admin_header.php");
+include "../includes/admin_header.php";
 ?>
 
 <?php if ($msg): ?>
@@ -221,4 +221,4 @@ include("../includes/admin_header.php");
     <div class="hi-lb-cap" id="lbCap"></div>
 </div>
 
-<?php include("../includes/admin_footer.php"); ?>
+<?php include "../includes/admin_footer.php"; ?>

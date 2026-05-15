@@ -1,5 +1,5 @@
 <?php
-include("../config/database.php");
+include "../config/database.php";
 
 $id     = isset($_GET['id'])     ? (int)$_GET['id']                          : 0;
 $status = isset($_GET['status']) ? $conn->real_escape_string($_GET['status']) : '';

@@ -136,8 +136,8 @@
     </div>
 </footer>
 
-<?php include(__DIR__ . "/chatbot.php"); ?>
-<?php include(__DIR__ . "/contact_floating.php"); ?>
+<?php include __DIR__ . "/chatbot.php"; ?>
+<?php include __DIR__ . "/contact_floating.php"; ?>
 
 <!-- ===== MODAL HỖ TRỢ (FOOTER) ===== -->
 <?php

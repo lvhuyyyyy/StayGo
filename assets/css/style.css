@@ -1926,8 +1926,8 @@ a.destination-card:hover .dest-explore {
 .hd-dp-arrow{font-size:18px;color:#a0aec0}
 .hd-dp-nights{margin-left:auto;background:#ebf8ff;color:#2b6cb0;border:1px solid #bee3f8;border-radius:8px;padding:6px 14px;font-size:13px;font-weight:700}
 .hd-table{border:1.5px solid #e2e8f0;border-radius:14px;overflow:hidden}
-.hd-table-head{display:grid;grid-template-columns:2.2fr .6fr 1.1fr 1.3fr 140px;background:#003580;color:#fff;padding:13px 18px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;gap:12px}
-.hd-room-row{display:grid;grid-template-columns:2.2fr .6fr 1.1fr 1.3fr 140px;padding:18px;border-bottom:1px solid #f0f4f8;gap:12px;align-items:center;transition:background .15s}
+.hd-table-head{display:grid;grid-template-columns:2.2fr .6fr 1.1fr 0.9fr 1.3fr 140px;background:#003580;color:#fff;padding:13px 18px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;gap:12px}
+.hd-room-row{display:grid;grid-template-columns:2.2fr .6fr 1.1fr 0.9fr 1.3fr 140px;padding:18px;border-bottom:1px solid #f0f4f8;gap:12px;align-items:center;transition:background .15s}
 .hd-room-row:last-child{border-bottom:none}
 .hd-room-row:hover{background:#f8fafc}
 .hd-room-urgent{background:#fffbeb !important;border-left:3px solid #f59e0b}
@@ -1984,7 +1984,7 @@ a.destination-card:hover .dest-explore {
 .hd-qc-item{font-size:13px;color:#4a5568}
 .hd-rooms-header-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
 @media(max-width:960px){.hd-grid{grid-template-columns:1fr}.hd-sidebar{display:grid;grid-template-columns:1fr 1fr;gap:16px}.hd-price-card{grid-column:1/-1}}
-@media(max-width:700px){.hd-gallery{grid-template-columns:1fr;height:auto}.hd-gallery-grid{grid-template-columns:repeat(2,1fr);height:160px}.hd-gallery-main{height:280px}.hd-table-head,.hd-room-row{grid-template-columns:1fr 100px}.hd-th-guest,.hd-th-opt,.hd-room-guests,.hd-room-opts{display:none}.hd-amenities-grid{grid-template-columns:1fr}.hd-header{flex-direction:column}.hd-nav-tab{padding:12px 10px;font-size:12px}.hd-lb-prev{left:6px}.hd-lb-next{right:6px}}
+@media(max-width:700px){.hd-gallery{grid-template-columns:1fr;height:auto}.hd-gallery-grid{grid-template-columns:repeat(2,1fr);height:160px}.hd-gallery-main{height:280px}.hd-table-head,.hd-room-row{grid-template-columns:1fr 100px}.hd-th-guest,.hd-th-opt,.hd-th-avail,.hd-room-guests,.hd-room-opts,.hd-room-avail{display:none}.hd-amenities-grid{grid-template-columns:1fr}.hd-header{flex-direction:column}.hd-nav-tab{padding:12px 10px;font-size:12px}.hd-lb-prev{left:6px}.hd-lb-next{right:6px}}
 
 
 /* hotels */
@@ -4150,8 +4150,8 @@ TABLET - 768px
     .hd-nav-tab { padding: 12px 12px; font-size: 12px; }
     .hd-table-head,
     .hd-room-row { grid-template-columns: 1fr 100px; }
-    .hd-th-guest, .hd-th-opt,
-    .hd-room-guests, .hd-room-opts { display: none; }
+    .hd-th-guest, .hd-th-opt, .hd-th-avail,
+    .hd-room-guests, .hd-room-opts, .hd-room-avail { display: none; }
     .hd-amenities-grid { grid-template-columns: 1fr 1fr; }
     .hd-cont { padding: 0 14px; }
 
@@ -4233,6 +4233,7 @@ PHONE - 480px
     .hd-amenities-grid { grid-template-columns: 1fr; }
     .hd-table-head,
     .hd-room-row { grid-template-columns: 1fr 90px; }
+    .hd-th-avail, .hd-room-avail { display: none; }
 
     /* --- BLOG --- */
     .bd-more-grid { grid-template-columns: 1fr; }

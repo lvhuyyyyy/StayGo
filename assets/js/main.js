@@ -89,12 +89,21 @@ function checkMatch() {
 hotels
 ------------------------------------------ */
 function calcNights() {
-    const ci = document.getElementById('sf_checkin')?.value;
-    const co = document.getElementById('sf_checkout')?.value;
+    const ciEl = document.getElementById('sf_checkin');
+    const coEl = document.getElementById('sf_checkout');
     const badge = document.getElementById('nightsBadge');
     const txt   = document.getElementById('nightsText');
-    if (!ci || !co) { if(badge) badge.style.display='none'; return; }
-    const n = Math.round((new Date(co) - new Date(ci)) / 86400000);
+    if (!ciEl || !coEl) return;
+    const ci = ciEl.value, co = coEl.value;
+    // Đảm bảo checkout > checkin
+    if (ci) {
+        const minCo = new Date(ci); minCo.setDate(minCo.getDate() + 1);
+        const minCoStr = minCo.toISOString().split('T')[0];
+        coEl.min = minCoStr;
+        if (co && new Date(co) <= new Date(ci)) { coEl.value = minCoStr; }
+    }
+    if (!ci || !coEl.value) { if(badge) badge.style.display='none'; return; }
+    const n = Math.round((new Date(coEl.value) - new Date(ci)) / 86400000);
     if (n > 0) { txt.textContent = n + ' Đêm'; badge.style.display = 'flex'; }
     else { badge.style.display = 'none'; }
 }
@@ -125,6 +134,15 @@ function confirmCancel(bookingId, orderCode) {
 function closeCancelModal() {
     document.getElementById('cancelModal').style.display = 'none';
 }
+function confirmCancelConfirmed(bookingId, orderCode, refundAmount) {
+    document.getElementById('cc-order-code').textContent = '#' + orderCode;
+    document.getElementById('cc-refund-amount').textContent = refundAmount;
+    document.getElementById('cc-confirm-btn').href = 'cancel_booking.php?id=' + bookingId;
+    document.getElementById('cancelConfirmedModal').style.display = 'flex';
+}
+function closeCancelConfirmedModal() {
+    document.getElementById('cancelConfirmedModal').style.display = 'none';
+}
 
 document.addEventListener('DOMContentLoaded', function() {
     var refundModal = document.getElementById('refundModal');
@@ -137,6 +155,12 @@ document.addEventListener('DOMContentLoaded', function() {
     if (cancelModal) {
         cancelModal.addEventListener('click', function(e) {
             if (e.target === this) closeCancelModal();
+        });
+    }
+    var cancelConfirmedModal = document.getElementById('cancelConfirmedModal');
+    if (cancelConfirmedModal) {
+        cancelConfirmedModal.addEventListener('click', function(e) {
+            if (e.target === this) closeCancelConfirmedModal();
         });
     }
 });

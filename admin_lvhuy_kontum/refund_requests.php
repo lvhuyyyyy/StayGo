@@ -1,5 +1,5 @@
 <?php
-include("../config/database.php");
+include "../config/database.php";
 
 // -- Xử lý duyệt / từ chối TRƯỚC KHI include header --
 if (isset($_GET['action']) && isset($_GET['id'])) {
@@ -11,9 +11,13 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
 
     if ($booking) {
         if ($action === 'approve') {
-            $conn->query("UPDATE bookings SET status = 'cancelled' WHERE id = $id");
+            $conn->query("UPDATE bookings SET status = 'cancelled', refund_requested = 2 WHERE id = $id");
             $conn->query("UPDATE payments SET payment_status = 'refunded' WHERE booking_id = $id");
-            $conn->query("UPDATE bookings SET refund_requested = 2 WHERE id = $id");
+            // Chỉ restore quantity nếu booking CHƯA bị cancelled trước đó
+            // (tránh double-restore khi cancel_booking.php hoặc update_booking.php đã +1 rồi)
+            if ($booking['status'] !== 'cancelled') {
+                $conn->query("UPDATE rooms SET quantity = quantity + 1 WHERE id = " . (int)$booking['room_id']);
+            }
             log_activity($conn, 'approve_refund', 'booking', $id, "Duyệt hoàn tiền đơn #$id");
             header("Location: refund_requests.php?success=approved");
         } elseif ($action === 'reject') {
@@ -28,7 +32,7 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
 $page_title    = 'Yêu cầu hoàn tiền';
 $page_subtitle = 'Danh sách yêu cầu hoàn tiền từ khách hàng';
 
-include("../includes/admin_header.php");
+include "../includes/admin_header.php";
 
 // Lấy danh sách yêu cầu
 $filter = isset($_GET['filter']) ? (int)$_GET['filter'] : 1;
@@ -88,8 +92,10 @@ $count_rejected = $conn->query("SELECT COUNT(*) as c FROM bookings WHERE refund_
     <?php while($row = $result->fetch_assoc()):
         $card_class        = $filter==2 ? 'approved' : ($filter==3 ? 'rejected' : '');
         $refund_amount_fmt = number_format($row['refund_amount'] ?? 0, 0, ',', '.');
-        $fee_fmt           = number_format($row['total_price'] * 0.2, 0, ',', '.');
         $total_fmt         = number_format($row['total_price'] ?? 0, 0, ',', '.');
+        // Xác định ai tạo refund: nếu refund_amount = total_price → admin hủy (hoàn 100%), ngược lại → khách hủy (80%)
+        $is_admin_cancel   = ($row['refund_amount'] >= $row['total_price'] * 0.99);
+        $fee_fmt           = $is_admin_cancel ? '0' : number_format($row['total_price'] * 0.2, 0, ',', '.');
     ?>
     <div class="refund-card <?= $card_class ?>">
 
@@ -100,17 +106,20 @@ $count_rejected = $conn->query("SELECT COUNT(*) as c FROM bookings WHERE refund_
                 <div class="refund-date">
                     🕐 Yêu cầu lúc: <?= $row['refund_requested_at'] ? date('d/m/Y H:i', strtotime($row['refund_requested_at'])) : '—' ?>
                 </div>
+                <div style="margin-top:4px;font-size:12px;font-weight:600;color:<?= $is_admin_cancel ? '#c53030' : '#b7791f' ?>">
+                    <?= $is_admin_cancel ? '⚙️ Admin chủ động hủy — hoàn 100%' : '👤 Khách yêu cầu hủy — hoàn 80%' ?>
+                </div>
             </div>
             <?php if($filter == 1): ?>
                 <div style="display:flex;gap:8px">
                     <a href="?action=approve&id=<?= $row['id'] ?>"
                     class="btn btn-approve"
-                    onclick="return confirm('Duyệt hoàn tiền <?= $refund_amount_fmt ?>đ cho đơn này?')">
+                    onclick="adminConfirm('Duyệt hoàn tiền <?= $refund_amount_fmt ?>đ cho đơn này?', this.href, '💵'); return false;">
                     ✅ Duyệt hoàn tiền
                     </a>
                     <a href="?action=reject&id=<?= $row['id'] ?>"
                     class="btn btn-deny"
-                    onclick="return confirm('Từ chối yêu cầu hoàn tiền này?')">
+                    onclick="adminConfirm('Từ chối yêu cầu hoàn tiền này?', this.href, '❌'); return false;">
                     ❌ Từ chối
                     </a>
                 </div>
@@ -149,8 +158,8 @@ $count_rejected = $conn->query("SELECT COUNT(*) as c FROM bookings WHERE refund_
             </div>
             <div class="ra-arrow">→</div>
             <div class="ra-col">
-                <div class="ra-label">✂️ Phí huỷ (20%)</div>
-                <div class="ra-val fee">-<?= $fee_fmt ?>đ</div>
+                <div class="ra-label"><?= $is_admin_cancel ? '✂️ Phí huỷ' : '✂️ Phí huỷ (20%)' ?></div>
+                <div class="ra-val fee"><?= $is_admin_cancel ? 'Miễn phí' : '-'.$fee_fmt.'đ' ?></div>
             </div>
             <div class="ra-arrow">→</div>
             <div class="ra-col">
@@ -163,4 +172,4 @@ $count_rejected = $conn->query("SELECT COUNT(*) as c FROM bookings WHERE refund_
     <?php endwhile; ?>
 <?php endif; ?>
 
-<?php include("../includes/admin_footer.php"); ?>
+<?php include "../includes/admin_footer.php"; ?>

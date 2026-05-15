@@ -1,5 +1,5 @@
 <?php
-include("../config/database.php");
+include "../config/database.php";
 
 // ---------- Toggle status ----------
 if (isset($_GET['toggle_status'])) {
@@ -41,7 +41,7 @@ if (isset($_GET['toggle_ban'])) {
 $page_title    = 'Quản lý User';
 $page_subtitle = 'Danh sách tài khoản hệ thống';
 
-include("../includes/admin_header.php");
+include "../includes/admin_header.php";
 
 // ---------- Tham số ----------
 $search      = trim($_GET['search'] ?? '');
@@ -372,4 +372,4 @@ function users_qs($overrides = []) {
     </div>
 </div>
 
-<?php include("../includes/admin_footer.php"); ?>
+<?php include "../includes/admin_footer.php"; ?>

@@ -98,6 +98,10 @@ $blog_pages = ['blog-list.php', 'blog-detail.php'];
             class="<?= $current_page === 'deals.php' ? 'active' : '' ?>">
             Ưu Đãi
             </a>
+            <a href="/pages/booking_lookup.php"
+            class="<?= $current_page === 'booking_lookup.php' ? 'active' : '' ?>">
+            Tra cứu
+            </a>
 
             <?php if (isset($_SESSION['user_id']) && ($_SESSION['role'] ?? '') !== 'admin'): ?>
                 <?php
@@ -225,6 +229,16 @@ if ($hl) $hero_locations = $hl->fetch_all(MYSQLI_ASSOC);
             <span class="hsb-label">📅 Trả phòng</span>
             <input class="hsb-input" type="date" name="checkout" id="h_checkout" onchange="heroCalcNights()">
         </div>
+        <script>
+        // Set min date = today khi trang tải
+        (function(){
+            const today = new Date().toISOString().split('T')[0];
+            const ci = document.getElementById('h_checkin');
+            const co = document.getElementById('h_checkout');
+            if (ci) ci.min = today;
+            if (co) co.min = today;
+        })();
+        </script>
         <div class="hsb-nights" id="heroNights" style="display:none; padding:0 12px; white-space:nowrap; color:#2b6cb0; font-size:13px; font-weight:700; font-family:'Be Vietnam Pro',sans-serif;">
             🌙 <span id="heroNightsText">1 đêm</span>
         </div>
@@ -236,12 +250,27 @@ if ($hl) $hero_locations = $hl->fetch_all(MYSQLI_ASSOC);
         </button>
     </form>
     <div class="hero-quick-tags">
-        <a href="/pages/hotels.php?rating=9">⭐ Tuyệt vời 9+</a>
-        <a href="/pages/hotels.php?max_price=500000">💰 Dưới 500k</a>
-        <a href="/pages/hotels.php?sort=popular">🔥 Phổ biến nhất</a>
-        <a href="/pages/hotels.php?sort=price_asc">📊 Giá thấp nhất</a>
+        <a href="#" onclick="heroQuickGo({rating:9});return false;">⭐ Tuyệt vời 9+</a>
+        <a href="#" onclick="heroQuickGo({max_price:500000});return false;">💰 Dưới 500k</a>
+        <a href="#" onclick="heroQuickGo({sort:'popular'});return false;">🔥 Phổ biến nhất</a>
+        <a href="#" onclick="heroQuickGo({sort:'price_asc'});return false;">📊 Giá thấp nhất</a>
     </div>
 </div>
+<script>
+function heroQuickGo(extra) {
+    const params = new URLSearchParams();
+    const keyword    = document.getElementById('heroKeyword')    ? document.getElementById('heroKeyword').value.trim()    : '';
+    const locationId = document.getElementById('heroLocationId') ? document.getElementById('heroLocationId').value.trim() : '';
+    const checkin    = document.getElementById('h_checkin')      ? document.getElementById('h_checkin').value             : '';
+    const checkout   = document.getElementById('h_checkout')     ? document.getElementById('h_checkout').value            : '';
+    if (keyword)    params.set('keyword',     keyword);
+    if (locationId) params.set('location_id', locationId);
+    if (checkin)    params.set('checkin',     checkin);
+    if (checkout)   params.set('checkout',    checkout);
+    for (const [k, v] of Object.entries(extra)) params.set(k, v);
+    window.location.href = '/pages/hotels.php?' + params.toString();
+}
+</script>
 <?php endif; ?>
 <style>
 /* === HERO SEARCH DROPDOWN === */
@@ -312,10 +341,20 @@ function heroSelectLocation(id, name) {
 }
 
 function heroCalcNights() {
-    const ci    = document.getElementById('h_checkin')?.value;
-    const co    = document.getElementById('h_checkout')?.value;
+    const ciEl  = document.getElementById('h_checkin');
+    const coEl  = document.getElementById('h_checkout');
     const badge = document.getElementById('heroNights');
     const txt   = document.getElementById('heroNightsText');
+    if (!ciEl || !coEl) return;
+    const ci = ciEl.value;
+    // Đảm bảo checkout > checkin
+    if (ci) {
+        const minCo = new Date(ci); minCo.setDate(minCo.getDate() + 1);
+        const minCoStr = minCo.toISOString().split('T')[0];
+        coEl.min = minCoStr;
+        if (coEl.value && new Date(coEl.value) <= new Date(ci)) { coEl.value = minCoStr; }
+    }
+    const co = coEl.value;
     if (!ci || !co) { if(badge) badge.style.display = 'none'; return; }
     const n = Math.round((new Date(co) - new Date(ci)) / 86400000);
     if (n > 0) { txt.textContent = n + ' đêm'; badge.style.display = 'flex'; badge.style.alignItems = 'center'; }

@@ -1,5 +1,5 @@
 <?php
-include("../config/database.php");
+include "../config/database.php";
 
 $hotel_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
@@ -76,7 +76,7 @@ if ($hotel_id) {
 
 $page_title    = $hotel ? 'Thống kê: ' . htmlspecialchars($hotel['name']) : 'Thống kê khách sạn';
 $page_subtitle = 'Phân tích chi tiết theo từng khách sạn';
-include("../includes/admin_header.php");
+include "../includes/admin_header.php";
 
 $status_map = [
     'pending'   => ['Chờ xác nhận', '#b7791f', '#fffbeb'],
@@ -244,4 +244,4 @@ new Chart(document.getElementById('lineChart'), {
 
 <?php endif; ?>
 
-<?php include("../includes/admin_footer.php"); ?>
+<?php include "../includes/admin_footer.php"; ?>

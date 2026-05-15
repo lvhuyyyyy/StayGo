@@ -1,5 +1,5 @@
 <?php
-include("../config/database.php");
+include "../config/database.php";
 
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 if (!$id) {
@@ -29,9 +29,14 @@ $payments = $conn->query("
     SELECT * FROM payments WHERE booking_id = $id ORDER BY created_at DESC
 ")->fetch_all(MYSQLI_ASSOC);
 
+// Lấy timeline log
+$logs = $conn->query("
+    SELECT * FROM booking_logs WHERE booking_id = $id ORDER BY created_at ASC
+")->fetch_all(MYSQLI_ASSOC);
+
 $page_title    = 'Chi tiết đơn #' . htmlspecialchars($booking['order_code']);
 $page_subtitle = 'Xem toàn bộ thông tin đặt phòng';
-include("../includes/admin_header.php");
+include "../includes/admin_header.php";
 
 $status_map = [
     'pending'   => ['Chờ xác nhận', '#b7791f', '#fffbeb'],
@@ -39,7 +44,17 @@ $status_map = [
     'cancelled' => ['Đã huỷ',       '#c53030', '#fff5f5'],
     'completed' => ['Hoàn thành',   '#276749', '#f0fff4'],
 ];
-$sm = $status_map[$booking['status']] ?? ['Không rõ', '#718096', '#f7fafc'];
+
+$HOTEL_PAY_METHODS = ['hotel', 'Thanh toán tại khách sạn'];
+$is_hotel_pay  = in_array($booking['payment_method'] ?? '', $HOTEL_PAY_METHODS);
+$is_online_pay = !$is_hotel_pay;
+
+// pending + online = chờ thanh toán (không phải chờ admin xác nhận)
+if ($booking['status'] === 'pending' && $is_online_pay) {
+    $sm = ['⏳ Chờ thanh toán', '#6b46c1', '#faf5ff'];
+} else {
+    $sm = $status_map[$booking['status']] ?? ['Không rõ', '#718096', '#f7fafc'];
+}
 
 $pay_map = ['bank'=>'Chuyển khoản','momo'=>'MoMo','vnpay'=>'VNPay','hotel'=>'Tại khách sạn','card'=>'Thẻ tín dụng'];
 
@@ -93,15 +108,21 @@ $rs = $refund_status_map[(int)($booking['refund_requested'] ?? 0)];
         $is_confirmed = in_array($s, ['confirmed', 'paid', 'approved']);
         ?>
         <?php if ($is_pending): ?>
+            <?php if ($is_hotel_pay): ?>
             <a href="update_booking.php?id=<?= $booking['id'] ?>&status=confirmed&redirect=detail"
-               class="btn btn-confirm" onclick="return confirm('Xác nhận đơn này?')">✅ Xác nhận</a>
+               class="btn btn-confirm" onclick="adminConfirm('Xác nhận còn phòng cho đơn này?', this.href, '✅'); return false;">✅ Xác nhận</a>
+            <?php else: ?>
+            <span style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:#faf5ff;color:#6b46c1;border-radius:9px;font-size:12.5px;font-weight:600;border:1px solid #d6bcfa">
+                ⏳ Hệ thống tự xác nhận khi thanh toán
+            </span>
+            <?php endif; ?>
             <a href="update_booking.php?id=<?= $booking['id'] ?>&status=cancelled&redirect=detail"
-               class="btn btn-cancel" onclick="return confirm('Huỷ đơn này?')">❌ Huỷ</a>
+               class="btn btn-cancel" onclick="adminConfirm('Huỷ đơn này?', this.href, '❌'); return false;">❌ Huỷ</a>
         <?php elseif ($is_confirmed): ?>
             <a href="update_booking.php?id=<?= $booking['id'] ?>&status=completed&redirect=detail"
-               class="btn btn-edit" onclick="return confirm('Đánh dấu hoàn thành?')">🎉 Hoàn thành</a>
+               class="btn btn-edit" onclick="adminConfirm('Đánh dấu hoàn thành?', this.href, '🎉'); return false;">🎉 Hoàn thành</a>
             <a href="update_booking.php?id=<?= $booking['id'] ?>&status=cancelled&redirect=detail"
-               class="btn btn-cancel" onclick="return confirm('Huỷ đơn này?')">❌ Huỷ</a>
+               class="btn btn-cancel" onclick="adminConfirm('Huỷ đơn này?', this.href, '❌'); return false;">❌ Huỷ</a>
         <?php endif; ?>
         <a href="booking_edit.php?id=<?= $booking['id'] ?>"
            style="display:inline-flex;align-items:center;gap:5px;padding:8px 16px;background:#f8fafc;color:#4a5568;border:1.5px solid #e2e8f0;border-radius:9px;text-decoration:none;font-size:13px;font-weight:600">
@@ -287,4 +308,148 @@ $rs = $refund_status_map[(int)($booking['refund_requested'] ?? 0)];
 </div>
 <?php endif; ?>
 
-<?php include("../includes/admin_footer.php"); ?>
+<!-- Finance info (platform_revenue / hotel_payout) -->
+<?php if (!empty($booking['platform_revenue']) || !empty($booking['hotel_payout'])): ?>
+<div style="background:#fff;border-radius:14px;border:1.5px solid #e2e8f0;padding:22px 24px;margin-bottom:20px">
+    <div style="font-size:13px;font-weight:700;color:#718096;text-transform:uppercase;letter-spacing:.5px;margin-bottom:16px;border-bottom:1px solid #f1f5f9;padding-bottom:10px">
+        💰 Tài chính nền tảng
+    </div>
+    <?php
+    $payout_status_map = [
+        'HOLDING' => ['Đang giữ',        '#b7791f', '#fffbeb'],
+        'READY'   => ['Sẵn sàng giải ngân','#1e73be', '#ebf8ff'],
+        'FROZEN'  => ['Đóng băng',        '#c53030', '#fff5f5'],
+        'PAID'    => ['Đã giải ngân',     '#276749', '#f0fff4'],
+    ];
+    $ps = $booking['payout_status'] ?? 'HOLDING';
+    $psm = $payout_status_map[$ps] ?? $payout_status_map['HOLDING'];
+    ?>
+    <table style="width:100%;border-collapse:collapse;font-size:13.5px">
+        <tr>
+            <td style="padding:6px 0;color:#718096;width:40%">Hoa hồng (%)</td>
+            <td style="padding:6px 0;font-weight:600;color:#c53030">
+                <?= number_format($booking['commission_rate'] ?? 0, 1) ?>%
+            </td>
+        </tr>
+        <tr>
+            <td style="padding:6px 0;color:#718096">Platform thu</td>
+            <td style="padding:6px 0;color:#c53030;font-weight:600">
+                <?= number_format($booking['platform_revenue'] ?? 0, 0, ',', '.') ?>đ
+            </td>
+        </tr>
+        <tr>
+            <td style="padding:6px 0;color:#718096">Giải ngân cho hotel</td>
+            <td style="padding:6px 0;color:#276749;font-weight:700;font-size:15px">
+                <?= number_format($booking['hotel_payout'] ?? 0, 0, ',', '.') ?>đ
+            </td>
+        </tr>
+        <tr>
+            <td style="padding:8px 0 4px;color:#718096;border-top:1.5px solid #f1f5f9">Trạng thái payout</td>
+            <td style="padding:8px 0 4px;border-top:1.5px solid #f1f5f9">
+                <span style="padding:4px 12px;border-radius:20px;font-size:12.5px;font-weight:700;
+                      color:<?= $psm[1] ?>;background:<?= $psm[2] ?>">
+                    <?= $psm[0] ?>
+                </span>
+                <?php if ($ps === 'READY'): ?>
+                <a href="payout.php?hotel_id=<?= $booking['hotel_id'] ?>"
+                   style="margin-left:10px;font-size:12px;color:#1e73be;text-decoration:none;font-weight:600">
+                    💸 Đến trang giải ngân →
+                </a>
+                <?php endif; ?>
+            </td>
+        </tr>
+    </table>
+</div>
+<?php endif; ?>
+
+<!-- Booking Timeline Log -->
+<?php if (!empty($logs)): ?>
+<div style="background:#fff;border-radius:14px;border:1.5px solid #e2e8f0;padding:22px 24px;margin-bottom:20px">
+    <div style="font-size:13px;font-weight:700;color:#718096;text-transform:uppercase;letter-spacing:.5px;margin-bottom:20px;border-bottom:1px solid #f1f5f9;padding-bottom:10px">
+        📋 Timeline hoạt động
+    </div>
+    <div style="position:relative">
+        <!-- Đường dọc -->
+        <div style="position:absolute;left:17px;top:8px;bottom:8px;width:2px;background:#e2e8f0"></div>
+        <?php
+        $actor_icon = [
+            'ADMIN'  => ['⚙️', '#1e73be', '#ebf8ff'],
+            'SYSTEM' => ['🤖', '#718096', '#f7fafc'],
+            'USER'   => ['👤', '#276749', '#f0fff4'],
+            'GUEST'  => ['🧳', '#b7791f', '#fffbeb'],
+            'HOTEL'  => ['🏨', '#6d28d9', '#f5f3ff'],
+        ];
+        $action_label = [
+            'BOOKING_CREATED'    => 'Đặt phòng được tạo',
+            'PAYMENT_SUCCESS'    => 'Thanh toán thành công',
+            'BOOKING_CONFIRMED'  => 'Đơn được xác nhận',
+            'GUEST_CHECKED_IN'   => 'Khách nhận phòng',
+            'BOOKING_COMPLETED'  => 'Booking hoàn thành',
+            'BOOKING_CANCELLED'  => 'Booking bị huỷ',
+            'PAYOUT_PROCESSED'   => 'Đã giải ngân cho hotel',
+            'REFUND_REQUESTED'   => 'Yêu cầu hoàn tiền',
+            'REFUND_APPROVED'    => 'Hoàn tiền được duyệt',
+            'DISPUTE_OPENED'     => 'Khiếu nại được mở',
+            'DISPUTE_RESOLVED'   => 'Khiếu nại được đóng',
+        ];
+        foreach ($logs as $log):
+            $ai = $actor_icon[$log['actor_type']] ?? $actor_icon['SYSTEM'];
+        ?>
+        <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:18px;position:relative">
+            <!-- Icon -->
+            <div style="width:36px;height:36px;border-radius:50%;background:<?= $ai[2] ?>;
+                        display:flex;align-items:center;justify-content:center;
+                        font-size:16px;flex-shrink:0;z-index:1;border:2px solid #fff;
+                        box-shadow:0 0 0 2px <?= $ai[1] ?>33">
+                <?= $ai[0] ?>
+            </div>
+            <!-- Content -->
+            <div style="flex:1;padding-top:4px">
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                    <span style="font-weight:700;font-size:13.5px;color:#1a202c">
+                        <?= htmlspecialchars($action_label[$log['action']] ?? $log['action']) ?>
+                    </span>
+                    <span style="font-size:11.5px;color:#a0aec0">
+                        <?= date('d/m/Y H:i', strtotime($log['created_at'])) ?>
+                    </span>
+                    <?php if (!empty($log['actor_name'])): ?>
+                    <span style="font-size:11px;padding:2px 8px;border-radius:10px;
+                          background:<?= $ai[2] ?>;color:<?= $ai[1] ?>;font-weight:600">
+                        <?= htmlspecialchars($log['actor_name']) ?>
+                    </span>
+                    <?php endif; ?>
+                </div>
+                <?php if (!empty($log['description'])): ?>
+                <div style="font-size:13px;color:#4a5568;margin-top:4px">
+                    <?= htmlspecialchars($log['description']) ?>
+                </div>
+                <?php endif; ?>
+                <?php
+                // Hiển thị metadata nếu có (chỉ show thông tin không nhạy cảm)
+                if (!empty($log['metadata'])) {
+                    $meta = json_decode($log['metadata'], true);
+                    if (is_array($meta) && isset($meta['commission_rate'])) {
+                        echo '<div style="margin-top:6px;font-size:12px;color:#718096">';
+                        echo 'Hoa hồng: ' . number_format($meta['commission_rate'], 1) . '%';
+                        if (isset($meta['platform_revenue'])) {
+                            echo ' · Platform: ' . number_format($meta['platform_revenue'], 0, ',', '.') . 'đ';
+                        }
+                        if (isset($meta['hotel_payout'])) {
+                            echo ' · Hotel nhận: ' . number_format($meta['hotel_payout'], 0, ',', '.') . 'đ';
+                        }
+                        echo '</div>';
+                    } elseif (is_array($meta) && isset($meta['amount'])) {
+                        echo '<div style="margin-top:6px;font-size:12px;color:#718096">';
+                        echo 'Số tiền: ' . number_format($meta['amount'], 0, ',', '.') . 'đ';
+                        echo '</div>';
+                    }
+                }
+                ?>
+            </div>
+        </div>
+        <?php endforeach; ?>
+    </div>
+</div>
+<?php endif; ?>
+
+<?php include "../includes/admin_footer.php"; ?>

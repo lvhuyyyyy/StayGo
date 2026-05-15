@@ -1,5 +1,5 @@
 <?php
-include("../config/database.php");
+include "../config/database.php";
 
 // ---- Xử lý lưu ----
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -63,7 +63,7 @@ $settings = $settings_ordered;
 
 $page_title    = 'Cài đặt hệ thống';
 $page_subtitle = 'Quản lý cấu hình chung của StayGo';
-include("../includes/admin_header.php");
+include "../includes/admin_header.php";
 ?>
 
 <?php if (isset($_GET['msg']) && $_GET['msg'] === 'saved'): ?>
@@ -124,4 +124,4 @@ include("../includes/admin_header.php");
 </div>
 </form>
 
-<?php include("../includes/admin_footer.php"); ?>
+<?php include "../includes/admin_footer.php"; ?>

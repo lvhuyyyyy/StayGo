@@ -39,6 +39,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->bind_param("ssss", $full_name, $email, $phone, $hashed);
 
             if ($stmt->execute()) {
+                $new_user_id = $conn->insert_id;
+                // Liên kết các đơn đặt phòng guest (email trùng, chưa có tài khoản)
+                $link = $conn->prepare("UPDATE bookings SET user_id = ? WHERE email = ? AND user_id IS NULL");
+                $link->bind_param("is", $new_user_id, $email);
+                $link->execute();
+                $linked_count = $link->affected_rows;
                 $success = true;
             } else {
                 $message = "Có lỗi xảy ra, vui lòng thử lại!";
@@ -68,7 +74,11 @@ include '../includes/header.php';
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
-                Đăng ký thành công! Đang chuyển về trang đăng nhập...
+                Đăng ký thành công!
+                <?php if (!empty($linked_count) && $linked_count > 0): ?>
+                    <?= $linked_count ?> đơn đặt phòng trước đó đã được liên kết với tài khoản của bạn.
+                <?php endif; ?>
+                Đang chuyển về trang đăng nhập...
             </div>
             <meta http-equiv="refresh" content="2;url=login.php">
         <?php else: ?>

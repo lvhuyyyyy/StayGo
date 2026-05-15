@@ -1,6 +1,6 @@
 ﻿<?php
 require_once __DIR__ . '/../includes/security.php';
-include("../config/database.php");
+include "../config/database.php";
 
 $id     = isset($_GET['id'])     ? (int)$_GET['id']     : 0;
 $action = isset($_GET['action']) ? $_GET['action']       : 'edit';
@@ -101,6 +101,69 @@ if ($action === 'update_image' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     header("Location: manage_hotel.php?id=$id&success=img_updated"); exit;
 }
 
+// -- THAY ĐỔI PARTNER STATUS (approve/reject/suspend) ---------------
+if (in_array($action, ['approve', 'reject', 'suspend'])) {
+    $new_status = ['approve' => 'ACTIVE', 'reject' => 'REJECTED', 'suspend' => 'SUSPENDED'][$action];
+    $reason_raw = $conn->real_escape_string(trim($_GET['reason'] ?? ''));
+    $is_active  = ($new_status === 'ACTIVE') ? 1 : 0;
+
+    $conn->query("UPDATE hotels SET partner_status='$new_status', is_active=$is_active,
+                  suspend_reason=" . ($reason_raw ? "'$reason_raw'" : 'NULL') . " WHERE id=$id");
+
+    // Nếu suspend → tự động cancel các booking PENDING của hotel này
+    if ($new_status === 'SUSPENDED') {
+        $pending_ids = $conn->query("
+            SELECT b.id FROM bookings b
+            JOIN rooms r ON b.room_id = r.id
+            WHERE r.hotel_id = $id AND b.status = 'pending'
+        ")->fetch_all(MYSQLI_ASSOC);
+        foreach ($pending_ids as $pb) {
+            $pbid = (int)$pb['id'];
+            $conn->query("UPDATE bookings SET status='cancelled' WHERE id=$pbid");
+            $conn->query("
+                INSERT INTO booking_logs (booking_id, actor_type, actor_id, actor_name, action, description)
+                VALUES ($pbid, 'SYSTEM', 0, 'System', 'BOOKING_CANCELLED',
+                        'Tự động huỷ do khách sạn bị Suspend')
+            ");
+        }
+    }
+
+    $label = ['ACTIVE' => 'duyệt', 'REJECTED' => 'từ chối', 'SUSPENDED' => 'tạm đình chỉ'][$new_status];
+    log_activity($conn, "hotel_$action", 'hotel', $id, "Khách sạn #$id → $new_status");
+    header("Location: hotels.php?success=updated"); exit;
+}
+
+// -- SET PORTAL CREDENTIALS ------------------------------------
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'set_portal') {
+    csrf_check();
+    $p_email = trim($_POST['partner_email'] ?? '');
+    $p_pw    = trim($_POST['partner_password'] ?? '');
+    $c_name  = $conn->real_escape_string(trim($_POST['contact_name'] ?? ''));
+    $c_phone = $conn->real_escape_string(trim($_POST['contact_phone'] ?? ''));
+    $pe_esc  = $conn->real_escape_string($p_email);
+
+    if (!$p_email || !filter_var($p_email, FILTER_VALIDATE_EMAIL)) {
+        header("Location: manage_hotel.php?id=$id&portal_err=" . urlencode('Email không hợp lệ.')); exit;
+    }
+    // Kiểm tra email trùng với hotel khác
+    $dup = $conn->query("SELECT id FROM hotels WHERE partner_email='$pe_esc' AND id <> $id LIMIT 1");
+    if ($dup && $dup->fetch_assoc()) {
+        header("Location: manage_hotel.php?id=$id&portal_err=" . urlencode('Email này đã được dùng bởi khách sạn khác.')); exit;
+    }
+
+    if ($p_pw !== '') {
+        if (strlen($p_pw) < 8) {
+            header("Location: manage_hotel.php?id=$id&portal_err=" . urlencode('Mật khẩu phải có ít nhất 8 ký tự.')); exit;
+        }
+        $hashed = $conn->real_escape_string(password_hash($p_pw, PASSWORD_BCRYPT));
+        $conn->query("UPDATE hotels SET partner_email='$pe_esc', partner_password='$hashed', contact_name='$c_name', contact_phone='$c_phone' WHERE id=$id");
+    } else {
+        $conn->query("UPDATE hotels SET partner_email='$pe_esc', contact_name='$c_name', contact_phone='$c_phone' WHERE id=$id");
+    }
+    log_activity($conn, 'set_hotel_portal', 'hotel', $id, "Cập nhật tài khoản portal hotel #$id");
+    header("Location: manage_hotel.php?id=$id&portal_saved=1"); exit;
+}
+
 // -- LƯU SỬA THÔNG TIN (POST) -----------------------------------
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($action === 'edit' || $action === '')) {
     csrf_check();
@@ -111,7 +174,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($action === 'edit' || $action === 
     $old_price       = (int)($_POST['old_price'] ?? 0);
     $is_active       = isset($_POST['is_active'])       ? 1 : 0;
     $is_weekend_deal = isset($_POST['is_weekend_deal']) ? 1 : 0;
-    $conn->query("UPDATE hotels SET name='$name',address='$address',description='$description',price=$price,old_price=$old_price,is_active=$is_active,is_weekend_deal=$is_weekend_deal WHERE id=$id");
+    $commission_rate = min(100, max(0, (float)($_POST['commission_rate'] ?? 10.00)));
+
+    // Đồng bộ partner_status với is_active nếu không có partner_status riêng
+    $partner_status = $is_active ? 'ACTIVE' : 'SUSPENDED';
+
+    $conn->query("
+        UPDATE hotels
+        SET name='$name', address='$address', description='$description',
+            price=$price, old_price=$old_price,
+            is_active=$is_active, is_weekend_deal=$is_weekend_deal,
+            commission_rate=$commission_rate,
+            partner_status='$partner_status'
+        WHERE id=$id
+    ");
     log_activity($conn, 'edit_hotel', 'hotel', $id, "Sửa khách sạn: $name");
     header("Location: hotels.php?success=updated"); exit;
 }
@@ -124,7 +200,7 @@ $gallery = $conn->query("SELECT * FROM hotel_images WHERE hotel_id=$id ORDER BY 
 
 $page_title    = 'Sửa khách sạn';
 $page_subtitle = 'Chỉnh sửa: ' . htmlspecialchars($hotel['name']);
-include("../includes/admin_header.php");
+include "../includes/admin_header.php";
 
 $err_code = $_GET['code'] ?? '';
 $dest_dbg = urldecode($_GET['dest'] ?? '');
@@ -192,6 +268,19 @@ if ($err==='no_file') {
             </label>
             <input type="number" name="old_price" value="<?= $hotel['old_price'] ?? '' ?>" min="0" placeholder="VD: 850000">
         </div>
+        <!-- Hoa hồng platform -->
+        <div class="form-group">
+            <label>Hoa hồng nền tảng (%)
+                <span style="font-size:11px;font-weight:400;color:#a0aec0;margin-left:6px">
+                    → % platform thu từ mỗi booking của khách sạn này
+                </span>
+            </label>
+            <input type="number" name="commission_rate"
+                   value="<?= number_format($hotel['commission_rate'] ?? 10, 2, '.', '') ?>"
+                   min="0" max="100" step="0.5" required
+                   style="max-width:160px">
+        </div>
+
         <div class="toggle-row">
             <input type="checkbox" name="is_active" id="is_active" <?= ($hotel['is_active']??0)==1?'checked':'' ?>>
             <label for="is_active">✅ <strong>Hoạt động</strong> → Hiển thị trên trang người dùng</label>
@@ -205,10 +294,101 @@ if ($err==='no_file') {
             <a href="hotels.php" class="btn-cancel">Huỷ</a>
             <a href="manage_hotel.php?id=<?= $id ?>&action=delete"
             class="btn-del-inline"
-            onclick="return confirm('Xóa khách sạn «<?= addslashes($hotel['name']) ?>»?')">
+            onclick="adminConfirm('Xóa khách sạn «<?= addslashes($hotel['name']) ?>»?', this.href, '🗑️'); return false;">
                 🗑️ Xóa khách sạn này
             </a>
         </div>
+    </form>
+</div>
+
+<!-- ── Partner Status Actions ── -->
+<?php
+$ps = $hotel['partner_status'] ?? 'ACTIVE';
+$ps_map = [
+    'ACTIVE'    => ['Đang hoạt động',   '#276749', '#f0fff4'],
+    'PENDING'   => ['Chờ duyệt',        '#b7791f', '#fffbeb'],
+    'SUSPENDED' => ['Tạm đình chỉ',     '#c53030', '#fff5f5'],
+    'REJECTED'  => ['Đã từ chối',       '#718096', '#f7fafc'],
+];
+$psm = $ps_map[$ps] ?? $ps_map['ACTIVE'];
+?>
+<div class="form-card" style="margin-bottom:24px">
+    <h3 style="margin:0 0 14px;font-size:15px;font-weight:700;color:#1a202c">⚙️ Trạng thái đối tác</h3>
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+        <span style="padding:8px 18px;border-radius:20px;font-size:13.5px;font-weight:700;
+              color:<?= $psm[1] ?>;background:<?= $psm[2] ?>;border:1.5px solid <?= $psm[1] ?>33">
+            <?= $psm[0] ?>
+        </span>
+        <?php if ($ps !== 'ACTIVE'): ?>
+        <a href="manage_hotel.php?id=<?= $id ?>&action=approve"
+           style="padding:8px 18px;border-radius:9px;background:#276749;color:#fff;text-decoration:none;font-size:13px;font-weight:700"
+           onclick="adminConfirm('Duyệt khách sạn này?', this.href, '✅'); return false;">
+            ✅ Duyệt (Approve)
+        </a>
+        <?php endif; ?>
+        <?php if ($ps === 'ACTIVE' || $ps === 'PENDING'): ?>
+        <a href="manage_hotel.php?id=<?= $id ?>&action=suspend"
+           style="padding:8px 18px;border-radius:9px;background:#c53030;color:#fff;text-decoration:none;font-size:13px;font-weight:700"
+           onclick="adminConfirm('Tạm đình chỉ khách sạn này? (booking PENDING sẽ tự động bị huỷ)', this.href, '⏸'); return false;">
+            ⏸ Tạm đình chỉ
+        </a>
+        <?php endif; ?>
+        <?php if ($ps === 'PENDING'): ?>
+        <a href="manage_hotel.php?id=<?= $id ?>&action=reject"
+           style="padding:8px 18px;border-radius:9px;background:#718096;color:#fff;text-decoration:none;font-size:13px;font-weight:700"
+           onclick="adminConfirm('Từ chối khách sạn này?', this.href, '❌'); return false;">
+            ❌ Từ chối
+        </a>
+        <?php endif; ?>
+    </div>
+    <?php if (!empty($hotel['suspend_reason'])): ?>
+    <div style="margin-top:12px;padding:10px 14px;background:#fff5f5;border-radius:8px;border:1px solid #fed7d7;font-size:13px;color:#c53030">
+        📝 Lý do: <?= htmlspecialchars($hotel['suspend_reason']) ?>
+    </div>
+    <?php endif; ?>
+
+    <div style="margin-top:16px;padding:12px 16px;background:#f7fafc;border-radius:10px;border:1px solid #e2e8f0;font-size:13px;color:#4a5568">
+        <strong>Quy tắc:</strong><br>
+        • <strong>ACTIVE</strong> → Hotel hiển thị công khai, nhận booking<br>
+        • <strong>SUSPENDED</strong> → Listing tự ẩn, booking PENDING bị huỷ, payout bị đóng băng<br>
+        • <strong>REJECTED</strong> → Không hiển thị, không nhận booking mới
+    </div>
+</div>
+
+<!-- ── Tài khoản Hotel Portal ── -->
+<?php
+// Xử lý lưu tài khoản portal
+if (isset($_GET['portal_saved'])) echo '<div class="alert alert-success" style="margin-bottom:16px">✅ Đã cập nhật tài khoản portal.</div>';
+if (isset($_GET['portal_err']))   echo '<div class="alert alert-error" style="margin-bottom:16px">⚠️ ' . htmlspecialchars(urldecode($_GET['portal_err'])) . '</div>';
+?>
+<div class="form-card" style="margin-bottom:24px">
+    <h3 style="margin:0 0 6px;font-size:15px;font-weight:700;color:#1a202c">🔑 Tài khoản Hotel Partner Portal</h3>
+    <p style="font-size:12.5px;color:#718096;margin:0 0 18px">Thiết lập email & mật khẩu để Hotel đăng nhập vào portal tại <code>/hotel/login.php</code></p>
+
+    <?php
+    $portal_info = $conn->query("SELECT partner_email, contact_name, contact_phone, bank_info FROM hotels WHERE id=$id")->fetch_assoc();
+    ?>
+    <form method="POST" action="manage_hotel.php?id=<?= $id ?>&action=set_portal">
+        <?= csrf_field() ?>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+            <div class="form-group">
+                <label>Email đăng nhập <span style="color:#e53e3e">*</span></label>
+                <input type="email" name="partner_email" value="<?= htmlspecialchars($portal_info['partner_email'] ?? '') ?>" placeholder="hotel@example.com" required>
+            </div>
+            <div class="form-group">
+                <label>Mật khẩu mới <span style="font-size:11px;color:#a0aec0">(để trống = không đổi)</span></label>
+                <input type="text" name="partner_password" placeholder="Nhập mật khẩu mới (≥8 ký tự)">
+            </div>
+            <div class="form-group">
+                <label>Tên người liên hệ</label>
+                <input type="text" name="contact_name" value="<?= htmlspecialchars($portal_info['contact_name'] ?? '') ?>">
+            </div>
+            <div class="form-group">
+                <label>Số điện thoại</label>
+                <input type="text" name="contact_phone" value="<?= htmlspecialchars($portal_info['contact_phone'] ?? '') ?>">
+            </div>
+        </div>
+        <button type="submit" class="btn-save" style="margin-top:4px">💾 Lưu tài khoản portal</button>
     </form>
 </div>
 
@@ -253,7 +433,7 @@ if ($err==='no_file') {
                         <button type="submit" class="btn-img-save">💾 Lưu</button>
                         <a href="manage_hotel.php?id=<?= $id ?>&action=delete_image&img_id=<?= $gi['id'] ?>"
                         class="btn-img-del"
-                        onclick="return confirm('Xóa ảnh này?')">🗑️</a>
+                        onclick="adminConfirm('Xóa ảnh này?', this.href, '🗑️'); return false;">🗑️</a>
                     </div>
                 </form>
             </div>
@@ -319,4 +499,4 @@ if ($err==='no_file') {
     </div>
 </div>
 
-<?php include("../includes/admin_footer.php"); ?>
+<?php include "../includes/admin_footer.php"; ?>

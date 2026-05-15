@@ -194,7 +194,7 @@ include __DIR__ . '/../includes/admin_header.php';
                             <a href="blog_form.php?id=<?= $row['id'] ?>" class="btn btn-edit">✏️ Sửa</a>
                             <a href="blog_list.php?delete=<?= $row['id'] ?>&<?= blog_qs(['p' => $page]) ?>"
                                class="btn btn-delete"
-                               onclick="return confirm('Xóa bài viết này?')">🗑️ Xóa</a>
+                               onclick="adminConfirm('Xóa bài viết này?', this.href, '🗑️'); return false;">🗑️ Xóa</a>
                         </div>
                     </td>
                 </tr>

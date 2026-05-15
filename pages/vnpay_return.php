@@ -19,12 +19,27 @@ if (!$validSig) {
     $stmt = $conn->prepare("
         UPDATE payments p
         JOIN bookings b ON p.booking_id = b.id
-        SET p.payment_status = 'paid',
-            b.status         = 'confirmed'
+        SET p.payment_status    = 'paid',
+            p.payment_verified  = 1,
+            p.verified_at       = NOW(),
+            b.status            = 'confirmed'
         WHERE b.order_code = ? AND p.payment_status = 'pending'
     ");
     $stmt->bind_param('s', $orderCode);
     $stmt->execute();
+
+    if ($stmt->affected_rows > 0) {
+        // Ghi booking_log
+        $log_stmt = $conn->prepare("
+            INSERT INTO booking_logs (booking_id, actor_type, actor_name, action, description)
+            SELECT b.id, 'SYSTEM', 'VNPay', 'PAYMENT_CONFIRMED',
+                   CONCAT('Thanh toán VNPay thành công. Số tiền: ', b.total_price, ' VNĐ')
+            FROM bookings b WHERE b.order_code = ? LIMIT 1
+        ");
+        $log_stmt->bind_param('s', $orderCode);
+        $log_stmt->execute();
+    }
+
     $success = true;
 } else {
     $vnpay_errors = [
@@ -44,12 +59,13 @@ if (!$validSig) {
              ?? 'Giao dịch thất bại (mã lỗi: ' . htmlspecialchars($responseCode) . ').';
 }
 
-// ── Lấy thông tin booking để hiển thị ───────────────────────────
+// ── Lấy thông tin booking để hiển thị và gửi email ──────────────
 $booking = null;
 if ($orderCode) {
     $s = $conn->prepare("
         SELECT b.order_code, b.check_in, b.check_out, b.total_price,
-               b.full_name, b.email, h.name AS hotel_name
+               b.full_name, b.email, r.room_name,
+               h.name AS hotel_name, h.partner_email AS hotel_email
         FROM bookings b
         JOIN rooms r ON b.room_id = r.id
         JOIN hotels h ON r.hotel_id = h.id
@@ -62,6 +78,7 @@ if ($orderCode) {
 }
 
 if ($success && $booking) {
+    // Email xác nhận đến khách hàng
     send_payment_email($booking['email'], $booking['full_name'], [
         'order_code'     => $booking['order_code'],
         'hotel_name'     => $booking['hotel_name'],
@@ -71,6 +88,20 @@ if ($success && $booking) {
         'amount'         => $booking['total_price'],
         'full_name'      => $booking['full_name'],
     ]);
+    // Email thông báo đến khách sạn
+    if (!empty($booking['hotel_email'])) {
+        send_hotel_new_booking_email($booking['hotel_email'], [
+            'order_code'     => $booking['order_code'],
+            'hotel_name'     => $booking['hotel_name'],
+            'full_name'      => $booking['full_name'],
+            'guest_email'    => $booking['email'],
+            'room_name'      => $booking['room_name'],
+            'checkin'        => $booking['check_in'],
+            'checkout'       => $booking['check_out'],
+            'payment_method' => 'VNPay',
+            'amount'         => $booking['total_price'],
+        ]);
+    }
 }
 
 require_once __DIR__ . '/../includes/header.php';

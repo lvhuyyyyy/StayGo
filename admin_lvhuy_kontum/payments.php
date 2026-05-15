@@ -1,9 +1,9 @@
 <?php
-include("../config/database.php");
+include "../config/database.php";
 
 $page_title    = 'Thanh toán';
 $page_subtitle = 'Lịch sử thanh toán';
-include("../includes/admin_header.php");
+include "../includes/admin_header.php";
 
 // ── Thông báo sau redirect ────────────────────────────────────────────────────
 $success_map = [
@@ -242,7 +242,7 @@ $method_map = [
 
 <!-- Summary cards -->
 <?php
-$total_paid    = $conn->query("SELECT COALESCE(SUM(b.total_price),0) as t FROM payments p LEFT JOIN bookings b ON p.booking_id=b.id WHERE p.payment_status='paid'")->fetch_assoc()['t'];
+$total_paid    = $conn->query("SELECT COALESCE(SUM(b.total_price),0) as t FROM payments p LEFT JOIN bookings b ON p.booking_id=b.id WHERE p.payment_status='paid' AND b.payment_flow='platform_collect'")->fetch_assoc()['t'];
 $count_paid    = $counts['paid']    ?? 0;
 $count_pending = $counts['pending'] ?? 0;
 $count_failed  = $counts['failed']  ?? 0;
@@ -413,7 +413,8 @@ $count_failed  = $counts['failed']  ?? 0;
 </form>
 
 <div class="section-card">
-    <table>
+  <div style="overflow-x:auto">
+    <table style="min-width:1000px">
         <thead>
             <tr>
                 <th>ID</th>
@@ -544,10 +545,10 @@ $count_failed  = $counts['failed']  ?? 0;
                     <?php if ($row['payment_status'] === 'pending'): ?>
                         <a href="update_payment.php?id=<?= $row['id'] ?>&status=paid"
                            class="btn btn-paid"
-                           onclick="return confirm('Xác nhận thanh toán đơn này?')">✅ Xác nhận</a>
+                           onclick="adminConfirm('Xác nhận thanh toán đơn này?', this.href, '✅'); return false;">✅ Xác nhận</a>
                         <a href="update_payment.php?id=<?= $row['id'] ?>&status=failed"
                            class="btn btn-reject"
-                           onclick="return confirm('Từ chối thanh toán đơn này?')">❌ Từ chối</a>
+                           onclick="adminConfirm('Từ chối thanh toán đơn này?', this.href, '❌'); return false;">❌ Từ chối</a>
                     <?php elseif ($row['payment_status'] === 'paid'): ?>
                         <span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;background:#f0fff4;color:#276749;border-radius:50%;font-size:16px;font-weight:700" title="Đã thanh toán">✅</span>
                     <?php elseif ($row['payment_status'] === 'failed'): ?>
@@ -563,6 +564,7 @@ $count_failed  = $counts['failed']  ?? 0;
         <?php endif; ?>
         </tbody>
     </table>
+  </div>
 </div>
 
-<?php include("../includes/admin_footer.php"); ?>
+<?php include "../includes/admin_footer.php"; ?>

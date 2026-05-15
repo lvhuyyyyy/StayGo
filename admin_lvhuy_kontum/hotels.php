@@ -1,10 +1,10 @@
 <?php
 require_once __DIR__ . '/../includes/security.php';
-include("../config/database.php");
+include "../config/database.php";
 
 $page_title    = 'Khách sạn';
 $page_subtitle = 'Danh sách khách sạn';
-include("../includes/admin_header.php");
+include "../includes/admin_header.php";
 
 // Thông báo
 $msg_map = [
@@ -32,7 +32,13 @@ $total_pages = max(1, (int)ceil($total_rows / $per_page));
 $page        = min($page, $total_pages);
 $offset      = ($page - 1) * $per_page;
 
-$result = $conn->query("SELECT * FROM hotels $where ORDER BY id ASC LIMIT $per_page OFFSET $offset");
+$result = $conn->query("
+    SELECT h.*,
+           COALESCE((SELECT MIN(r.price) FROM rooms r WHERE r.hotel_id = h.id), h.price) AS min_room_price
+    FROM hotels h
+    $where
+    ORDER BY h.id ASC LIMIT $per_page OFFSET $offset
+");
 
 function hotels_qs($overrides = []) {
     $base    = ['search' => $_GET['search'] ?? ''];
@@ -106,7 +112,7 @@ function hotels_qs($overrides = []) {
                 <td class="td-order"><?= $row['id'] ?></td>
                 <td class="td-name"><?= $hotel_name ?></td>
                 <td style="color:#718096;max-width:280px;font-size:12.5px"><?= $address ?></td>
-                <td class="td-price"><?= $row['price'] ? number_format($row['price'], 0, ',', '.') . 'đ' : '—' ?></td>
+                <td class="td-price"><?= $row['min_room_price'] ? number_format($row['min_room_price'], 0, ',', '.') . 'đ' : '—' ?></td>
                 <td>
                     <?php if ($rating > 0): ?>
                         <span style="font-weight:700;color:#1a202c"><?= number_format($rating, 1) ?></span>
@@ -134,7 +140,7 @@ function hotels_qs($overrides = []) {
                     <a href="manage_hotel.php?id=<?= $row['id'] ?>" class="btn btn-edit">✏️ Sửa</a>
                     <a href="manage_hotel.php?id=<?= $row['id'] ?>&action=delete"
                        class="btn btn-delete"
-                       onclick="return confirm('Xóa khách sạn «<?= addslashes($row['name']) ?>»?')">🗑️ Xóa</a>
+                       onclick="adminConfirm('Xóa khách sạn «<?= addslashes($row['name']) ?>»?', this.href, '🗑️'); return false;">🗑️ Xóa</a>
                 </td>
             </tr>
             <?php endwhile; ?>
@@ -173,4 +179,4 @@ function hotels_qs($overrides = []) {
 </div>
 <?php endif; ?>
 
-<?php include("../includes/admin_footer.php"); ?>
+<?php include "../includes/admin_footer.php"; ?>

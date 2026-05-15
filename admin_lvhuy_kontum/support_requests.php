@@ -1,5 +1,5 @@
 <?php
-include("../config/database.php");
+include "../config/database.php";
 
 // Xử lý cập nhật trạng thái + ghi chú admin
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['request_id'])) {
@@ -14,7 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['request_id'])) {
 
 $page_title    = 'Yêu cầu hỗ trợ';
 $page_subtitle = 'Quản lý yêu cầu hỗ trợ từ người dùng';
-include("../includes/admin_header.php");
+include "../includes/admin_header.php";
 
 $filter = $_GET['filter'] ?? 'pending';
 if (!in_array($filter, ['pending','processing','resolved'])) $filter = 'pending';
@@ -164,4 +164,4 @@ $status_cfg = [
 </div>
 <?php endif; ?>
 
-<?php include("../includes/admin_footer.php"); ?>
+<?php include "../includes/admin_footer.php"; ?>

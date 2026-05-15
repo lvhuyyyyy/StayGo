@@ -1,5 +1,5 @@
 ﻿<?php
-include("../config/database.php");
+include "../config/database.php";
 
 // Thống kê
 $total_users    = $conn->query("SELECT COUNT(*) as t FROM users")->fetch_assoc()['t'];
@@ -10,6 +10,30 @@ $total_revenue  = $conn->query("SELECT COALESCE(SUM(total_price),0) as t FROM bo
 $pending_count  = $conn->query("SELECT COUNT(*) as t FROM bookings WHERE status='pending'")->fetch_assoc()['t'];
 $refund_pending   = (int)$conn->query("SELECT COUNT(*) as c FROM bookings WHERE refund_requested = 1")->fetch_assoc()['c'];
 $support_pending  = (int)$conn->query("SELECT COUNT(*) as c FROM support_requests WHERE status='pending'")->fetch_assoc()['c'];
+
+// Platform finance metrics
+$platform_gmv     = (float)$conn->query("SELECT COALESCE(SUM(total_price),0) as t FROM bookings WHERE status IN ('confirmed','checked_in','completed')")->fetch_assoc()['t'];
+$platform_commission = (float)$conn->query("SELECT COALESCE(SUM(platform_revenue),0) as t FROM bookings WHERE status != 'cancelled'")->fetch_assoc()['t'];
+$payout_ready_amt = (float)$conn->query("SELECT COALESCE(SUM(hotel_payout),0) as t FROM bookings WHERE payout_status='READY'")->fetch_assoc()['t'];
+$payout_frozen_cnt= (int)$conn->query("SELECT COUNT(*) as t FROM bookings WHERE payout_status='FROZEN'")->fetch_assoc()['t'];
+
+// Guest vs User bookings
+$bookings_by_user  = (int)$conn->query("SELECT COUNT(*) as t FROM bookings WHERE user_id IS NOT NULL")->fetch_assoc()['t'];
+$bookings_by_guest = (int)$conn->query("SELECT COUNT(*) as t FROM bookings WHERE user_id IS NULL")->fetch_assoc()['t'];
+
+// Hotel partner alerts
+$hotels_pending_approval = (int)$conn->query("SELECT COUNT(*) as t FROM hotels WHERE partner_status='PENDING'")->fetch_assoc()['t'];
+
+// Dispute alerts
+$dispute_open   = 0;
+$dr = $conn->query("SELECT COUNT(*) as c FROM disputes WHERE status='OPEN'");
+if ($dr) $dispute_open = (int)$dr->fetch_assoc()['c'];
+
+// New users this month
+$new_users_month = (int)$conn->query("SELECT COUNT(*) as t FROM users WHERE MONTH(created_at)=MONTH(NOW()) AND YEAR(created_at)=YEAR(NOW()) AND role='user'")->fetch_assoc()['t'];
+
+// Bookings today
+$bookings_today = (int)$conn->query("SELECT COUNT(*) as t FROM bookings WHERE DATE(created_at)=CURDATE()")->fetch_assoc()['t'];
 
 // Doanh thu 6 tháng gần nhất
 $monthly = [];
@@ -72,7 +96,7 @@ foreach ($status_stats_raw as $ss) {
 // -- Dùng admin_header.php để dùng bộ sidebar với toàn bộ admin --
 $page_title    = 'Dashboard';
 $page_subtitle = 'Chào mừng trở lại · ' . date('d/m/Y');
-include("../includes/admin_header.php");
+include "../includes/admin_header.php";
 ?>
 
 <link rel="stylesheet" href="/assets/css/dashboard.css">
@@ -160,6 +184,99 @@ include("../includes/admin_header.php");
     </div>
 
 </div><!-- /.stat-grid -->
+
+<!-- Platform Finance Summary -->
+<div class="charts-row" style="margin-bottom:20px">
+    <div class="chart-card" style="flex:2">
+        <div class="chart-head"><h3>💰 Tài chính Platform</h3><a href="/admin_lvhuy_kontum/finance.php" style="font-size:13px;color:#1e73be;text-decoration:none">Xem chi tiết →</a></div>
+        <div class="chart-body" style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px;padding:4px 0">
+            <div style="background:#f0fff4;border-radius:12px;padding:16px">
+                <div style="font-size:11.5px;color:#276749;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">GMV (Đang hoạt động)</div>
+                <div style="font-size:22px;font-weight:800;color:#276749"><?= number_format($platform_gmv,0,',','.') ?>đ</div>
+                <div style="font-size:11.5px;color:#68d391;margin-top:3px">Tổng giá trị đơn xác nhận+hoàn thành</div>
+            </div>
+            <div style="background:#ebf8ff;border-radius:12px;padding:16px">
+                <div style="font-size:11.5px;color:#1e73be;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Hoa hồng đã thu</div>
+                <div style="font-size:22px;font-weight:800;color:#1e73be"><?= number_format($platform_commission,0,',','.') ?>đ</div>
+                <div style="font-size:11.5px;color:#63b3ed;margin-top:3px">Doanh thu platform (commission)</div>
+            </div>
+            <div style="background:#fffbeb;border-radius:12px;padding:16px">
+                <div style="font-size:11.5px;color:#b7791f;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Chờ giải ngân</div>
+                <div style="font-size:22px;font-weight:800;color:#b7791f"><?= number_format($payout_ready_amt,0,',','.') ?>đ</div>
+                <div style="font-size:11.5px;color:#f6ad55;margin-top:3px"><a href="/admin_lvhuy_kontum/payout.php" style="color:inherit;text-decoration:none">Giải ngân ngay →</a></div>
+            </div>
+            <div style="background:<?= $payout_frozen_cnt>0?'#fff5f5':'#f7fafc' ?>;border-radius:12px;padding:16px">
+                <div style="font-size:11.5px;color:<?= $payout_frozen_cnt>0?'#c53030':'#a0aec0' ?>;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Đóng băng (dispute)</div>
+                <div style="font-size:22px;font-weight:800;color:<?= $payout_frozen_cnt>0?'#c53030':'#718096' ?>"><?= $payout_frozen_cnt ?> đơn</div>
+                <div style="font-size:11.5px;color:<?= $payout_frozen_cnt>0?'#fc8181':'#a0aec0' ?>;margin-top:3px"><?= $payout_frozen_cnt>0?'Cần xử lý khiếu nại':'Không có tranh chấp' ?></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="chart-card" style="flex:1;min-width:240px">
+        <div class="chart-head"><h3>👥 Guest vs User</h3><span>Tỉ lệ đặt phòng</span></div>
+        <div class="chart-body" style="display:flex;flex-direction:column;gap:14px;justify-content:center">
+            <?php
+            $total_b = $bookings_by_user + $bookings_by_guest;
+            $user_pct  = $total_b > 0 ? round($bookings_by_user  / $total_b * 100) : 0;
+            $guest_pct = $total_b > 0 ? round($bookings_by_guest / $total_b * 100) : 0;
+            ?>
+            <div>
+                <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:600;margin-bottom:5px">
+                    <span style="color:#1e73be">User (đã đăng nhập)</span>
+                    <span><?= $bookings_by_user ?> (<?= $user_pct ?>%)</span>
+                </div>
+                <div style="height:10px;background:#e2e8f0;border-radius:5px;overflow:hidden">
+                    <div style="height:100%;width:<?= $user_pct ?>%;background:linear-gradient(90deg,#1e73be,#2d9cdb);border-radius:5px"></div>
+                </div>
+            </div>
+            <div>
+                <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:600;margin-bottom:5px">
+                    <span style="color:#744210">Guest (không đăng nhập)</span>
+                    <span><?= $bookings_by_guest ?> (<?= $guest_pct ?>%)</span>
+                </div>
+                <div style="height:10px;background:#e2e8f0;border-radius:5px;overflow:hidden">
+                    <div style="height:100%;width:<?= $guest_pct ?>%;background:linear-gradient(90deg,#744210,#b7791f);border-radius:5px"></div>
+                </div>
+            </div>
+            <div style="margin-top:6px;padding-top:14px;border-top:1px solid #f0f4f8">
+                <div style="display:flex;justify-content:space-between;font-size:13px">
+                    <span style="color:#718096">Đặt phòng hôm nay</span>
+                    <strong style="color:#1a202c"><?= $bookings_today ?></strong>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:13px;margin-top:6px">
+                    <span style="color:#718096">User mới tháng này</span>
+                    <strong style="color:#276749">+<?= $new_users_month ?></strong>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- System Alerts -->
+<?php
+$alerts = [];
+if ($pending_count > 0)             $alerts[] = ['🕐', "$pending_count đơn đặt phòng đang chờ xác nhận.", 'bookings.php?status=pending', '#b7791f', '#fffbeb'];
+if ($refund_pending > 0)            $alerts[] = ['💸', "$refund_pending yêu cầu hoàn tiền chưa xử lý.", 'refund_requests.php', '#c53030', '#fff5f5'];
+if ($dispute_open > 0)              $alerts[] = ['⚖️', "$dispute_open khiếu nại mới đang chờ xử lý.", 'disputes.php?status=OPEN', '#c53030', '#fff5f5'];
+if ($hotels_pending_approval > 0)   $alerts[] = ['🏨', "$hotels_pending_approval khách sạn đối tác đang chờ phê duyệt.", 'hotels.php?filter=PENDING', '#1e73be', '#ebf8ff'];
+if ($payout_frozen_cnt > 0)         $alerts[] = ['🔒', "$payout_frozen_cnt đơn giải ngân đang bị đóng băng do tranh chấp.", 'disputes.php', '#553c9a', '#faf5ff'];
+if ($support_pending > 0)           $alerts[] = ['📩', "$support_pending yêu cầu hỗ trợ chưa trả lời.", 'support_requests.php', '#276749', '#f0fff4'];
+?>
+<?php if (!empty($alerts)): ?>
+<div class="section-card" style="margin-bottom:20px">
+    <div class="section-head"><h3>🚨 Cảnh báo hệ thống</h3><span style="font-size:12.5px;color:#a0aec0"><?= count($alerts) ?> mục cần chú ý</span></div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
+        <?php foreach ($alerts as [$icon, $msg, $url, $color, $bg]): ?>
+        <a href="<?= $url ?>" style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:<?= $bg ?>;border-radius:10px;text-decoration:none;transition:opacity .15s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+            <span style="font-size:18px"><?= $icon ?></span>
+            <span style="font-size:13.5px;font-weight:600;color:<?= $color ?>"><?= $msg ?></span>
+            <span style="margin-left:auto;font-size:12px;color:<?= $color ?>;opacity:.7">Xem →</span>
+        </a>
+        <?php endforeach; ?>
+    </div>
+</div>
+<?php endif; ?>
 
 <!-- Biểu đồ: Hàng 1 — Line chart + Donut -->
 <div class="charts-row">
@@ -275,4 +392,4 @@ include("../includes/admin_header.php");
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 
-<?php include("../includes/admin_footer.php"); ?>
+<?php include "../includes/admin_footer.php"; ?>

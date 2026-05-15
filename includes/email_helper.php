@@ -58,13 +58,24 @@ function send_booking_email(string $to_email, string $to_name, array $d): bool {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// 3. Gửi thông báo thanh toán thành công
+// 3. Gửi thông báo thanh toán thành công (đến khách hàng)
 // ─────────────────────────────────────────────────────────────────
 function send_payment_email(string $to_email, string $to_name, array $d): bool {
     return _send_via_resend(
         $to_email,
         '[StayGo] Thanh toán thành công #' . $d['order_code'],
         _payment_template($d)
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// 4. Gửi thông báo đặt phòng mới đến KHÁCH SẠN (sau khi payment xác nhận)
+// ─────────────────────────────────────────────────────────────────
+function send_hotel_new_booking_email(string $hotel_email, array $d): bool {
+    return _send_via_resend(
+        $hotel_email,
+        '[StayGo] Đặt phòng mới đã xác nhận #' . $d['order_code'],
+        _hotel_booking_template($d)
     );
 }
 
@@ -168,4 +179,26 @@ function _payment_template(array $d): string {
   <p style="margin-top:20px;font-size:13px;color:#718096">Vui lòng đến khách sạn vào ngày <strong>' . date('d/m/Y', strtotime($d['checkin'])) . '</strong> và xuất trình mã đơn hàng tại lễ tân.</p>
 </div>';
     return _email_wrap('Thanh toán thành công - StayGo', $body);
+}
+
+function _hotel_booking_template(array $d): string {
+    $nights = max(1, (int)((strtotime($d['checkout']) - strtotime($d['checkin'])) / 86400));
+    $body = '
+<div class="header"><h1>🏨 StayGo</h1><p>Thông báo đặt phòng mới</p></div>
+<div class="content">
+  <p class="greeting">Xin chào <strong>' . htmlspecialchars($d['hotel_name']) . '</strong>,</p>
+  <p style="color:#4a5568;font-size:15px">Bạn có một đặt phòng mới đã được xác nhận thanh toán qua <strong>' . htmlspecialchars($d['payment_method']) . '</strong>. Vui lòng chuẩn bị đón khách.</p>
+  <div class="box">
+    <div class="row"><span class="label">Mã đơn hàng</span><span><strong>' . htmlspecialchars($d['order_code']) . '</strong></span></div>
+    <div class="row"><span class="label">Khách hàng</span><span>' . htmlspecialchars($d['full_name']) . '</span></div>
+    <div class="row"><span class="label">Email khách</span><span>' . htmlspecialchars($d['guest_email']) . '</span></div>
+    <div class="row"><span class="label">Loại phòng</span><span>' . htmlspecialchars($d['room_name']) . '</span></div>
+    <div class="row"><span class="label">Nhận phòng</span><span>' . date('d/m/Y', strtotime($d['checkin'])) . '</span></div>
+    <div class="row"><span class="label">Trả phòng</span><span>' . date('d/m/Y', strtotime($d['checkout'])) . ' (' . $nights . ' đêm)</span></div>
+    <div class="row"><span class="label">Doanh thu đơn</span><span>' . number_format($d['amount'], 0, ',', '.') . ' VNĐ</span></div>
+  </div>
+  <span class="badge badge-success">✓ Đã xác nhận thanh toán</span>
+  <p style="margin-top:16px;font-size:13px;color:#718096">Đăng nhập vào <a href="http://tour.local/hotel/dashboard.php" style="color:#1e73be">Hotel Portal</a> để xem chi tiết và quản lý đặt phòng.</p>
+</div>';
+    return _email_wrap('Đặt phòng mới - StayGo Partner', $body);
 }

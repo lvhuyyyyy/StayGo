@@ -1,4 +1,7 @@
 <?php
+// Múi giờ Việt Nam cho toàn bộ ứng dụng
+date_default_timezone_set('Asia/Ho_Chi_Minh');
+
 // Dùng biến môi trường nếu có (Railway), fallback về localhost (XAMPP)
 $host = getenv('MYSQLHOST')     ?: 'localhost';
 $user = getenv('MYSQLUSER')     ?: 'root';
@@ -13,6 +16,23 @@ if ($conn->connect_error) {
 }
 
 $conn->set_charset("utf8mb4");
+// Đồng bộ múi giờ MySQL với PHP (UTC+7)
+$conn->query("SET time_zone = '+07:00'");
+
+// Auto-hoàn thành: confirmed + check_out đã qua → completed, đồng thời trả lại số phòng
+// Guard: chỉ xử lý booking có ngày hợp lệ (check_out IS NOT NULL AND check_out > check_in)
+// để tránh side-effect từ dữ liệu bẩn
+$conn->query("
+    UPDATE bookings b
+    JOIN rooms r ON b.room_id = r.id
+    SET b.status = 'completed',
+        r.quantity = r.quantity + 1
+    WHERE b.status = 'confirmed'
+      AND b.check_out IS NOT NULL
+      AND b.check_in IS NOT NULL
+      AND b.check_out > b.check_in
+      AND b.check_out < CURDATE()
+");
 
 require_once __DIR__ . '/secrets.php';
 require_once __DIR__ . '/../includes/activity_helper.php';

@@ -65,24 +65,25 @@
 
         <?php
         $result = $conn->query("
-            SELECT h.*, l.name AS location_name
-            FROM hotels h JOIN locations l ON h.location_id = l.id
+            SELECT h.*, l.name AS location_name,
+                COALESCE(MIN(r.price), h.price) AS min_room_price,
+                COALESCE(MAX(r.price), h.price) AS max_room_price
+            FROM hotels h
+            JOIN locations l ON h.location_id = l.id
+            LEFT JOIN rooms r ON r.hotel_id = h.id
             WHERE h.is_weekend_deal = 1 AND h.is_active = 1
+            GROUP BY h.id
             ORDER BY h.rating DESC LIMIT 3
         ");
         ?>
 
         <div class="deal-grid">
         <?php while ($row = $result->fetch_assoc()):
-            $discount = 0;
-            if (!empty($row['old_price']) && $row['old_price'] > $row['price'])
-                $discount = round((($row['old_price'] - $row['price']) / $row['old_price']) * 100);
+            $min_price = $row['min_room_price'] ?? $row['price'];
+            $max_price = $row['max_room_price'] ?? $min_price;
         ?>
             <div class="deal-card">
                 <div class="img-wrap">
-                    <?php if ($discount > 0): ?>
-                        <span class="discount-badge">-<?= $discount ?>%</span>
-                    <?php endif; ?>
                     <span class="deal-badge">🔥 Deal</span>
                     <img src="/assets/images/<?= htmlspecialchars($row['image']) ?>" alt="" loading="lazy">
                 </div>
@@ -99,10 +100,10 @@
                 </div>
                 <div class="deal-price">
                     <div class="price-left">
-                        <?php if ($row['old_price'] > $row['price']): ?>
-                            <span class="old"><?= number_format($row['old_price'],0,',','.') ?>đ</span>
+                        <span class="new">Từ <?= number_format($min_price,0,',','.') ?>đ</span>
+                        <?php if ($max_price > $min_price): ?>
+                            <span style="font-size:12px;color:#718096"> – <?= number_format($max_price,0,',','.') ?>đ</span>
                         <?php endif; ?>
-                        <span class="new"><?= number_format($row['price'],0,',','.') ?>đ</span>
                         <span class="per">/đêm</span>
                     </div>
                     <div class="card-actions">
@@ -139,7 +140,8 @@
         <?php
         $res_feat = $conn->query("
             SELECT h.*, l.name AS location_name,
-                COALESCE(MIN(r.price), h.price) AS min_room_price
+                COALESCE(MIN(r.price), h.price) AS min_room_price,
+                COALESCE(MAX(r.price), h.price) AS max_room_price
             FROM hotels h JOIN locations l ON h.location_id = l.id
             LEFT JOIN rooms r ON r.hotel_id = h.id
             WHERE h.is_active = 1
@@ -149,8 +151,6 @@
 
         <div class="fh-grid">
         <?php while ($f = $res_feat->fetch_assoc()):
-            $discount_f = ($f['old_price'] > $f['min_room_price'])
-                ? round((1 - $f['min_room_price'] / $f['old_price']) * 100) : 0;
             $rating_lbl = match(true) {
                 $f['rating'] >= 9 => 'Tuyệt vời',
                 $f['rating'] >= 8 => 'Rất tốt',
@@ -164,9 +164,6 @@
                         alt="<?= htmlspecialchars($f['name']) ?>"
                         loading="lazy"
                         onerror="this.style.background='#e2e8f0'">
-                    <?php if ($discount_f > 0): ?>
-                        <span class="fh-discount">-<?= $discount_f ?>%</span>
-                    <?php endif; ?>
                 </div>
                 <div class="fh-body">
                     <div class="fh-location">📍 <?= htmlspecialchars($f['location_name']) ?></div>
@@ -180,10 +177,10 @@
                 </div>
                 <div class="fh-footer">
                     <div class="fh-price-wrap">
-                        <?php if ($f['old_price'] > $f['min_room_price']): ?>
-                            <span class="fh-old"><?= number_format($f['old_price'], 0, ',', '.') ?>đ</span>
+                        <span class="fh-price">Từ <?= number_format($f['min_room_price'], 0, ',', '.') ?>đ</span>
+                        <?php if (($f['max_room_price'] ?? 0) > $f['min_room_price']): ?>
+                            <span style="font-size:12px;color:#718096"> – <?= number_format($f['max_room_price'],0,',','.') ?>đ</span>
                         <?php endif; ?>
-                        <span class="fh-price"><?= number_format($f['min_room_price'], 0, ',', '.') ?>đ</span>
                         <span class="fh-per">/đêm</span>
                     </div>
                     <div class="card-actions">

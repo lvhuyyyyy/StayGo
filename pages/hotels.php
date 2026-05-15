@@ -40,7 +40,8 @@ $where  = ["h.is_active = 1"];
 $params = [$nights];
 $types  = "i";
 
-if ($keyword) {
+// Chỉ lọc keyword khi không có location_id (tránh AND thừa khi chọn từ dropdown)
+if ($keyword && !$location_id) {
     $where[] = "(h.name LIKE ? OR h.address LIKE ? OR h.description LIKE ?)";
     $kw = "%$keyword%";
     array_push($params, $kw, $kw, $kw);
@@ -86,6 +87,7 @@ $sql = "
     SELECT h.id, h.name, h.address, h.description, h.image,
         h.price, h.old_price, h.rating, h.review_count, h.is_weekend_deal,
         COALESCE(MIN(r.price), h.price) AS min_room_price,
+        COALESCE(MAX(r.price), h.price) AS max_room_price,
         COALESCE(MIN(r.price), h.price) * ? AS total_price
     FROM hotels h
     LEFT JOIN rooms r ON r.hotel_id = h.id
@@ -132,14 +134,27 @@ $rating_label = function($r) {
     </div>
 
     <!-- Tabs lọc nhanh theo địa điểm -->
+    <?php
+    // Xây dựng query string chung giữ lại checkin/checkout/sort (bỏ location_id để tab tự ghi đè)
+    $tab_base = http_build_query(array_filter([
+        'keyword'   => $keyword,
+        'checkin'   => $checkin,
+        'checkout'  => $checkout,
+        'min_price' => $min_price,
+        'max_price' => $max_price,
+        'rating'    => $rating,
+        'sort'      => $sort !== 'default' ? $sort : '',
+    ], fn($v) => $v !== '' && $v !== null));
+    $tab_base = $tab_base ? '&' . $tab_base : '';
+    ?>
     <div class="loc-tabs-wrap">
         <div class="loc-tabs">
-            <a href="/pages/hotels.php?sort=<?= urlencode($sort) ?>"
+            <a href="/pages/hotels.php?<?= ltrim($tab_base, '&') ?>"
             class="loc-tab <?= $location_id === 0 ? 'active' : '' ?>">
                 🗺️ Tất cả
             </a>
             <?php foreach ($all_locations as $loc): ?>
-                <a href="/pages/hotels.php?location_id=<?= $loc['id'] ?>&sort=<?= urlencode($sort) ?>"
+                <a href="/pages/hotels.php?location_id=<?= $loc['id'] . $tab_base ?>"
                 class="loc-tab <?= $location_id === (int)$loc['id'] ? 'active' : '' ?>">
                     <?= htmlspecialchars($loc['name']) ?>
                     <span class="loc-tab-count"><?= $loc['hotel_count'] ?></span>
@@ -168,12 +183,18 @@ $rating_label = function($r) {
             </div>
             <div class="sf-field">
                 <span class="sf-icon">📅</span>
-                <input type="date" name="checkin" id="sf_checkin" value="<?= htmlspecialchars($checkin) ?>" onchange="calcNights()">
+                <input type="date" name="checkin" id="sf_checkin"
+                    value="<?= htmlspecialchars($checkin) ?>"
+                    min="<?= date('Y-m-d') ?>"
+                    onchange="calcNights()">
                 <span class="sf-date-label">Nhận phòng</span>
             </div>
             <div class="sf-field">
                 <span class="sf-icon">📅</span>
-                <input type="date" name="checkout" id="sf_checkout" value="<?= htmlspecialchars($checkout) ?>" onchange="calcNights()">
+                <input type="date" name="checkout" id="sf_checkout"
+                    value="<?= htmlspecialchars($checkout) ?>"
+                    min="<?= $checkin ? date('Y-m-d', strtotime($checkin . ' +1 day')) : date('Y-m-d', strtotime('+1 day')) ?>"
+                    onchange="calcNights()">
                 <span class="sf-date-label">Trả phòng</span>
             </div>
             <div class="sf-nights-badge" id="nightsBadge" style="<?= ($checkin && $checkout) ? '' : 'display:none' ?>">
@@ -259,9 +280,8 @@ $rating_label = function($r) {
         <div class="hotels-grid">
         <?php foreach($hotels as $row):
             $min_p   = $row['min_room_price'] ?? $row['price'];
-            $old_p   = $row['old_price'] ?? 0;
+            $max_p   = $row['max_room_price'] ?? $min_p;
             $total_p = $row['total_price'] ?? ($min_p * $nights);
-            $discount = ($old_p > $min_p) ? round((1 - $min_p/$old_p)*100) : 0;
             [$rl_text, $rl_color] = $rating_label($row['rating']);
             $detail_url = "hotel_detail.php?id={$row['id']}" . ($checkin?"&checkin=$checkin":"") . ($checkout?"&checkout=$checkout":"");
         ?>
@@ -272,9 +292,6 @@ $rating_label = function($r) {
                     alt="<?= htmlspecialchars($row['name']) ?>"
                     loading="lazy"
                     onerror="this.src='../assets/images/placeholder.jpg';this.onerror=null;">
-                <?php if($discount > 0): ?>
-                    <span class="discount-badge">-<?= $discount ?>%</span>
-                <?php endif; ?>
                 <?php if($row['is_weekend_deal'] ?? 0): ?>
                     <span class="deal-badge">🔥 Deal</span>
                 <?php endif; ?>
@@ -303,13 +320,9 @@ $rating_label = function($r) {
             </div>
 
             <div class="hotel-price">
-                <?php if($old_p > $min_p): ?>
-                    <p class="old-price"><?= number_format($old_p, 0, ',', '.') ?>đ</p>
-                <?php endif; ?>
-                <?php if($discount > 0): ?>
-                    <span class="save-badge">Tiết kiệm <?= $discount ?>%</span>
-                <?php endif; ?>
-                <p class="price"><?= number_format($min_p, 0, ',', '.') ?>đ<span class="per-night">/đêm</span></p>
+                <p class="price">
+                    Từ <?= number_format($min_p, 0, ',', '.') ?>đ<?php if ($max_p > $min_p): ?> – <?= number_format($max_p, 0, ',', '.') ?>đ<?php endif; ?><span class="per-night">/đêm</span>
+                </p>
                 <?php if($nights > 1): ?>
                     <p class="total-price"><?= $nights ?> đêm: <strong><?= number_format($total_p, 0, ',', '.') ?>đ</strong></p>
                 <?php endif; ?>

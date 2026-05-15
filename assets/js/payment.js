@@ -64,7 +64,20 @@ function calcPrice() {
     var subtotal = nights * price;
     var discount = (typeof HAS_DISCOUNT !== 'undefined' && HAS_DISCOUNT && DISCOUNT_PCT > 0)
                    ? Math.round(subtotal * DISCOUNT_PCT / 100) : 0;
-    var total    = subtotal - discount;
+    var baseTotal = subtotal - discount;
+
+    // Expose for applyVoucher()
+    window._baseTotalForVoucher = baseTotal;
+
+    // Voucher discount
+    var voucherDisc = 0;
+    if (window.VOUCHER_VALUE > 0 && baseTotal >= (window.VOUCHER_MIN_ORDER || 0)) {
+        voucherDisc = (window.VOUCHER_TYPE === 'percent')
+            ? Math.round(baseTotal * window.VOUCHER_VALUE / 100)
+            : Math.min(window.VOUCHER_VALUE, baseTotal);
+    }
+    var totalFinal = baseTotal - voucherDisc;
+
     document.getElementById('nightCount').textContent    = nights + ' đêm';
     document.getElementById('pricePerNight').textContent = price.toLocaleString('vi-VN') + ' VNĐ';
     if (typeof HAS_DISCOUNT !== 'undefined' && HAS_DISCOUNT) {
@@ -73,8 +86,50 @@ function calcPrice() {
         if (elO) elO.textContent = subtotal.toLocaleString('vi-VN') + ' VNĐ';
         if (elD) elD.textContent = '-' + discount.toLocaleString('vi-VN') + ' VNĐ';
     }
-    document.getElementById('totalPrice').textContent = total.toLocaleString('vi-VN') + ' VNĐ';
+
+    // Voucher discount row
+    var vRow = document.getElementById('voucherDiscountRow');
+    var vAmt = document.getElementById('voucherDiscountAmt');
+    if (vRow && vAmt) {
+        if (voucherDisc > 0) {
+            vAmt.textContent = '-' + voucherDisc.toLocaleString('vi-VN') + ' VNĐ';
+            vRow.style.display = 'flex';
+        } else {
+            vRow.style.display = 'none';
+        }
+    }
+
+    document.getElementById('totalPrice').textContent = totalFinal.toLocaleString('vi-VN') + ' VNĐ';
     box.style.display = 'block';
+
+    // Show voucher input once price is calculable
+    var vWrap = document.getElementById('voucherWrap');
+    if (vWrap) vWrap.style.display = 'block';
+
+    // ── VietQR dynamic update ─────────────────────────────────────
+    window._lastTotal = totalFinal;
+    updateVietQR(totalFinal);
+}
+
+function updateVietQR(totalFinal) {
+    var orderCode = (document.querySelector('[name="order_code"]') || {}).value || '';
+    var fullName  = (document.querySelector('[name="full_name"]') || {}).value || '';
+    var addInfo   = orderCode + (fullName ? ' ' + fullName : '');
+
+    var img = document.getElementById('vietqrImg');
+    if (img && totalFinal > 0) {
+        img.src = 'https://img.vietqr.io/image/ICB-107645394761-compact2.png'
+            + '?amount='      + Math.round(totalFinal)
+            + '&addInfo='     + encodeURIComponent(addInfo)
+            + '&accountName=' + encodeURIComponent('LE VAN HUY');
+    }
+
+    var bankAmtRow = document.getElementById('bankAmountRow');
+    var bankAmtVal = document.getElementById('bankAmountDisplay');
+    var bankNote   = document.getElementById('bankNoteText');
+    if (bankAmtRow) bankAmtRow.style.display = totalFinal > 0 ? 'flex' : 'none';
+    if (bankAmtVal) bankAmtVal.textContent = totalFinal > 0 ? totalFinal.toLocaleString('vi-VN') + ' VNĐ' : '—';
+    if (bankNote)   bankNote.innerHTML = '<strong>' + (orderCode || 'ORD...') + (fullName ? ' ' + fullName : '') + '</strong>';
 }
 
 function selectMethod(radio) {
@@ -201,6 +256,15 @@ document.addEventListener('DOMContentLoaded', function() {
     var co = document.getElementById('checkout');
     if (ci) ci.addEventListener('change', calcPrice);
     if (co) co.addEventListener('change', calcPrice);
+
+    // Re-render QR note when customer types their name
+    var nameInput = document.querySelector('[name="full_name"]');
+    if (nameInput) {
+        nameInput.addEventListener('input', function() {
+            if (window._lastTotal > 0) updateVietQR(window._lastTotal);
+        });
+    }
+
     document.querySelectorAll('input[name="payment_method"]').forEach(function(r) {
         r.addEventListener('change', checkCardSubmitState);
     });

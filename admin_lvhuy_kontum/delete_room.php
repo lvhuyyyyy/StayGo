@@ -1,6 +1,6 @@
 <?php
 if (session_status() === PHP_SESSION_NONE) session_start();
-include("../config/database.php");
+include "../config/database.php";
 
 
 
@@ -38,7 +38,11 @@ if (!empty($room['image'])) {
 $conn->query("DELETE FROM rooms WHERE id = $id");
 $deleted = $conn->affected_rows;
 $conn->query("SET FOREIGN_KEY_CHECKS = 1");
-if ($deleted > 0) log_activity($conn, 'delete_room', 'room', $id, "Xóa phòng: {$room['room_name']}");
+if ($deleted > 0) {
+    log_activity($conn, 'delete_room', 'room', $id, "Xóa phòng: {$room['room_name']}");
+    $hotel_id = (int)$room['hotel_id'];
+    $conn->query("UPDATE hotels SET price = COALESCE((SELECT MIN(price) FROM rooms WHERE hotel_id = $hotel_id), 0) WHERE id = $hotel_id");
+}
 
 if ($deleted > 0) {
     header('Location: /admin_lvhuy_kontum/rooms.php?success=deleted');

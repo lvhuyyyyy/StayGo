@@ -8,6 +8,7 @@
  * @param int    $target_id
  * @param string $detail   Mô tả chi tiết (tuỳ chọn)
  */
+if (!function_exists('log_activity')):
 function log_activity($conn, string $action, string $target = '', int $target_id = 0, string $detail = ''): void {
     if (session_status() === PHP_SESSION_NONE) return;
 
@@ -21,3 +22,4 @@ function log_activity($conn, string $action, string $target = '', int $target_id
     $conn->query("INSERT INTO activity_log (admin_id, admin_name, action, target, target_id, detail, ip)
         VALUES ($admin_id, '$admin_name', '$action_esc', '$target_esc', $target_id, '$detail_esc', '$ip')");
 }
+endif;

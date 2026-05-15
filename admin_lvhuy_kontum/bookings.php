@@ -1,5 +1,5 @@
 <?php
-include("../config/database.php");
+include "../config/database.php";
 
 // --- THÊM MỚI: EXPORT CSV ---
 // Gọi: bookings.php?export=csv  hoặc  bookings.php?export=csv&status=pending&search=xyz
@@ -73,7 +73,7 @@ if (isset($_GET['export']) && $_GET['export'] === 'csv') {
 $page_title    = 'Đặt phòng';
 $page_subtitle = 'Quản lý danh sách đặt phòng';
 
-include("../includes/admin_header.php");
+include "../includes/admin_header.php";
 
 // Thông báo sau redirect
 $success_map = [
@@ -109,7 +109,9 @@ $result = $conn->query("
     SELECT b.*,
         u.full_name AS user_name,
         r.room_name,
-        h.name AS hotel_name
+        h.name AS hotel_name,
+        (SELECT payment_status  FROM payments WHERE booking_id = b.id ORDER BY id DESC LIMIT 1) AS p_status,
+        (SELECT payment_verified FROM payments WHERE booking_id = b.id ORDER BY id DESC LIMIT 1) AS p_verified
     FROM bookings b
     LEFT JOIN users u  ON b.user_id  = u.id
     LEFT JOIN rooms r  ON b.room_id  = r.id
@@ -129,6 +131,9 @@ $status_map = [
     'done'      => ['Hoàn thành',   '#276749', '#f0fff4'],
     'approved'  => ['Đã xác nhận',  '#1e73be', '#ebf8ff'],
 ];
+
+// Phương thức thanh toán tại khách sạn — cần admin xác nhận thủ công
+$HOTEL_PAY_METHODS = ['hotel', 'Thanh toán tại khách sạn'];
 
 // Đếm từng trạng thái cho tab filter
 $counts = [];
@@ -216,21 +221,29 @@ $export_qs = http_build_query(array_filter([
                 <th>Loại phòng</th>
                 <th>Tổng tiền</th>
                 <th>Ngày đặt</th>
-                <th>Trạng thái</th>
+                <th>Booking</th>
+                <th>Thanh toán</th>
                 <th>Hành động</th>
             </tr>
         </thead>
         <tbody>
         <?php if($result->num_rows === 0): ?>
             <tr>
-                <td colspan="8" style="text-align:center;color:#a0aec0;padding:40px">
+                <td colspan="9" style="text-align:center;color:#a0aec0;padding:40px">
                     <?= $search ? "Không tìm thấy đơn nào với \"<strong>" . htmlspecialchars($search) . "</strong>\"" : 'Chưa có đặt phòng nào' ?>
                 </td>
             </tr>
         <?php else: ?>
             <?php while($row = $result->fetch_assoc()):
                 if(empty($row['status'])) $row['status'] = 'pending';
-                $sm = $status_map[$row['status']] ?? ['Không rõ', '#718096', '#f7fafc'];
+                $is_hotel_pay  = in_array($row['payment_method'] ?? '', $HOTEL_PAY_METHODS);
+                $is_online_pay = !$is_hotel_pay;
+                // pending + online = "Chờ thanh toán" (hệ thống tự xác nhận khi callback về)
+                if ($row['status'] === 'pending' && $is_online_pay) {
+                    $sm = ['⏳ Chờ thanh toán', '#6b46c1', '#faf5ff'];
+                } else {
+                    $sm = $status_map[$row['status']] ?? ['Không rõ', '#718096', '#f7fafc'];
+                }
             ?>
             <tr>
                 <td class="td-order"><?= htmlspecialchars($row['order_code'] ?? '#' . $row['id']) ?></td>
@@ -244,6 +257,26 @@ $export_qs = http_build_query(array_filter([
                         <?= $sm[0] ?>
                     </span>
                 </td>
+                <td>
+                <?php
+                $pf = $row['payment_flow'] ?? 'platform_collect';
+                if ($pf === 'hotel_collect') {
+                    echo '<span class="status-badge" style="color:#718096;background:#f7fafc">🏨 Tại quầy</span>';
+                } else {
+                    $ps     = $row['p_status'] ?? null;
+                    $pv     = (int)($row['p_verified'] ?? 0);
+                    $ps_map = [
+                        'paid'     => ['💳 Đã thanh toán', '#276749', '#f0fff4'],
+                        'pending'  => ['⏳ Chờ thanh toán', '#b7791f', '#fffbeb'],
+                        'failed'   => ['✗ Thất bại',       '#c53030', '#fff5f5'],
+                        'refunded' => ['↩ Đã hoàn tiền',   '#1e73be', '#ebf8ff'],
+                    ];
+                    [$lbl, $clr, $bg] = $ps_map[$ps] ?? ['— Chưa có', '#a0aec0', '#f7fafc'];
+                    echo "<span class=\"status-badge\" style=\"color:$clr;background:$bg\">$lbl</span>";
+                    if ($ps === 'paid' && $pv) echo ' <span style="font-size:10px;color:#276749" title="Xác minh tự động">✓</span>';
+                }
+                ?>
+                </td>
                 <td style="white-space:nowrap">
                     <a href="booking_detail.php?id=<?= $row['id'] ?>"
                        class="btn btn-edit" style="background:#f0f9ff;color:#0369a1;border-color:#bae6fd">👁️ Chi tiết</a>
@@ -254,19 +287,23 @@ $export_qs = http_build_query(array_filter([
                     $is_done      = in_array($s, ['cancelled', 'cancel', 'canceled', 'completed', 'done']);
                     ?>
                     <?php if($is_pending): ?>
+                        <?php if($is_hotel_pay): ?>
                         <a href="update_booking.php?id=<?= $row['id'] ?>&status=confirmed"
                         class="btn btn-confirm"
-                        onclick="return confirm('Xác nhận đơn này?')">✅ Xác nhận</a>
+                        onclick="adminConfirm('Xác nhận còn phòng cho đơn này?', this.href, '✅'); return false;">✅ Xác nhận</a>
+                        <?php else: ?>
+                        <span style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;background:#faf5ff;color:#6b46c1;border-radius:7px;font-size:11.5px;font-weight:600;border:1px solid #d6bcfa">⏳ Chờ TT online</span>
+                        <?php endif; ?>
                         <a href="update_booking.php?id=<?= $row['id'] ?>&status=cancelled"
                         class="btn btn-cancel"
-                        onclick="return confirm('Huỷ đơn này?')">❌ Huỷ</a>
+                        onclick="adminConfirm('Huỷ đơn này?', this.href, '❌'); return false;">❌ Huỷ</a>
                     <?php elseif($is_confirmed): ?>
                         <a href="update_booking.php?id=<?= $row['id'] ?>&status=completed"
                         class="btn btn-edit"
-                        onclick="return confirm('Đánh dấu hoàn thành?')">🎉 Hoàn thành</a>
+                        onclick="adminConfirm('Đánh dấu hoàn thành?', this.href, '🎉'); return false;">🎉 Hoàn thành</a>
                         <a href="update_booking.php?id=<?= $row['id'] ?>&status=cancelled"
                         class="btn btn-cancel"
-                        onclick="return confirm('Huỷ đơn này?')">❌ Huỷ</a>
+                        onclick="adminConfirm('Huỷ đơn này?', this.href, '❌'); return false;">❌ Huỷ</a>
                     <?php else: ?>
                         <?php if(in_array($row['status'], ['completed', 'done'])): ?>
                             <span style="display:inline-flex;align-items:center;gap:5px;padding:6px 12px;background:#f0fff4;color:#276749;border-radius:8px;font-size:12.5px;font-weight:600">
@@ -288,4 +325,4 @@ $export_qs = http_build_query(array_filter([
     </table>
 </div>
 
-<?php include("../includes/admin_footer.php"); ?>
+<?php include "../includes/admin_footer.php"; ?>

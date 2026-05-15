@@ -1,5 +1,5 @@
 <?php
-include("../config/database.php");
+include "../config/database.php";
 
 // ---- Xử lý xóa ----
 if (isset($_GET['delete'])) {
@@ -80,7 +80,7 @@ $rows     = $conn->query("SELECT * FROM vouchers $where ORDER BY created_at DESC
 
 $page_title    = 'Voucher';
 $page_subtitle = 'Quản lý mã giảm giá';
-include("../includes/admin_header.php");
+include "../includes/admin_header.php";
 
 $msgs = ['added'=>['✅ Đã tạo voucher thành công!','#276749','#f0fff4'],'updated'=>['✅ Đã cập nhật voucher!','#276749','#f0fff4'],'deleted'=>['🗑️ Đã xóa voucher!','#c53030','#fff5f5']];
 if (isset($_GET['msg']) && isset($msgs[$_GET['msg']])):
@@ -245,7 +245,7 @@ endif;
                     <a href="vouchers.php?edit=<?= $row['id'] ?>" class="btn btn-edit">✏️ Sửa</a>
                     <a href="vouchers.php?delete=<?= $row['id'] ?>"
                        class="btn btn-delete"
-                       onclick="return confirm('Xóa voucher <?= htmlspecialchars(addslashes($row['code'])) ?>?')">🗑️</a>
+                       onclick="adminConfirm('Xóa voucher <?= htmlspecialchars(addslashes($row['code'])) ?>?', this.href, '🗑️'); return false;">🗑️</a>
                 </td>
             </tr>
         <?php endwhile; ?>
@@ -272,4 +272,4 @@ endif;
 </div>
 <?php endif; ?>
 
-<?php include("../includes/admin_footer.php"); ?>
+<?php include "../includes/admin_footer.php"; ?>

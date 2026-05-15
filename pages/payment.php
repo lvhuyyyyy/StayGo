@@ -54,17 +54,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $original_price  = 0;
     $discount_amount = 0;
 
+    // ── Validate ngày: check_out phải SAU check_in, cả hai phải hợp lệ ──
+    $ts_in  = strtotime($checkin);
+    $ts_out = strtotime($checkout);
+    if (!$ts_in || !$ts_out) {
+        $error_msg = 'Ngày nhận phòng hoặc ngày trả phòng không hợp lệ.';
+    } elseif ($ts_out <= $ts_in) {
+        $error_msg = 'Ngày trả phòng phải sau ngày nhận phòng.';
+    } elseif ($ts_in < strtotime('today')) {
+        $error_msg = 'Ngày nhận phòng không được là ngày trong quá khứ.';
+    }
+
+    if (!$room_id || !$payment_method) {
+        $error_msg = $error_msg ?? 'Vui lòng chọn phòng và phương thức thanh toán.';
+    }
+
     // -- Lấy tên phòng để lưu vào payments --
     $room_name_val = '';
+    if (!isset($error_msg)) {
     foreach ($rooms_data as $rm) {
         if ($rm['id'] == $room_id) {
-            $nights         = (strtotime($checkout) - strtotime($checkin)) / 86400;
-            $nights         = max(1, intval($nights));
+            $nights         = intval(($ts_out - $ts_in) / 86400);
+            $nights         = max(1, $nights);
             $original_price = $rm['price'] * $nights;
             $room_name_val  = $rm['room_name'];
             break;
         }
     }
+    }
+
+    if (!isset($error_msg)) {
 
     if ($has_new_discount && $new_user_discount > 0) {
         $discount_amount = $original_price * $new_user_discount / 100;
@@ -96,24 +115,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    $stmt = $conn->prepare("INSERT INTO bookings (order_code, user_id, room_id, full_name, email, phone, check_in, check_out, total_price, payment_method, note, status, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())");
-    $user_id = $_SESSION['user_id'] ?? null;
-    $stmt->bind_param("siisssssdss", $order_code, $user_id, $room_id, $full_name, $email, $phone, $checkin, $checkout, $total_price, $payment_method, $note);
+    // Chống overbooking: lock room row, kiểm tra còn phòng trước khi insert
+    $conn->begin_transaction();
+    $lock_s = $conn->prepare("SELECT r.quantity, h.commission_rate FROM rooms r JOIN hotels h ON r.hotel_id = h.id WHERE r.id = ? FOR UPDATE");
+    $lock_s->bind_param("i", $room_id);
+    $lock_s->execute();
+    $room_lock = $lock_s->get_result()->fetch_assoc();
 
-    // Nếu trùng order_code (double-submit), tạo mã mới tự động
-    try {
-        $stmt->execute();
-    } catch (mysqli_sql_exception $e) {
-        if ($conn->errno == 1062) {
-            $order_code = 'ORD' . time() . rand(1000, 9999);
-            $stmt->bind_param("siisssssdss", $order_code, $user_id, $room_id, $full_name, $email, $phone, $checkin, $checkout, $total_price, $payment_method, $note);
+    if (!$room_lock || (int)$room_lock['quantity'] < 1) {
+        $conn->rollback();
+        $error_msg = 'Phòng này vừa hết chỗ. Vui lòng chọn phòng khác hoặc thay đổi ngày lưu trú.';
+    } else {
+        // Xác định luồng thu tiền
+        $payment_flow = ($payment_method === 'hotel') ? 'hotel_collect' : 'platform_collect';
+
+        $stmt = $conn->prepare("INSERT INTO bookings (order_code, user_id, room_id, full_name, email, phone, check_in, check_out, total_price, payment_method, payment_flow, note, status, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())");
+        $user_id = $_SESSION['user_id'] ?? null;
+        $stmt->bind_param("siisssssdssss", $order_code, $user_id, $room_id, $full_name, $email, $phone, $checkin, $checkout, $total_price, $payment_method, $payment_flow, $note);
+        try {
             $stmt->execute();
-        } else {
-            throw $e; // lỗi khác thì vẫn throw
+        } catch (mysqli_sql_exception $e) {
+            if ($conn->errno == 1062) {
+                $order_code = 'ORD' . time() . rand(1000, 9999);
+                $stmt->bind_param("siisssssdssss", $order_code, $user_id, $room_id, $full_name, $email, $phone, $checkin, $checkout, $total_price, $payment_method, $payment_flow, $note);
+                $stmt->execute();
+            } else {
+                $conn->rollback();
+                throw $e;
+            }
         }
-    }
-    $booking_id = $conn->insert_id;
+        $booking_id = $conn->insert_id;
+
+        // Snapshot commission_rate: hotel_collect = 0 (platform không thu)
+        $snap_rate = ($payment_flow === 'hotel_collect') ? 0.0 : (float)$room_lock['commission_rate'];
+        $conn->query("UPDATE bookings SET commission_rate = $snap_rate WHERE id = $booking_id");
+
+        // Trừ 1 phòng (AND quantity > 0 đảm bảo không âm khi concurrent)
+        $conn->query("UPDATE rooms SET quantity = quantity - 1 WHERE id = $room_id AND quantity > 0");
+        $conn->commit();
 
     $method_label_map = [
         'bank'  => 'Chuyển khoản ngân hàng',
@@ -124,21 +164,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ];
     $payment_method_label = $method_label_map[$payment_method] ?? $payment_method;
 
-    // INSERT payments thêm hotel_id, hotel_name, room_name
-    $stmt2 = $conn->prepare("INSERT INTO payments (booking_id, hotel_id, hotel_name, room_name, payment_method, amount, full_name, email, phone, payment_status, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())");
-    $stmt2->bind_param("iisssdsss",
-        $booking_id,
-        $hotel_id,
-        $hotel['name'],
-        $room_name_val,
-        $payment_method_label,
-        $total_price,
-        $full_name,
-        $email,
-        $phone
-    );
-    $stmt2->execute();
+    // INSERT payments — chỉ với platform_collect (hotel_collect không qua payment gateway)
+    if ($payment_flow === 'platform_collect') {
+        $stmt2 = $conn->prepare("INSERT INTO payments (booking_id, hotel_id, hotel_name, room_name, payment_method, amount, full_name, email, phone, payment_status, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())");
+        $stmt2->bind_param("iisssdsss",
+            $booking_id,
+            $hotel_id,
+            $hotel['name'],
+            $room_name_val,
+            $payment_method_label,
+            $total_price,
+            $full_name,
+            $email,
+            $phone
+        );
+        $stmt2->execute();
+    }
 
     if ($has_new_discount) {
         $_SESSION['new_user_discount_used'] = true;
@@ -192,6 +234,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'checkin'         => $checkin,
         'checkout'        => $checkout,
     ];
+    } // end else (room available)
+    } // end if (!isset($error_msg)) — date/room/method validation passed
 }
 $is_hotel_pay = ($qr_data && $qr_data['method'] === 'hotel');
 
@@ -252,7 +296,7 @@ require_once __DIR__ . '/../includes/header.php';
                 </div>
                 <div class="field-wrap">
                     <label>Mã đơn hàng</label>
-                    <input type="text" name="order_code" value="ORD<?php echo time() . substr(microtime(true)*1000, -3) . rand(10,99); ?>" readonly class="readonly-field">
+                    <input type="text" name="order_code" value="ORD<?php echo time() . substr((string)(int)(microtime(true)*1000), -3) . rand(10,99); ?>" readonly class="readonly-field">
                 </div>
             </div>
             <div class="field-wrap" style="margin-top:0">
@@ -395,22 +439,29 @@ require_once __DIR__ . '/../includes/header.php';
 
             <!-- PANEL CHI TIẾT TỪNG PHƯƠNG THỨC -->
 
-            <!-- PANEL: Chuyển khoản ngân hàng -->
+            <!-- PANEL: Chuyển khoản ngân hàng (VietQR động) -->
+            <?php
+            $vqr_bank    = BANK_ID;           // ICB
+            $vqr_stk     = BANK_ACCOUNT_NO;   // 107645394761
+            $vqr_name    = BANK_ACCOUNT_NAME; // LE VAN HUY
+            $vqr_bank_name = BANK_NAME;       // VietinBank
+            $vqr_branch  = BANK_BRANCH;       // Kon Tum
+            ?>
             <div id="detail_bank" class="method-detail-panel" style="display:none">
                 <div class="panel-header bank-panel-header">
                     <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0012 9.75c-2.551 0-5.056.2-7.5.582V21M3 21h18"/></svg>
-                    Thông tin chuyển khoản Vietinbank
+                    Chuyển khoản ngân hàng · <?= htmlspecialchars($vqr_bank_name) ?>
                 </div>
                 <div class="bank-detail-layout">
                     <div class="bank-info-col">
                         <div class="bank-info-row">
                             <span class="bank-info-label">Ngân hàng</span>
-                            <span class="bank-info-val bank-name-tag">VietinBank</span>
+                            <span class="bank-info-val bank-name-tag"><?= htmlspecialchars($vqr_bank_name) ?></span>
                         </div>
                         <div class="bank-info-row">
                             <span class="bank-info-label">Số tài khoản</span>
                             <div class="bank-stk-wrap">
-                                <span class="bank-stk" id="stkText">107645394761</span>
+                                <span class="bank-stk" id="stkText"><?= htmlspecialchars($vqr_stk) ?></span>
                                 <button type="button" class="btn-copy" onclick="copySTK()">
                                     <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75"/></svg>
                                     <span id="copyBtnText">Sao chép</span>
@@ -419,27 +470,35 @@ require_once __DIR__ . '/../includes/header.php';
                         </div>
                         <div class="bank-info-row">
                             <span class="bank-info-label">Chủ tài khoản</span>
-                            <span class="bank-info-val">LE VAN HUY</span>
+                            <span class="bank-info-val"><?= htmlspecialchars($vqr_name) ?></span>
                         </div>
                         <div class="bank-info-row">
                             <span class="bank-info-label">Chi nhánh</span>
-                            <span class="bank-info-val">Kon Tum</span>
+                            <span class="bank-info-val"><?= htmlspecialchars($vqr_branch) ?></span>
+                        </div>
+                        <div class="bank-info-row" id="bankAmountRow" style="display:none">
+                            <span class="bank-info-label">Số tiền</span>
+                            <span class="bank-info-val" id="bankAmountDisplay" style="color:#276749;font-weight:800">—</span>
                         </div>
                         <div class="bank-transfer-note">
                             <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#744210" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z"/></svg>
-                            Nội dung chuyển khoản: <strong>ORD[mã đơn hàng] + Họ tên</strong><br>
-                            Ví dụ: <code>ORD1719999999 Nguyen Van A</code>
+                            Nội dung CK bắt buộc ghi đúng mã đơn:<br>
+                            <strong id="bankNoteText">ORD... + Họ tên</strong><br>
+                            <small style="color:#a0aec0">Hệ thống tự xác nhận sau khi nhận được tiền</small>
                         </div>
                     </div>
                     <div class="bank-qr-col">
                         <div class="qr-placeholder-wrap">
                             <div class="qr-placeholder-box" id="bankQrBox">
-                                <img src="/assets/images/qr_vietinbank.jpg"
-                                    alt="qr_vietinbank"
-                                    style="width:160px;height:160px;object-fit:contain;">
+                                <!-- VietQR động — cập nhật khi chọn phòng + ngày -->
+                                <img id="vietqrImg"
+                                    src="https://img.vietqr.io/image/<?= $vqr_bank ?>-<?= $vqr_stk ?>-compact2.png?addInfo=StayGo&accountName=<?= urlencode($vqr_name) ?>"
+                                    alt="VietQR"
+                                    style="width:180px;height:180px;object-fit:contain;border-radius:8px">
                             </div>
                         </div>
-                        <p class="qr-scan-hint">Quét mã bằng app ngân hàng</p>
+                        <p class="qr-scan-hint">Quét bằng app ngân hàng bất kỳ</p>
+                        <p style="font-size:11px;color:#a0aec0;text-align:center;margin-top:2px">QR cập nhật tự động theo số tiền</p>
                     </div>
                 </div>
             </div>
@@ -768,7 +827,11 @@ $expire_secs = 15 * 60;
         </div>
         <div class="hotel-confirm-actions">
             <a href="hotels.php" class="btn-hc-primary">← Về trang khách sạn</a>
+            <?php if (isset($_SESSION['user_id'])): ?>
             <a href="my_bookings.php" class="btn-hc-secondary">Xem đơn hàng của tôi</a>
+            <?php else: ?>
+            <a href="booking_lookup.php" class="btn-hc-secondary">Tra cứu đơn hàng</a>
+            <?php endif; ?>
         </div>
     </div>
 </div>

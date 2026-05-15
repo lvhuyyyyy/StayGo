@@ -1,6 +1,6 @@
 <?php
 session_start();
-include("../config/database.php");
+include "../config/database.php";
 
 if (isset($_SESSION['user_id']) && $_SESSION['role'] === 'admin') {
     header("Location: /admin_lvhuy_kontum/dashboard.php");

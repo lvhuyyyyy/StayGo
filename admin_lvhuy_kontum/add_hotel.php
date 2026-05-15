@@ -1,6 +1,6 @@
 ﻿=<?php
 require_once __DIR__ . '/../includes/security.php';
-include("../config/database.php");
+include "../config/database.php";
 
 // -- XỬ LÝ THÊM KHÁCH SẠN (POST) -------------------------------
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -83,7 +83,7 @@ $locations = $conn->query("SELECT id, name FROM locations ORDER BY name ASC")->f
 
 $page_title    = 'Thêm khách sạn';
 $page_subtitle = 'Tạo khách sạn mới';
-include("../includes/admin_header.php");
+include "../includes/admin_header.php";
 ?>
 
 <div class="page-header">
@@ -239,4 +239,4 @@ include("../includes/admin_header.php");
     </div><!-- /.add-wrap -->
 </form>
 
-<?php include("../includes/admin_footer.php"); ?>
+<?php include "../includes/admin_footer.php"; ?>

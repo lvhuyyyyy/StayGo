@@ -1,9 +1,9 @@
 <?php
-include("../config/database.php");
+include "../config/database.php";
 
 $page_title    = 'Phòng';
 $page_subtitle = 'Danh sách tất cả loại phòng';
-include("../includes/admin_header.php");
+include "../includes/admin_header.php";
 
 // ---------- Tham số ----------
 $search   = trim($_GET['search'] ?? '');
@@ -93,6 +93,7 @@ function rooms_qs($overrides = []) {
                 <th>ID</th>
                 <th>Khách sạn</th>
                 <th>Loại phòng</th>
+                <th style="text-align:center">Số lượng</th>
                 <th>Giá tiền</th>
                 <th>Trạng thái</th>
                 <th>Hành động</th>
@@ -101,7 +102,7 @@ function rooms_qs($overrides = []) {
         <tbody>
         <?php if ($result->num_rows === 0): ?>
             <tr>
-                <td colspan="6" style="text-align:center;color:#a0aec0;padding:40px">
+                <td colspan="7" style="text-align:center;color:#a0aec0;padding:40px">
                     <?= $search ? 'Không tìm thấy phòng nào với từ khóa "<strong>' . htmlspecialchars($search) . '</strong>"' : 'Chưa có phòng nào' ?>
                 </td>
             </tr>
@@ -119,6 +120,16 @@ function rooms_qs($overrides = []) {
                 <td class="td-order"><?= $row['id'] ?></td>
                 <td class="td-name"><?= $hotel_name ?></td>
                 <td style="color:#2d3748"><?= $room_name ?></td>
+                <td style="text-align:center;font-weight:600">
+                    <?php $qty = (int)$row['quantity']; ?>
+                    <?php if ($qty === 0): ?>
+                        <span style="color:#c53030;background:#fff5f5;padding:2px 8px;border-radius:6px;font-size:12px">Hết phòng</span>
+                    <?php elseif ($qty <= 2): ?>
+                        <span style="color:#e05c1a">🔥 <?= $qty ?></span>
+                    <?php else: ?>
+                        <span style="color:#276749"><?= $qty ?></span>
+                    <?php endif; ?>
+                </td>
                 <td class="td-price"><?= number_format($row['price'], 0, ',', '.') ?>đ</td>
                 <td>
                     <?php if (!isset($row['is_active']) || $row['is_active'] == 1): ?>
@@ -131,7 +142,7 @@ function rooms_qs($overrides = []) {
                     <a href="edit_room.php?action=edit&id=<?= $row['id'] ?>" class="btn btn-edit">Sửa</a>
                     <a href="delete_room.php?id=<?= $row['id'] ?>"
                        class="btn btn-delete"
-                       onclick="return confirm('Bạn có chắc muốn xóa phòng \"<?= addslashes($row['room_name']) ?>\" không?')">Xóa</a>
+                       onclick="adminConfirm('Bạn có chắc muốn xóa phòng \"<?= addslashes($row['room_name']) ?>\"?', this.href, '🗑️'); return false;">Xóa</a>
                 </td>
             </tr>
             <?php endwhile; ?>
@@ -170,4 +181,4 @@ function rooms_qs($overrides = []) {
 </div>
 <?php endif; ?>
 
-<?php include("../includes/admin_footer.php"); ?>
+<?php include "../includes/admin_footer.php"; ?>
