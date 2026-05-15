@@ -50,9 +50,23 @@ $blogs_res    = $conn->query("
 ");
 $blogs_nearby = $blogs_res ? $blogs_res->fetch_all(MYSQLI_ASSOC) : [];
 
-// Phòng
-$rooms_stmt = $conn->prepare("SELECT * FROM rooms WHERE hotel_id = ? ORDER BY price ASC");
-$rooms_stmt->bind_param("i", $id);
+// Phòng — available_count tính theo date-range nếu có ngày, ngược lại dùng tổng quantity
+$ci_filter = $checkin  ?: date('Y-m-d');
+$co_filter = $checkout ?: date('Y-m-d', strtotime('+1 day'));
+$rooms_stmt = $conn->prepare("
+    SELECT r.*,
+           GREATEST(0, r.quantity - COALESCE((
+               SELECT COUNT(*) FROM bookings b
+               WHERE b.room_id = r.id
+               AND b.status NOT IN ('cancelled')
+               AND b.check_in  < ?
+               AND b.check_out > ?
+           ), 0)) AS available_count
+    FROM rooms r
+    WHERE r.hotel_id = ?
+    ORDER BY r.price ASC
+");
+$rooms_stmt->bind_param("ssi", $co_filter, $ci_filter, $id);
 $rooms_stmt->execute();
 $rooms = $rooms_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
@@ -310,7 +324,8 @@ function bed_icon(string $bed): string {
                             $num_guests = guests_from_bed($bed);
                             $price_per  = $room['price'];
                             $price_old  = round($price_per * 1.25);
-                            $urgent     = (int)($room['quantity'] ?? 0) <= 2;
+                            $avail_qty  = (int)($room['available_count'] ?? $room['quantity'] ?? 0);
+                            $urgent     = $avail_qty > 0 && $avail_qty <= 2;
                         ?>
                         <div class="hd-room-row <?= $urgent ? 'hd-room-urgent' : '' ?>">
                             <div class="hd-room-info">
@@ -340,13 +355,12 @@ function bed_icon(string $bed): string {
                             </div>
 
                             <div class="hd-room-avail" style="text-align:center;padding:0 8px">
-                                <?php $qty = (int)($room['quantity'] ?? 0); ?>
-                                <?php if ($qty === 0): ?>
+                                <?php if ($avail_qty === 0): ?>
                                     <span style="display:inline-block;background:#fff5f5;color:#c53030;border:1px solid #fed7d7;border-radius:8px;padding:4px 10px;font-size:13px;font-weight:600">Hết phòng</span>
                                 <?php elseif ($urgent): ?>
-                                    <span style="display:inline-block;background:#fff8f0;color:#e05c1a;border:1px solid #fbd38d;border-radius:8px;padding:4px 10px;font-size:13px;font-weight:700">🔥 Còn <?= $qty ?></span>
+                                    <span style="display:inline-block;background:#fff8f0;color:#e05c1a;border:1px solid #fbd38d;border-radius:8px;padding:4px 10px;font-size:13px;font-weight:700">🔥 Còn <?= $avail_qty ?></span>
                                 <?php else: ?>
-                                    <span style="display:inline-block;background:#f0fff4;color:#276749;border:1px solid #9ae6b4;border-radius:8px;padding:4px 10px;font-size:13px;font-weight:600">✅ <?= $qty ?> phòng</span>
+                                    <span style="display:inline-block;background:#f0fff4;color:#276749;border:1px solid #9ae6b4;border-radius:8px;padding:4px 10px;font-size:13px;font-weight:600">✅ <?= $avail_qty ?> phòng</span>
                                 <?php endif; ?>
                             </div>
 

@@ -15,9 +15,32 @@ $hotel_query = mysqli_query($conn, "SELECT id, name FROM hotels WHERE id = $hote
 $hotel = $hotel_query ? mysqli_fetch_assoc($hotel_query) : null;
 if (!$hotel) { header("Location: hotels.php"); exit(); }
 
-$rooms_result = mysqli_query($conn, "SELECT id, room_name, price, quantity FROM rooms WHERE hotel_id = $hotel_id");
-$rooms_data = [];
-if ($rooms_result) while ($r = mysqli_fetch_assoc($rooms_result)) $rooms_data[] = $r;
+// Pre-fill từ hotel_detail (cần đọc trước khi query rooms)
+$prefill_room_id  = intval($_GET['room_id']  ?? 0);
+$prefill_checkin  = $_GET['checkin']  ?? '';
+$prefill_checkout = $_GET['checkout'] ?? '';
+
+// Lấy danh sách phòng kèm available_count (tính theo date-range nếu có ngày)
+if ($prefill_checkin && $prefill_checkout) {
+    $rq = $conn->prepare("
+        SELECT r.id, r.room_name, r.price, r.quantity,
+               GREATEST(0, r.quantity - COALESCE((
+                   SELECT COUNT(*) FROM bookings b
+                   WHERE b.room_id = r.id
+                   AND b.status NOT IN ('cancelled')
+                   AND b.check_in < ? AND b.check_out > ?
+               ), 0)) AS available_count
+        FROM rooms r WHERE r.hotel_id = ?
+        ORDER BY r.price ASC
+    ");
+    $rq->bind_param("ssi", $prefill_checkout, $prefill_checkin, $hotel_id);
+    $rq->execute();
+    $rooms_data = $rq->get_result()->fetch_all(MYSQLI_ASSOC);
+} else {
+    $rooms_result = mysqli_query($conn, "SELECT id, room_name, price, quantity, quantity AS available_count FROM rooms WHERE hotel_id = $hotel_id ORDER BY price ASC");
+    $rooms_data = [];
+    if ($rooms_result) while ($r = mysqli_fetch_assoc($rooms_result)) $rooms_data[] = $r;
+}
 
 // Kiểm tra discount tài khoản mới
 $new_user_discount = 0;
@@ -29,10 +52,6 @@ if (isset($_SESSION['user_id'])
     $has_new_discount  = true;
 }
 
-// Pre-fill từ hotel_detail modal
-$prefill_room_id  = intval($_GET['room_id']  ?? 0);
-$prefill_checkin  = $_GET['checkin']  ?? '';
-$prefill_checkout = $_GET['checkout'] ?? '';
 
 $qr_data    = null;
 $booking_id = null;
@@ -117,19 +136,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Chống overbooking: lock room row, kiểm tra còn phòng trước khi insert
     $conn->begin_transaction();
+
+    // Lock room row để chống race condition
     $lock_s = $conn->prepare("SELECT r.quantity, h.commission_rate FROM rooms r JOIN hotels h ON r.hotel_id = h.id WHERE r.id = ? FOR UPDATE");
     if (!$lock_s) {
-        // commission_rate chưa được migrate — dùng mặc định 10%
         $lock_s = $conn->prepare("SELECT r.quantity, 10 as commission_rate FROM rooms r WHERE r.id = ? FOR UPDATE");
     }
     $lock_s->bind_param("i", $room_id);
     $lock_s->execute();
-    $lock_result = $lock_s->get_result();
-    $room_lock = $lock_result ? $lock_result->fetch_assoc() : null;
+    $room_lock = $lock_s->get_result()->fetch_assoc();
 
-    if (!$room_lock || (int)$room_lock['quantity'] < 1) {
+    // Đếm bookings đang chiếm phòng trong khoảng ngày được chọn
+    $ov_s = $conn->prepare("SELECT COUNT(*) AS cnt FROM bookings WHERE room_id = ? AND status NOT IN ('cancelled') AND check_in < ? AND check_out > ?");
+    $ov_s->bind_param("iss", $room_id, $checkout, $checkin);
+    $ov_s->execute();
+    $booked_count = (int)($ov_s->get_result()->fetch_assoc()['cnt'] ?? 0);
+
+    $available = (int)($room_lock['quantity'] ?? 0) - $booked_count;
+
+    if (!$room_lock || $available < 1) {
         $conn->rollback();
-        $error_msg = 'Phòng này vừa hết chỗ. Vui lòng chọn phòng khác hoặc thay đổi ngày lưu trú.';
+        $error_msg = 'Phòng không còn chỗ trong khoảng ngày bạn chọn. Vui lòng chọn ngày khác hoặc phòng khác.';
     } else {
         // Xác định luồng thu tiền
         $payment_flow = ($payment_method === 'hotel') ? 'hotel_collect' : 'platform_collect';
@@ -162,8 +189,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $snap_rate = ($payment_flow === 'hotel_collect') ? 0.0 : (float)$room_lock['commission_rate'];
         $conn->query("UPDATE bookings SET commission_rate = $snap_rate WHERE id = $booking_id");
 
-        // Trừ 1 phòng (AND quantity > 0 đảm bảo không âm khi concurrent)
-        $conn->query("UPDATE rooms SET quantity = quantity - 1 WHERE id = $room_id AND quantity > 0");
         $conn->commit();
 
     $method_label_map = [
@@ -371,14 +396,17 @@ require_once __DIR__ . '/../includes/header.php';
                 <label>Chọn phòng <span class="req">*</span></label>
                 <select name="room_id" id="roomSelect" required onchange="calcPrice()">
                     <option value="">-- Chọn phòng --</option>
-                    <?php foreach($rooms_data as $rm): ?>
-                        <?php if($rm['quantity'] > 0): ?>
+                    <?php foreach($rooms_data as $rm):
+                        $avail = (int)($rm['available_count'] ?? $rm['quantity']);
+                    ?>
+                        <?php if($avail > 0): ?>
                             <option value="<?php echo $rm['id']; ?>" data-price="<?php echo $rm['price']; ?>"
                                 <?= ($prefill_room_id && $prefill_room_id == $rm['id']) ? 'selected' : '' ?>>
                                 <?php echo htmlspecialchars($rm['room_name']); ?> – <?php echo number_format($rm['price'],0,',','.'); ?> VNĐ/đêm
+                                <?= $prefill_checkin ? '(Còn ' . $avail . ' phòng)' : '' ?>
                             </option>
                         <?php else: ?>
-                            <option disabled><?php echo htmlspecialchars($rm['room_name']); ?> (Hết phòng)</option>
+                            <option disabled><?php echo htmlspecialchars($rm['room_name']); ?> (Hết phòng cho ngày này)</option>
                         <?php endif; ?>
                     <?php endforeach; ?>
                 </select>
