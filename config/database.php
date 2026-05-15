@@ -46,5 +46,25 @@ $conn->query("
       AND b.check_out < CURDATE()
 ");
 
+// Auto-payout: READY → PAID, tạo record trong bảng payouts (actor = System)
+$_ready = $conn->query("
+    SELECT b.id, b.hotel_payout, b.platform_revenue, r.hotel_id
+    FROM bookings b
+    JOIN rooms r ON b.room_id = r.id
+    WHERE b.payout_status = 'READY'
+      AND b.payment_flow  = 'platform_collect'
+      AND b.hotel_payout  > 0
+");
+while ($_ready && $_rb = $_ready->fetch_assoc()) {
+    $_bid    = (int)$_rb['id'];
+    $_hid    = (int)$_rb['hotel_id'];
+    $_amt    = (float)$_rb['hotel_payout'];
+    $_comm   = (float)$_rb['platform_revenue'];
+    $conn->query("INSERT INTO payouts (hotel_id, booking_id, amount, commission_amount, processed_by_name, note)
+                  VALUES ($_hid, $_bid, $_amt, $_comm, 'System', 'Tự động giải ngân sau check-out')");
+    $conn->query("UPDATE bookings SET payout_status='PAID' WHERE id=$_bid");
+}
+unset($_ready, $_rb);
+
 require_once __DIR__ . '/secrets.php';
 require_once __DIR__ . '/../includes/activity_helper.php';
