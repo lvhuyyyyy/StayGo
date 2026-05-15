@@ -40,14 +40,15 @@ if (isset($_SESSION['user_id'])) {
 
 // Bài viết cùng vùng
 $loc_name_escaped = $conn->real_escape_string($hotel['location_name']);
-$blogs_nearby = $conn->query("
+$blogs_res    = $conn->query("
     SELECT id, title, thumb, DATE_FORMAT(created_at, '%d/%m/%Y') AS date
     FROM blog_posts
     WHERE (category LIKE '%$loc_name_escaped%' OR tags LIKE '%$loc_name_escaped%')
     AND is_active = 1
     ORDER BY created_at DESC
     LIMIT 3
-")->fetch_all(MYSQLI_ASSOC);
+");
+$blogs_nearby = $blogs_res ? $blogs_res->fetch_all(MYSQLI_ASSOC) : [];
 
 // Phòng
 $rooms_stmt = $conn->prepare("SELECT * FROM rooms WHERE hotel_id = ? ORDER BY price ASC");

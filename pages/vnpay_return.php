@@ -25,6 +25,16 @@ if (!$validSig) {
             b.status            = 'confirmed'
         WHERE b.order_code = ? AND p.payment_status = 'pending'
     ");
+    if (!$stmt) {
+        // Cột payment_verified / verified_at chưa được migrate
+        $stmt = $conn->prepare("
+            UPDATE payments p
+            JOIN bookings b ON p.booking_id = b.id
+            SET p.payment_status = 'paid',
+                b.status         = 'confirmed'
+            WHERE b.order_code = ? AND p.payment_status = 'pending'
+        ");
+    }
     $stmt->bind_param('s', $orderCode);
     $stmt->execute();
 
@@ -72,9 +82,23 @@ if ($orderCode) {
         WHERE b.order_code = ?
         LIMIT 1
     ");
+    if (!$s) {
+        // Cột partner_email chưa được migrate
+        $s = $conn->prepare("
+            SELECT b.order_code, b.check_in, b.check_out, b.total_price,
+                   b.full_name, b.email, r.room_name,
+                   h.name AS hotel_name, NULL AS hotel_email
+            FROM bookings b
+            JOIN rooms r ON b.room_id = r.id
+            JOIN hotels h ON r.hotel_id = h.id
+            WHERE b.order_code = ?
+            LIMIT 1
+        ");
+    }
     $s->bind_param('s', $orderCode);
     $s->execute();
-    $booking = $s->get_result()->fetch_assoc();
+    $s_result = $s->get_result();
+    $booking  = $s_result ? $s_result->fetch_assoc() : null;
 }
 
 if ($success && $booking) {

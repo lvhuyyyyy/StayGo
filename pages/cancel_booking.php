@@ -49,7 +49,8 @@ $room_id = (int)$booking['room_id'];
 
 if ($booking['status'] === 'pending') {
     // Kiểm tra xem đã có payment 'paid' chưa (bank transfer đã chuyển khoản)
-    $pay_row = $conn->query("SELECT payment_status, payment_method FROM payments WHERE booking_id = $booking_id ORDER BY id DESC LIMIT 1")->fetch_assoc();
+    $pay_res = $conn->query("SELECT payment_status, payment_method FROM payments WHERE booking_id = $booking_id ORDER BY id DESC LIMIT 1");
+    $pay_row = $pay_res ? $pay_res->fetch_assoc() : null;
     $already_paid = ($pay_row && $pay_row['payment_status'] === 'paid');
 
     if ($already_paid) {

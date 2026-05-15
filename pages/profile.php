@@ -58,9 +58,15 @@ $recent_bookings = $r4->get_result()->fetch_all(MYSQLI_ASSOC);
 
 // Yêu cầu hỗ trợ gần đây
 $r5 = $conn->prepare("SELECT id, subject, note, status, admin_note, created_at FROM support_requests WHERE user_id = ? ORDER BY created_at DESC LIMIT 5");
-$r5->bind_param("i", $user_id);
-$r5->execute();
-$support_requests = $r5->get_result()->fetch_all(MYSQLI_ASSOC);
+if (!$r5) {
+    // Cột subject / admin_note / user_id chưa được migrate — bỏ qua support_requests
+    $support_requests = [];
+} else {
+    $r5->bind_param("i", $user_id);
+    $r5->execute();
+    $r5_result        = $r5->get_result();
+    $support_requests = $r5_result ? $r5_result->fetch_all(MYSQLI_ASSOC) : [];
+}
 
 $first_char = mb_strtoupper(mb_substr($user['full_name'] ?? 'U', 0, 1));
 $joined = isset($user['created_at']) ? date('d/m/Y', strtotime($user['created_at'])) : 'N/A';
