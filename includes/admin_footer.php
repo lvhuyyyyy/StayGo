@@ -19,14 +19,32 @@
 <script>
 function adminConfirm(msg, href, icon) {
     document.getElementById('adminConfirmMsg').textContent = msg;
-    document.getElementById('adminConfirmBtn').href = href;
     document.getElementById('adminConfirmIcon').textContent = icon || '⚠️';
+    const btn = document.getElementById('adminConfirmBtn');
+    btn.href = href;
+    btn.onclick = null;
+    const m = document.getElementById('adminConfirmModal');
+    m.style.display = 'flex';
+    m.onclick = function(e){ if(e.target===this) closeAdminConfirm(); };
+}
+function adminConfirmPost(msg, formId, icon) {
+    document.getElementById('adminConfirmMsg').textContent = msg;
+    document.getElementById('adminConfirmIcon').textContent = icon || '⚠️';
+    const btn = document.getElementById('adminConfirmBtn');
+    btn.href = 'javascript:void(0)';
+    btn.onclick = function(e) {
+        e.preventDefault();
+        document.getElementById(formId).submit();
+    };
     const m = document.getElementById('adminConfirmModal');
     m.style.display = 'flex';
     m.onclick = function(e){ if(e.target===this) closeAdminConfirm(); };
 }
 function closeAdminConfirm() {
     document.getElementById('adminConfirmModal').style.display = 'none';
+    const btn = document.getElementById('adminConfirmBtn');
+    btn.onclick = null;
+    btn.href = '#';
 }
 document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeAdminConfirm(); });
 </script>

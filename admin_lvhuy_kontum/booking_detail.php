@@ -109,20 +109,52 @@ $rs = $refund_status_map[(int)($booking['refund_requested'] ?? 0)];
         ?>
         <?php if ($is_pending): ?>
             <?php if ($is_hotel_pay): ?>
-            <a href="update_booking.php?id=<?= $booking['id'] ?>&status=confirmed&redirect=detail"
-               class="btn btn-confirm" onclick="adminConfirm('Xác nhận còn phòng cho đơn này?', this.href, '✅'); return false;">✅ Xác nhận</a>
+            <form id="bd_confirm" method="POST" action="update_booking.php" style="display:none">
+                <?= csrf_field() ?>
+                <input type="hidden" name="id" value="<?= $booking['id'] ?>">
+                <input type="hidden" name="status" value="confirmed">
+                <input type="hidden" name="redirect" value="detail">
+            </form>
+            <button type="button" class="btn btn-confirm"
+                onclick="adminConfirmPost('Xác nhận còn phòng cho đơn này?', 'bd_confirm', '✅')">
+                ✅ Xác nhận
+            </button>
             <?php else: ?>
             <span style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:#faf5ff;color:#6b46c1;border-radius:9px;font-size:12.5px;font-weight:600;border:1px solid #d6bcfa">
                 ⏳ Hệ thống tự xác nhận khi thanh toán
             </span>
             <?php endif; ?>
-            <a href="update_booking.php?id=<?= $booking['id'] ?>&status=cancelled&redirect=detail"
-               class="btn btn-cancel" onclick="adminConfirm('Huỷ đơn này?', this.href, '❌'); return false;">❌ Huỷ</a>
+            <form id="bd_cancel" method="POST" action="update_booking.php" style="display:none">
+                <?= csrf_field() ?>
+                <input type="hidden" name="id" value="<?= $booking['id'] ?>">
+                <input type="hidden" name="status" value="cancelled">
+                <input type="hidden" name="redirect" value="detail">
+            </form>
+            <button type="button" class="btn btn-cancel"
+                onclick="adminConfirmPost('Huỷ đơn này?', 'bd_cancel', '❌')">
+                ❌ Huỷ
+            </button>
         <?php elseif ($is_confirmed): ?>
-            <a href="update_booking.php?id=<?= $booking['id'] ?>&status=completed&redirect=detail"
-               class="btn btn-edit" onclick="adminConfirm('Đánh dấu hoàn thành?', this.href, '🎉'); return false;">🎉 Hoàn thành</a>
-            <a href="update_booking.php?id=<?= $booking['id'] ?>&status=cancelled&redirect=detail"
-               class="btn btn-cancel" onclick="adminConfirm('Huỷ đơn này?', this.href, '❌'); return false;">❌ Huỷ</a>
+            <form id="bd_complete" method="POST" action="update_booking.php" style="display:none">
+                <?= csrf_field() ?>
+                <input type="hidden" name="id" value="<?= $booking['id'] ?>">
+                <input type="hidden" name="status" value="completed">
+                <input type="hidden" name="redirect" value="detail">
+            </form>
+            <button type="button" class="btn btn-edit"
+                onclick="adminConfirmPost('Đánh dấu hoàn thành?', 'bd_complete', '🎉')">
+                🎉 Hoàn thành
+            </button>
+            <form id="bd_cancel2" method="POST" action="update_booking.php" style="display:none">
+                <?= csrf_field() ?>
+                <input type="hidden" name="id" value="<?= $booking['id'] ?>">
+                <input type="hidden" name="status" value="cancelled">
+                <input type="hidden" name="redirect" value="detail">
+            </form>
+            <button type="button" class="btn btn-cancel"
+                onclick="adminConfirmPost('Huỷ đơn này?', 'bd_cancel2', '❌')">
+                ❌ Huỷ
+            </button>
         <?php endif; ?>
         <a href="booking_edit.php?id=<?= $booking['id'] ?>"
            style="display:inline-flex;align-items:center;gap:5px;padding:8px 16px;background:#f8fafc;color:#4a5568;border:1.5px solid #e2e8f0;border-radius:9px;text-decoration:none;font-size:13px;font-weight:600">

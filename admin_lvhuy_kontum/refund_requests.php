@@ -1,26 +1,32 @@
 <?php
-include "../config/database.php";
+require_once 'admin_bootstrap.php'; // auth + DB + CSRF — phải là dòng đầu tiên
 
 // -- Xử lý duyệt / từ chối TRƯỚC KHI include header --
-if (isset($_GET['action']) && isset($_GET['id'])) {
-    $id     = (int)$_GET['id'];
-    $action = $_GET['action'];
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    csrf_check(); // chặn CSRF ngay lập tức
 
-    $res     = $conn->query("SELECT * FROM bookings WHERE id = $id AND refund_requested = 1");
-    $booking = $res ? $res->fetch_assoc() : null;
+    $id     = (int)($_POST['id'] ?? 0);
+    $action = $_POST['action'] ?? '';
 
-    if ($booking) {
-        if ($action === 'approve') {
-            $conn->query("UPDATE bookings SET status = 'cancelled', refund_requested = 2 WHERE id = $id");
-            $conn->query("UPDATE payments SET payment_status = 'refunded' WHERE booking_id = $id");
-            log_activity($conn, 'approve_refund', 'booking', $id, "Duyệt hoàn tiền đơn #$id");
-            header("Location: refund_requests.php?success=approved");
-        } elseif ($action === 'reject') {
-            $conn->query("UPDATE bookings SET refund_requested = 3 WHERE id = $id");
-            log_activity($conn, 'reject_refund', 'booking', $id, "Từ chối hoàn tiền đơn #$id");
-            header("Location: refund_requests.php?success=rejected");
+    if ($id && in_array($action, ['approve', 'reject'], true)) {
+        $stmt = $conn->prepare("SELECT * FROM bookings WHERE id = ? AND refund_requested = 1");
+        $stmt->bind_param('i', $id);
+        $stmt->execute();
+        $booking = $stmt->get_result()->fetch_assoc();
+
+        if ($booking) {
+            if ($action === 'approve') {
+                $conn->query("UPDATE bookings SET status = 'cancelled', refund_requested = 2 WHERE id = $id");
+                $conn->query("UPDATE payments SET payment_status = 'refunded' WHERE booking_id = $id");
+                log_activity($conn, 'approve_refund', 'booking', $id, "Duyệt hoàn tiền đơn #$id");
+                header("Location: refund_requests.php?success=approved");
+            } elseif ($action === 'reject') {
+                $conn->query("UPDATE bookings SET refund_requested = 3 WHERE id = $id");
+                log_activity($conn, 'reject_refund', 'booking', $id, "Từ chối hoàn tiền đơn #$id");
+                header("Location: refund_requests.php?success=rejected");
+            }
+            exit;
         }
-        exit;
     }
 }
 
@@ -88,8 +94,7 @@ $count_rejected = $conn->query("SELECT COUNT(*) as c FROM bookings WHERE refund_
         $card_class        = $filter==2 ? 'approved' : ($filter==3 ? 'rejected' : '');
         $refund_amount_fmt = number_format($row['refund_amount'] ?? 0, 0, ',', '.');
         $total_fmt         = number_format($row['total_price'] ?? 0, 0, ',', '.');
-        // Xác định ai tạo refund: nếu refund_amount = total_price → admin hủy (hoàn 100%), ngược lại → khách hủy (80%)
-        $is_admin_cancel   = ($row['refund_amount'] >= $row['total_price'] * 0.99);
+        $is_admin_cancel   = $row['refund_amount'] >= $row['total_price'] * 0.99;
         $fee_fmt           = $is_admin_cancel ? '0' : number_format($row['total_price'] * 0.2, 0, ',', '.');
     ?>
     <div class="refund-card <?= $card_class ?>">
@@ -106,17 +111,26 @@ $count_rejected = $conn->query("SELECT COUNT(*) as c FROM bookings WHERE refund_
                 </div>
             </div>
             <?php if($filter == 1): ?>
+                <!-- POST forms để tránh GET-based CSRF -->
+                <form id="form_approve_<?= $row['id'] ?>" method="POST" style="display:none">
+                    <?= csrf_field() ?>
+                    <input type="hidden" name="action" value="approve">
+                    <input type="hidden" name="id" value="<?= $row['id'] ?>">
+                </form>
+                <form id="form_reject_<?= $row['id'] ?>" method="POST" style="display:none">
+                    <?= csrf_field() ?>
+                    <input type="hidden" name="action" value="reject">
+                    <input type="hidden" name="id" value="<?= $row['id'] ?>">
+                </form>
                 <div style="display:flex;gap:8px">
-                    <a href="?action=approve&id=<?= $row['id'] ?>"
-                    class="btn btn-approve"
-                    onclick="adminConfirm('Duyệt hoàn tiền <?= $refund_amount_fmt ?>đ cho đơn này?', this.href, '💵'); return false;">
-                    ✅ Duyệt hoàn tiền
-                    </a>
-                    <a href="?action=reject&id=<?= $row['id'] ?>"
-                    class="btn btn-deny"
-                    onclick="adminConfirm('Từ chối yêu cầu hoàn tiền này?', this.href, '❌'); return false;">
-                    ❌ Từ chối
-                    </a>
+                    <button type="button" class="btn btn-approve"
+                        onclick="adminConfirmPost('Duyệt hoàn tiền <?= $refund_amount_fmt ?>đ cho đơn này?', 'form_approve_<?= $row['id'] ?>', '💵')">
+                        ✅ Duyệt hoàn tiền
+                    </button>
+                    <button type="button" class="btn btn-deny"
+                        onclick="adminConfirmPost('Từ chối yêu cầu hoàn tiền này?', 'form_reject_<?= $row['id'] ?>', '❌')">
+                        ❌ Từ chối
+                    </button>
                 </div>
             <?php elseif($filter == 2): ?>
                 <span class="status-badge" style="color:#276749;background:#f0fff4;border:1px solid #9ae6b4">✅ Đã duyệt</span>

@@ -1,11 +1,12 @@
 <?php
-include "../config/database.php";
+require_once 'admin_bootstrap.php'; // auth + DB + CSRF — phải là dòng đầu tiên
 
 $page_title    = 'Khiếu nại & Tranh chấp';
 $page_subtitle = 'Xử lý tranh chấp giữa User và Hotel';
 
 // -- POST: cập nhật trạng thái dispute --
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    csrf_check();
     $dispute_id     = (int)($_POST['dispute_id'] ?? 0);
     $action         = $_POST['action'] ?? '';
     $admin_response = trim($_POST['admin_response'] ?? '');
@@ -310,6 +311,7 @@ include "../includes/admin_header.php";
 
             <!-- Form xử lý -->
             <form method="POST" id="dpForm">
+                <?= csrf_field() ?>
                 <input type="hidden" name="dispute_id" id="mDispId">
                 <input type="hidden" name="action" id="mAction">
 

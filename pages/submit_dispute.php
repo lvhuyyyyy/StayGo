@@ -60,18 +60,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $booking && !$success) {
         } else {
             $user_id     = $_SESSION['user_id'] ?? null;
             $guest_email = !$user_id ? $booking['email'] : null;
-            $desc_esc    = $conn->real_escape_string($description);
-            $type_esc    = $conn->real_escape_string($type);
-            $ge_esc      = $guest_email ? $conn->real_escape_string($guest_email) : 'NULL';
-            $uid_val     = $user_id ? (int)$user_id : 'NULL';
-            $ge_sql      = $guest_email ? "'$ge_esc'" : 'NULL';
 
-            $conn->query("
+            $ins = $conn->prepare("
                 INSERT INTO disputes (booking_id, user_id, guest_email, type, description, status, created_at)
-                VALUES ($booking_id, $uid_val, $ge_sql, '$type_esc', '$desc_esc', 'OPEN', NOW())
+                VALUES (?, ?, ?, ?, ?, 'OPEN', NOW())
             ");
+            $ins->bind_param("iisss", $booking_id, $user_id, $guest_email, $type, $description);
+            $ins->execute();
 
-            if ($conn->affected_rows > 0) {
+            if ($ins->affected_rows > 0) {
                 $success = true;
             } else {
                 $error = 'Có lỗi xảy ra, vui lòng thử lại.';

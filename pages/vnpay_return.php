@@ -15,6 +15,16 @@ $errorMsg = 'Giao dịch không thành công.';
 if (!$validSig) {
     $errorMsg = 'Chữ ký không hợp lệ. Giao dịch không được xác nhận.';
 } elseif ($responseCode === '00') {
+    // Defense-in-depth: verify amount trước khi cập nhật DB
+    $amt_chk = $conn->prepare("SELECT total_price FROM bookings WHERE order_code = ? LIMIT 1");
+    $amt_chk->bind_param('s', $orderCode);
+    $amt_chk->execute();
+    $amt_row = $amt_chk->get_result()->fetch_assoc();
+    if ($amt_row && $vnpAmount < (float)$amt_row['total_price'] * 0.99) {
+        $errorMsg = 'Số tiền thanh toán không khớp với đơn hàng. Vui lòng liên hệ hỗ trợ.';
+        goto vnpay_done;
+    }
+
     // Thanh toán thành công — cập nhật DB
     $stmt = $conn->prepare("
         UPDATE payments p
@@ -70,6 +80,7 @@ if (!$validSig) {
 }
 
 // ── Lấy thông tin booking để hiển thị và gửi email ──────────────
+vnpay_done:
 $booking = null;
 if ($orderCode) {
     $s = $conn->prepare("

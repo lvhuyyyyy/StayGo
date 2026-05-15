@@ -289,22 +289,46 @@ $export_qs = http_build_query(array_filter([
                     ?>
                     <?php if($is_pending): ?>
                         <?php if($is_hotel_pay): ?>
-                        <a href="update_booking.php?id=<?= $row['id'] ?>&status=confirmed"
-                        class="btn btn-confirm"
-                        onclick="adminConfirm('Xác nhận còn phòng cho đơn này?', this.href, '✅'); return false;">✅ Xác nhận</a>
+                        <form id="ub_confirm_<?= $row['id'] ?>" method="POST" action="update_booking.php" style="display:none">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="id" value="<?= $row['id'] ?>">
+                            <input type="hidden" name="status" value="confirmed">
+                        </form>
+                        <button type="button" class="btn btn-confirm"
+                            onclick="adminConfirmPost('Xác nhận còn phòng cho đơn này?', 'ub_confirm_<?= $row['id'] ?>', '✅')">
+                            ✅ Xác nhận
+                        </button>
                         <?php else: ?>
                         <span style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;background:#faf5ff;color:#6b46c1;border-radius:7px;font-size:11.5px;font-weight:600;border:1px solid #d6bcfa">⏳ Chờ TT online</span>
                         <?php endif; ?>
-                        <a href="update_booking.php?id=<?= $row['id'] ?>&status=cancelled"
-                        class="btn btn-cancel"
-                        onclick="adminConfirm('Huỷ đơn này?', this.href, '❌'); return false;">❌ Huỷ</a>
+                        <form id="ub_cancel_<?= $row['id'] ?>" method="POST" action="update_booking.php" style="display:none">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="id" value="<?= $row['id'] ?>">
+                            <input type="hidden" name="status" value="cancelled">
+                        </form>
+                        <button type="button" class="btn btn-cancel"
+                            onclick="adminConfirmPost('Huỷ đơn này?', 'ub_cancel_<?= $row['id'] ?>', '❌')">
+                            ❌ Huỷ
+                        </button>
                     <?php elseif($is_confirmed): ?>
-                        <a href="update_booking.php?id=<?= $row['id'] ?>&status=completed"
-                        class="btn btn-edit"
-                        onclick="adminConfirm('Đánh dấu hoàn thành?', this.href, '🎉'); return false;">🎉 Hoàn thành</a>
-                        <a href="update_booking.php?id=<?= $row['id'] ?>&status=cancelled"
-                        class="btn btn-cancel"
-                        onclick="adminConfirm('Huỷ đơn này?', this.href, '❌'); return false;">❌ Huỷ</a>
+                        <form id="ub_done_<?= $row['id'] ?>" method="POST" action="update_booking.php" style="display:none">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="id" value="<?= $row['id'] ?>">
+                            <input type="hidden" name="status" value="completed">
+                        </form>
+                        <button type="button" class="btn btn-edit"
+                            onclick="adminConfirmPost('Đánh dấu hoàn thành?', 'ub_done_<?= $row['id'] ?>', '🎉')">
+                            🎉 Hoàn thành
+                        </button>
+                        <form id="ub_cancel2_<?= $row['id'] ?>" method="POST" action="update_booking.php" style="display:none">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="id" value="<?= $row['id'] ?>">
+                            <input type="hidden" name="status" value="cancelled">
+                        </form>
+                        <button type="button" class="btn btn-cancel"
+                            onclick="adminConfirmPost('Huỷ đơn này?', 'ub_cancel2_<?= $row['id'] ?>', '❌')">
+                            ❌ Huỷ
+                        </button>
                     <?php else: ?>
                         <?php if(in_array($row['status'], ['completed', 'done'])): ?>
                             <span style="display:inline-flex;align-items:center;gap:5px;padding:6px 12px;background:#f0fff4;color:#276749;border-radius:8px;font-size:12.5px;font-weight:600">

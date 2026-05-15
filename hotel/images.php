@@ -13,8 +13,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['_action'] ?? '') === 'uplo
     if (empty($_FILES['images']['name'][0])) {
         $error = 'Vui lòng chọn ít nhất một ảnh.';
     } else {
-        $ext_allowed = ['jpg', 'jpeg', 'png', 'webp'];
-        $upload_dir  = __DIR__ . '/../assets/images/hotels/';
+        $upload_dir = __DIR__ . '/../assets/images/hotels/';
         if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
 
         $caption   = $conn->real_escape_string(trim($_POST['caption'] ?? ''));
@@ -22,12 +21,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['_action'] ?? '') === 'uplo
         $is_primary_set = (bool)$conn->query("SELECT id FROM hotel_images WHERE hotel_id=$hotel_id AND is_primary=1 LIMIT 1")->fetch_assoc();
 
         foreach ($_FILES['images']['tmp_name'] as $i => $tmp) {
-            if ($_FILES['images']['error'][$i] !== UPLOAD_ERR_OK) continue;
-            $ext = strtolower(pathinfo($_FILES['images']['name'][$i], PATHINFO_EXTENSION));
-            if (!in_array($ext, $ext_allowed)) continue;
-            if ($_FILES['images']['size'][$i] > 5 * 1024 * 1024) continue;
+            $file_entry = [
+                'name'     => $_FILES['images']['name'][$i],
+                'tmp_name' => $_FILES['images']['tmp_name'][$i],
+                'error'    => $_FILES['images']['error'][$i],
+                'size'     => $_FILES['images']['size'][$i],
+            ];
+            $check = validate_image_upload($file_entry);
+            if (!$check['success']) continue;
 
-            $filename = 'hotel_' . $hotel_id . '_' . time() . '_' . rand(100, 999) . '.' . $ext;
+            $ext      = $check['ext'];
+            $filename = safe_filename('hotel_' . $hotel_id, $ext);
             if (!move_uploaded_file($tmp, $upload_dir . $filename)) continue;
 
             // Ảnh đầu tiên upload nếu chưa có primary → đặt làm primary

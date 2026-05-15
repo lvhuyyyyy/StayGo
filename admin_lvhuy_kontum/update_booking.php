@@ -1,10 +1,14 @@
 <?php
-session_start();
-include "../config/database.php";
-include "../includes/activity_helper.php";
+require_once 'admin_bootstrap.php'; // auth + DB + CSRF — phải là dòng đầu tiên
+csrf_check();                       // chặn mọi request không phải POST hợp lệ
 
-$id     = isset($_GET['id'])     ? (int)$_GET['id']                          : 0;
-$status = isset($_GET['status']) ? $conn->real_escape_string($_GET['status']) : '';
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    header('Location: bookings.php');
+    exit;
+}
+
+$id     = (int)($_POST['id']     ?? 0);
+$status = $conn->real_escape_string($_POST['status'] ?? '');
 
 // Map các giá trị cũ (paid/cancel) sang giá trị chuẩn
 $status_alias = [
@@ -170,7 +174,7 @@ $action_map = [
 log_activity($conn, $action_map[$status] ?? 'update_booking', 'booking', $id, "Đơn #$id → $status");
 
 // Redirect về trang chi tiết hoặc danh sách
-if (isset($_GET['redirect']) && $_GET['redirect'] === 'detail') {
+if (($_POST['redirect'] ?? '') === 'detail') {
     header("Location: booking_detail.php?id=$id&success=$status");
 } else {
     header("Location: bookings.php?success=$status");
