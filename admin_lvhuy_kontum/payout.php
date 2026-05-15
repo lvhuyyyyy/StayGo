@@ -1,6 +1,38 @@
 <?php
 include "../config/database.php";
 
+// ── Giải ngân tất cả READY bookings (batch) ──────────────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'payout_all') {
+    $admin_id   = (int)$_SESSION['admin_id'];
+    $admin_name = $conn->real_escape_string($_SESSION['admin_name'] ?? 'Admin');
+    $note_esc   = $conn->real_escape_string(trim($_POST['note'] ?? 'Giải ngân tất cả theo xác nhận admin'));
+    $hotel_cond = isset($_POST['hotel_id']) && (int)$_POST['hotel_id'] > 0
+                ? 'AND r.hotel_id = ' . (int)$_POST['hotel_id'] : '';
+
+    $batch = $conn->query("
+        SELECT b.id, b.hotel_payout, b.platform_revenue, r.hotel_id, h.name AS hotel_name
+        FROM bookings b
+        JOIN rooms r ON b.room_id = r.id
+        JOIN hotels h ON r.hotel_id = h.id
+        WHERE b.payout_status = 'READY' AND b.payment_flow = 'platform_collect' AND b.hotel_payout > 0
+        $hotel_cond
+    ");
+    $done = 0;
+    while ($batch && $br = $batch->fetch_assoc()) {
+        $_bid  = (int)$br['id'];
+        $_hid  = (int)$br['hotel_id'];
+        $_amt  = (float)$br['hotel_payout'];
+        $_comm = (float)$br['platform_revenue'];
+        $conn->query("INSERT INTO payouts (hotel_id, booking_id, amount, commission_amount, processed_by_admin_id, processed_by_name, note)
+                      VALUES ($_hid, $_bid, $_amt, $_comm, $admin_id, '$admin_name', '$note_esc')");
+        $conn->query("UPDATE bookings SET payout_status='PAID' WHERE id=$_bid");
+        $done++;
+    }
+    $redir = isset($_POST['hotel_id']) ? '?hotel_id=' . (int)$_POST['hotel_id'] : '';
+    header("Location: payout.php{$redir}&success=payout_all&count=$done");
+    exit;
+}
+
 // ── Xử lý hành động giải ngân POST ───────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'payout') {
     $booking_id = (int)($_POST['booking_id'] ?? 0);
@@ -119,8 +151,13 @@ $total_hist_cond = $filter_hotel ? "WHERE p.hotel_id = $filter_hotel" : '';
 $total_paid = $conn->query("SELECT COALESCE(SUM(amount),0) as t FROM payouts p $total_hist_cond")->fetch_assoc()['t'];
 
 $success_msg = '';
-if (isset($_GET['success']) && $_GET['success'] === 'payout') {
-    $success_msg = '✅ Đã giải ngân thành công!';
+if (isset($_GET['success'])) {
+    if ($_GET['success'] === 'payout') {
+        $success_msg = '✅ Đã giải ngân thành công!';
+    } elseif ($_GET['success'] === 'payout_all') {
+        $n = (int)($_GET['count'] ?? 0);
+        $success_msg = "✅ Đã giải ngân $n booking cùng lúc.";
+    }
 }
 $error_msg = '';
 if (isset($_GET['error'])) {
@@ -160,6 +197,15 @@ if (isset($_GET['error'])) {
             ← Finance
         </a>
     </form>
+    <?php if (!empty($ready_bookings)): ?>
+    <form method="POST" style="margin:0" onsubmit="return confirm('Xác nhận đã chuyển khoản cho <?= count($ready_bookings) ?> booking? Hành động này không thể hoàn tác.')">
+        <input type="hidden" name="action" value="payout_all">
+        <input type="hidden" name="hotel_id" value="<?= $filter_hotel ?>">
+        <button type="submit" style="padding:8px 18px;background:#276749;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700">
+            ✅ Giải ngân tất cả (<?= count($ready_bookings) ?>)
+        </button>
+    </form>
+    <?php endif; ?>
 </div>
 
 <!-- ── Summary ───────────────────────────────────────────────────── -->

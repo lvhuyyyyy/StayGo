@@ -259,7 +259,7 @@ $chart_gmv        = json_encode(array_column($monthly_commission, 'gmv'));
     <?php if (abs($recon_diff) > 1000): ?>
     <div style="margin-top:12px;padding:10px 14px;background:<?= $recon_diff > 0 ? '#fffbeb' : '#ebf8ff' ?>;border-radius:8px;font-size:12.5px;color:#4a5568;border-left:3px solid <?= $recon_diff > 0 ? '#f6ad55' : '#63b3ed' ?>">
         <?php if ($recon_diff > 0): ?>
-            Có thể do: booking hotel_collect bị tính nhầm vào expected, hoặc khách đặt nhưng chưa chuyển khoản, hoặc webhook Casso/VNPay chưa về.
+            Có thể do: khách chọn chuyển khoản ngân hàng nhưng chưa thực hiện, webhook VNPay/MoMo chưa xác nhận, hoặc booking được admin xác nhận thủ công chưa có payment.
         <?php else: ?>
             Có thể do: có payment ghi nhận nhưng booking bị xóa, hoặc có payment trùng lặp chưa được deduplicate.
         <?php endif; ?>
