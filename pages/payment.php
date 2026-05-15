@@ -124,7 +124,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     $lock_s->bind_param("i", $room_id);
     $lock_s->execute();
-    $room_lock = $lock_s->get_result()->fetch_assoc();
+    $lock_result = $lock_s->get_result();
+    $room_lock = $lock_result ? $lock_result->fetch_assoc() : null;
 
     if (!$room_lock || (int)$room_lock['quantity'] < 1) {
         $conn->rollback();
@@ -137,16 +138,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $conn->prepare("INSERT INTO bookings (order_code, user_id, room_id, full_name, email, phone, check_in, check_out, total_price, payment_method, payment_flow, note, status, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())");
         if ($stmt) {
-            $stmt->bind_param("siisssssdssss", $order_code, $user_id, $room_id, $full_name, $email, $phone, $checkin, $checkout, $total_price, $payment_method, $payment_flow, $note);
+            $has_payment_flow_col = true;
+            $stmt->bind_param("siisssssdsss", $order_code, $user_id, $room_id, $full_name, $email, $phone, $checkin, $checkout, $total_price, $payment_method, $payment_flow, $note);
         } else {
             // payment_flow column not yet migrated — insert without it
+            $has_payment_flow_col = false;
             $stmt = $conn->prepare("INSERT INTO bookings (order_code, user_id, room_id, full_name, email, phone, check_in, check_out, total_price, payment_method, note, status, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())");
             $stmt->bind_param("siisssssdss", $order_code, $user_id, $room_id, $full_name, $email, $phone, $checkin, $checkout, $total_price, $payment_method, $note);
         }
         if (!$stmt->execute() && $conn->errno == 1062) {
             $order_code = 'ORD' . time() . rand(1000, 9999);
-            $stmt->bind_param("siisssssdssss", $order_code, $user_id, $room_id, $full_name, $email, $phone, $checkin, $checkout, $total_price, $payment_method, $payment_flow, $note);
+            if ($has_payment_flow_col) {
+                $stmt->bind_param("siisssssdsss", $order_code, $user_id, $room_id, $full_name, $email, $phone, $checkin, $checkout, $total_price, $payment_method, $payment_flow, $note);
+            } else {
+                $stmt->bind_param("siisssssdss", $order_code, $user_id, $room_id, $full_name, $email, $phone, $checkin, $checkout, $total_price, $payment_method, $note);
+            }
             $stmt->execute();
         }
         $booking_id = $conn->insert_id;
