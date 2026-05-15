@@ -12,12 +12,12 @@ if (!isset($_GET['hotel_id'])) {
 
 $hotel_id = intval($_GET['hotel_id']);
 $hotel_query = mysqli_query($conn, "SELECT id, name FROM hotels WHERE id = $hotel_id");
-$hotel = mysqli_fetch_assoc($hotel_query);
+$hotel = $hotel_query ? mysqli_fetch_assoc($hotel_query) : null;
 if (!$hotel) { header("Location: hotels.php"); exit(); }
 
-$rooms = mysqli_query($conn, "SELECT id, room_name, price, quantity FROM rooms WHERE hotel_id = $hotel_id");
+$rooms_result = mysqli_query($conn, "SELECT id, room_name, price, quantity FROM rooms WHERE hotel_id = $hotel_id");
 $rooms_data = [];
-while ($r = mysqli_fetch_assoc($rooms)) $rooms_data[] = $r;
+if ($rooms_result) while ($r = mysqli_fetch_assoc($rooms_result)) $rooms_data[] = $r;
 
 // Kiểm tra discount tài khoản mới
 $new_user_discount = 0;
@@ -237,7 +237,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } // end else (room available)
     } // end if (!isset($error_msg)) — date/room/method validation passed
 }
-$is_hotel_pay = ($qr_data && $qr_data['method'] === 'hotel');
+$is_hotel_pay = $qr_data && $qr_data['method'] === 'hotel';
 
 require_once __DIR__ . '/../includes/header.php';
 ?>

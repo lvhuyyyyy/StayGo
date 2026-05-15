@@ -9,19 +9,17 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_role']) || $_SESSIO
 }
 
 // -- Lấy pending_count để hiển thị badge --
-$pending_count = isset($conn)
-    ? $conn->query("SELECT COUNT(*) as t FROM bookings WHERE status='pending'")->fetch_assoc()['t']
-    : 0;
+$_r = isset($conn) ? $conn->query("SELECT COUNT(*) as t FROM bookings WHERE status='pending'") : false;
+$pending_count = $_r ? (int)$_r->fetch_assoc()['t'] : 0;
 
 // -- Lấy refund_pending để hiển thị badge hoàn tiền --
-$refund_pending = isset($conn)
-    ? (int)$conn->query("SELECT COUNT(*) as c FROM bookings WHERE refund_requested = 1")->fetch_assoc()['c']
-    : 0;
+$_r = isset($conn) ? $conn->query("SELECT COUNT(*) as c FROM bookings WHERE refund_requested = 1") : false;
+$refund_pending = $_r ? (int)$_r->fetch_assoc()['c'] : 0;
 
 // -- Lấy support_pending để hiển thị badge hỗ trợ --
-$support_pending = isset($conn)
-    ? (int)$conn->query("SELECT COUNT(*) as c FROM support_requests WHERE status='pending'")->fetch_assoc()['c']
-    : 0;
+$_r = isset($conn) ? $conn->query("SELECT COUNT(*) as c FROM support_requests WHERE status='pending'") : false;
+$support_pending = $_r ? (int)$_r->fetch_assoc()['c'] : 0;
+unset($_r);
 
 // -- Xác định trang hiện tại để highlight menu --
 $current_page = basename($_SERVER['PHP_SELF']);

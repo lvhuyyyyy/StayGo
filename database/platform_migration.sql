@@ -101,6 +101,15 @@ CREATE TABLE IF NOT EXISTS `disputes` (
     KEY `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 7. Tạo bảng site_settings (key-value cho cài đặt hệ thống)
+CREATE TABLE IF NOT EXISTS `site_settings` (
+    `key`   varchar(100) NOT NULL,
+    `value` text DEFAULT NULL,
+    PRIMARY KEY (`key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT IGNORE INTO `site_settings` (`key`, `value`) VALUES ('maintenance_mode', '0');
+
 -- =====================================================================
 -- XONG. Kiểm tra bằng các lệnh sau:
 -- DESCRIBE hotels;

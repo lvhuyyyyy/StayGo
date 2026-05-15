@@ -6,7 +6,8 @@ if (session_status() === PHP_SESSION_NONE) {
 require_once __DIR__ . '/../config/database.php';
 
 // ---- Kiểm tra chế độ bảo trì ----
-$_maintenance_row = $conn->query("SELECT value FROM site_settings WHERE `key`='maintenance_mode' LIMIT 1")->fetch_assoc();
+$_m = $conn->query("SELECT value FROM site_settings WHERE `key`='maintenance_mode' LIMIT 1");
+$_maintenance_row = $_m ? $_m->fetch_assoc() : null;
 if (($_maintenance_row['value'] ?? '0') === '1') {
     // Admin đang đăng nhập thì bỏ qua
     if (empty($_SESSION['admin_id'])) {
