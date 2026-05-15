@@ -213,7 +213,7 @@ function badge_payout($s) {
 </div>
 
 <!-- Modal Confirm -->
-<div id="modalConfirm" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;display:none;align-items:center;justify-content:center">
+<div id="modalConfirm" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;align-items:center;justify-content:center">
     <div style="background:#fff;border-radius:16px;padding:28px;max-width:440px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.3)">
         <h3 style="font-size:17px;font-weight:800;color:#1a365d;margin-bottom:8px">✅ Xác nhận đặt phòng</h3>
         <p style="font-size:13.5px;color:#4a5568;margin-bottom:20px" id="confirmText">Bạn có chắc chắn muốn xác nhận?</p>
