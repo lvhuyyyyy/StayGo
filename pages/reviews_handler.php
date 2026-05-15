@@ -7,6 +7,7 @@
 
 session_start();
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../includes/moderation_helper.php';
 
 header('Content-Type: application/json');
 
@@ -64,20 +65,34 @@ if ($action === 'submit') {
         json_resp(false, 'Bạn đã đánh giá booking này rồi.');
     }
 
+    // Kiểm duyệt nội dung bằng AI trước khi lưu
+    $mod = moderate_review($comment);
+    if ($mod['status'] === 'violated') {
+        json_resp(false, $mod['reason'] ?: 'Nội dung vi phạm tiêu chuẩn cộng đồng.', [
+            'moderation' => true,
+            'suggestion' => $mod['suggestion'] ?? '',
+            'labels'     => $mod['labels']     ?? [],
+        ]);
+    }
+    $is_active = $mod['status'] === 'safe' ? 1 : 0;
+
     // Insert review
     $stmt3 = $conn->prepare("
-        INSERT INTO reviews (hotel_id, user_id, booking_id, rating, comment)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO reviews (hotel_id, user_id, booking_id, rating, comment, is_active)
+        VALUES (?, ?, ?, ?, ?, ?)
     ");
-    $stmt3->bind_param("iiiis", $hotel_id, $user_id, $booking_id, $rating, $comment);
+    $stmt3->bind_param("iiiisi", $hotel_id, $user_id, $booking_id, $rating, $comment, $is_active);
     if (!$stmt3->execute()) {
         json_resp(false, 'Có lỗi xảy ra, vui lòng thử lại.');
     }
 
-    // Cập nhật rating trung bình cho hotel
+    // Cập nhật rating trung bình cho hotel (chỉ tính is_active=1)
     _update_hotel_rating($conn, $hotel_id);
 
-    json_resp(true, 'Đánh giá của bạn đã được ghi nhận!');
+    $msg = $is_active
+        ? 'Cảm ơn bạn! Đánh giá đã được đăng lên.'
+        : 'Đánh giá của bạn đang chờ admin kiểm duyệt và sẽ hiển thị sớm.';
+    json_resp(true, $msg, ['pending_review' => !$is_active]);
 }
 
 // ----------------------------------------

@@ -58,16 +58,18 @@ if (isset($_GET['cancelled'])) {
 
 // Lấy tất cả booking của user
 $stmt = $conn->prepare("
-    SELECT 
+    SELECT
         b.id, b.order_code, b.full_name, b.email, b.phone,
         b.check_in, b.check_out, b.total_price,
         b.payment_method, b.note, b.status, b.created_at,
         b.refund_requested, b.refund_amount,
         r.room_name, r.price AS room_price,
-        h.name AS hotel_name, h.address AS hotel_address
+        h.id AS hotel_id, h.name AS hotel_name, h.address AS hotel_address,
+        rv.id AS review_id
     FROM bookings b
     LEFT JOIN rooms r ON b.room_id = r.id
     LEFT JOIN hotels h ON r.hotel_id = h.id
+    LEFT JOIN reviews rv ON rv.booking_id = b.id
     WHERE b.user_id = ?
     ORDER BY b.created_at DESC
 ");
@@ -352,6 +354,19 @@ $method_map = [
 
                     <?php endif; ?>
 
+                    <?php if ($b['status'] === 'completed'): ?>
+                    <div style="margin-top:10px;padding-top:10px;border-top:1px solid #f0f4f8">
+                        <?php if ($b['review_id']): ?>
+                        <span style="font-size:12.5px;color:#276749;font-weight:600">✅ Đã gửi đánh giá</span>
+                        <?php else: ?>
+                        <button onclick="openReview(<?= $b['id'] ?>, <?= (int)$b['hotel_id'] ?>, '<?= htmlspecialchars(addslashes($b['hotel_name']), ENT_QUOTES) ?>')"
+                            style="background:linear-gradient(135deg,#f6d365,#fda085);color:#7d3c00;border:none;padding:7px 14px;border-radius:8px;font-size:12.5px;font-weight:700;cursor:pointer">
+                            ⭐ Viết đánh giá
+                        </button>
+                        <?php endif; ?>
+                    </div>
+                    <?php endif; ?>
+
                     <?php if ($b['status'] !== 'cancelled' && $b['status'] !== 'pending'): ?>
                     <div style="margin-top:10px;padding-top:10px;border-top:1px solid #f0f4f8">
                         <?php if (in_array($b['id'], $dispute_booking_ids)): ?>
@@ -462,5 +477,139 @@ $method_map = [
         </div>
     </div>
 </div>
+
+<!-- Modal viết đánh giá -->
+<div id="reviewModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.5);align-items:center;justify-content:center">
+    <div style="background:#fff;border-radius:20px;padding:28px;max-width:480px;width:92%;box-shadow:0 20px 60px rgba(0,0,0,.25);animation:popIn .2s ease">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <div>
+                <div style="font-size:18px;font-weight:800;color:#1a202c">⭐ Viết đánh giá</div>
+                <div id="rv-hotel-name" style="font-size:13px;color:#718096;margin-top:2px"></div>
+            </div>
+            <button onclick="closeReview()" style="background:none;border:none;font-size:22px;color:#a0aec0;cursor:pointer;line-height:1">✕</button>
+        </div>
+
+        <!-- Star rating -->
+        <div style="margin-bottom:16px">
+            <div style="font-size:13px;font-weight:600;color:#4a5568;margin-bottom:8px">Đánh giá tổng thể</div>
+            <div id="starRow" style="display:flex;gap:6px">
+                <?php for ($s = 1; $s <= 5; $s++): ?>
+                <button type="button" data-star="<?= $s ?>"
+                    onclick="setStar(<?= $s ?>)"
+                    style="font-size:30px;background:none;border:none;cursor:pointer;padding:0;line-height:1;transition:.1s;filter:grayscale(1);opacity:.4"
+                    title="<?= $s ?> sao">★</button>
+                <?php endfor; ?>
+            </div>
+            <div id="starLabel" style="font-size:12px;color:#718096;margin-top:4px;height:16px"></div>
+        </div>
+
+        <!-- Comment -->
+        <div style="margin-bottom:16px">
+            <label style="font-size:13px;font-weight:600;color:#4a5568;display:block;margin-bottom:6px">
+                Nhận xét của bạn <span style="color:#c53030">*</span>
+            </label>
+            <textarea id="rv-comment" rows="4" maxlength="1000"
+                placeholder="Chia sẻ trải nghiệm thực tế của bạn về phòng, dịch vụ, vệ sinh..."
+                style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13.5px;font-family:inherit;resize:vertical;box-sizing:border-box"
+                oninput="updateCharCount()"></textarea>
+            <div style="font-size:11px;color:#a0aec0;text-align:right;margin-top:4px"><span id="charCount">0</span>/1000</div>
+        </div>
+
+        <!-- Error / info messages -->
+        <div id="rv-msg" style="display:none;padding:10px 14px;border-radius:8px;font-size:13px;font-weight:600;margin-bottom:14px"></div>
+        <div id="rv-suggestion" style="display:none;padding:10px 14px;background:#fffbeb;border:1px solid #fbd38d;border-radius:8px;font-size:13px;color:#92400e;margin-bottom:14px"></div>
+
+        <div style="display:flex;gap:10px">
+            <button onclick="closeReview()"
+                style="flex:1;padding:12px;border-radius:10px;border:1.5px solid #e2e8f0;background:#fff;color:#718096;font-size:14px;font-weight:600;cursor:pointer">
+                Hủy
+            </button>
+            <button id="rv-submit-btn" onclick="submitReview()"
+                style="flex:2;padding:12px;border-radius:10px;background:linear-gradient(135deg,#f6d365,#fda085);color:#7d3c00;border:none;font-size:14px;font-weight:700;cursor:pointer">
+                Gửi đánh giá
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+var _rvBookingId = 0, _rvHotelId = 0, _rvStar = 0;
+var starLabels = ['','Rất tệ','Tệ','Bình thường','Tốt','Tuyệt vời'];
+
+function openReview(bid, hid, hname) {
+    _rvBookingId = bid; _rvHotelId = hid; _rvStar = 0;
+    document.getElementById('rv-hotel-name').textContent = hname;
+    document.getElementById('rv-comment').value = '';
+    document.getElementById('charCount').textContent = '0';
+    document.getElementById('starLabel').textContent = '';
+    document.getElementById('rv-msg').style.display = 'none';
+    document.getElementById('rv-suggestion').style.display = 'none';
+    setStar(0, true);
+    document.getElementById('reviewModal').style.display = 'flex';
+}
+function closeReview() { document.getElementById('reviewModal').style.display = 'none'; }
+
+function setStar(n, reset) {
+    _rvStar = reset ? 0 : n;
+    document.querySelectorAll('#starRow button').forEach(function(btn) {
+        var s = parseInt(btn.dataset.star);
+        btn.style.filter = (!reset && s <= n) ? 'grayscale(0)' : 'grayscale(1)';
+        btn.style.opacity = (!reset && s <= n) ? '1' : '.4';
+    });
+    document.getElementById('starLabel').textContent = reset ? '' : starLabels[n] || '';
+}
+
+function updateCharCount() {
+    document.getElementById('charCount').textContent = document.getElementById('rv-comment').value.length;
+}
+
+function submitReview() {
+    var comment = document.getElementById('rv-comment').value.trim();
+    var msg = document.getElementById('rv-msg');
+    var sug = document.getElementById('rv-suggestion');
+    msg.style.display = 'none'; sug.style.display = 'none';
+
+    if (!_rvStar) { showRvMsg('Vui lòng chọn số sao.', 'error'); return; }
+    if (comment.length < 10) { showRvMsg('Nhận xét tối thiểu 10 ký tự.', 'error'); return; }
+
+    var btn = document.getElementById('rv-submit-btn');
+    btn.disabled = true; btn.textContent = 'Đang gửi...';
+
+    var fd = new FormData();
+    fd.append('action', 'submit');
+    fd.append('hotel_id', _rvHotelId);
+    fd.append('booking_id', _rvBookingId);
+    fd.append('rating', _rvStar);
+    fd.append('comment', comment);
+
+    fetch('/pages/reviews_handler.php', { method: 'POST', body: fd })
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+            if (res.success) {
+                showRvMsg(res.message, 'success');
+                setTimeout(function() { location.reload(); }, 1800);
+            } else {
+                showRvMsg(res.message, 'error');
+                if (res.data && res.data.suggestion) {
+                    sug.textContent = '💡 Gợi ý: ' + res.data.suggestion;
+                    sug.style.display = 'block';
+                }
+                btn.disabled = false; btn.textContent = 'Gửi đánh giá';
+            }
+        })
+        .catch(function() {
+            showRvMsg('Lỗi kết nối, vui lòng thử lại.', 'error');
+            btn.disabled = false; btn.textContent = 'Gửi đánh giá';
+        });
+}
+
+function showRvMsg(text, type) {
+    var el = document.getElementById('rv-msg');
+    el.textContent = text;
+    if (type === 'success') { el.style.background='#f0fff4'; el.style.color='#276749'; el.style.border='1px solid #9ae6b4'; }
+    else { el.style.background='#fff5f5'; el.style.color='#c53030'; el.style.border='1px solid #feb2b2'; }
+    el.style.display = 'block';
+}
+</script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
