@@ -41,7 +41,7 @@ MIGRATIONS=(
 echo "[startup] Starting PHP on 0.0.0.0:$APP_PORT"
 exec php \
     -d output_buffering=On \
-    -d display_errors=On \
+    -d display_errors=Off \
     -d error_reporting=E_ALL \
     -d log_errors=On \
     -d error_log=/proc/1/fd/2 \

@@ -9,6 +9,10 @@ $pass = getenv('MYSQLPASSWORD') ?: '';
 $db   = getenv('MYSQLDATABASE') ?: 'tour_khach_san';
 $port = (int)(getenv('MYSQLPORT') ?: 3306);
 
+// PHP 8.1+ throws mysqli_sql_exception by default — restore pre-8.1 behaviour so
+// @$conn->query() and prepare() return false on error instead of throwing.
+mysqli_report(MYSQLI_REPORT_OFF);
+
 $conn = new mysqli($host, $user, $pass, $db, $port);
 
 if ($conn->connect_error) {

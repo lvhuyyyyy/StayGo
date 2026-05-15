@@ -118,6 +118,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Chống overbooking: lock room row, kiểm tra còn phòng trước khi insert
     $conn->begin_transaction();
     $lock_s = $conn->prepare("SELECT r.quantity, h.commission_rate FROM rooms r JOIN hotels h ON r.hotel_id = h.id WHERE r.id = ? FOR UPDATE");
+    if (!$lock_s) {
+        // commission_rate chưa được migrate — dùng mặc định 10%
+        $lock_s = $conn->prepare("SELECT r.quantity, 10 as commission_rate FROM rooms r WHERE r.id = ? FOR UPDATE");
+    }
     $lock_s->bind_param("i", $room_id);
     $lock_s->execute();
     $room_lock = $lock_s->get_result()->fetch_assoc();
@@ -129,21 +133,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Xác định luồng thu tiền
         $payment_flow = ($payment_method === 'hotel') ? 'hotel_collect' : 'platform_collect';
 
+        $user_id = $_SESSION['user_id'] ?? null;
         $stmt = $conn->prepare("INSERT INTO bookings (order_code, user_id, room_id, full_name, email, phone, check_in, check_out, total_price, payment_method, payment_flow, note, status, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())");
-        $user_id = $_SESSION['user_id'] ?? null;
-        $stmt->bind_param("siisssssdssss", $order_code, $user_id, $room_id, $full_name, $email, $phone, $checkin, $checkout, $total_price, $payment_method, $payment_flow, $note);
-        try {
+        if ($stmt) {
+            $stmt->bind_param("siisssssdssss", $order_code, $user_id, $room_id, $full_name, $email, $phone, $checkin, $checkout, $total_price, $payment_method, $payment_flow, $note);
+        } else {
+            // payment_flow column not yet migrated — insert without it
+            $stmt = $conn->prepare("INSERT INTO bookings (order_code, user_id, room_id, full_name, email, phone, check_in, check_out, total_price, payment_method, note, status, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())");
+            $stmt->bind_param("siisssssdss", $order_code, $user_id, $room_id, $full_name, $email, $phone, $checkin, $checkout, $total_price, $payment_method, $note);
+        }
+        if (!$stmt->execute() && $conn->errno == 1062) {
+            $order_code = 'ORD' . time() . rand(1000, 9999);
+            $stmt->bind_param("siisssssdssss", $order_code, $user_id, $room_id, $full_name, $email, $phone, $checkin, $checkout, $total_price, $payment_method, $payment_flow, $note);
             $stmt->execute();
-        } catch (mysqli_sql_exception $e) {
-            if ($conn->errno == 1062) {
-                $order_code = 'ORD' . time() . rand(1000, 9999);
-                $stmt->bind_param("siisssssdssss", $order_code, $user_id, $room_id, $full_name, $email, $phone, $checkin, $checkout, $total_price, $payment_method, $payment_flow, $note);
-                $stmt->execute();
-            } else {
-                $conn->rollback();
-                throw $e;
-            }
         }
         $booking_id = $conn->insert_id;
 
