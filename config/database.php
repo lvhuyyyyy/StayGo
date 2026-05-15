@@ -29,7 +29,6 @@ if (!$conn->query("SELECT cancel_free_days FROM hotels LIMIT 0")) {
 }
 
 // Auto-hoàn thành: confirmed + check_out đã qua → completed + tính payout
-// Dùng JOIN để lấy commission_rate từ hotel, tính hotel_payout và platform_revenue
 $conn->query("
     UPDATE bookings b
     JOIN rooms r  ON b.room_id  = r.id
@@ -40,10 +39,24 @@ $conn->query("
         b.platform_revenue = CASE WHEN COALESCE(b.payment_flow,'platform_collect') = 'hotel_collect' THEN 0 ELSE ROUND(b.total_price * COALESCE(b.commission_rate, h.commission_rate, 10) / 100, 2) END,
         b.hotel_payout     = CASE WHEN COALESCE(b.payment_flow,'platform_collect') = 'hotel_collect' THEN 0 ELSE ROUND(b.total_price * (1 - COALESCE(b.commission_rate, h.commission_rate, 10) / 100), 2) END
     WHERE b.status    = 'confirmed'
-      AND b.check_out IS NOT NULL
-      AND b.check_in  IS NOT NULL
-      AND b.check_out > b.check_in
-      AND b.check_out < CURDATE()
+      AND b.check_out IS NOT NULL AND b.check_in IS NOT NULL
+      AND b.check_out > b.check_in AND b.check_out < CURDATE()
+");
+
+// Booking đã 'completed' nhưng payout_status vẫn HOLDING (bị bỏ qua do admin manually complete)
+// → tính lại commission và chuyển sang READY
+$conn->query("
+    UPDATE bookings b
+    JOIN rooms r  ON b.room_id  = r.id
+    JOIN hotels h ON r.hotel_id = h.id
+    SET b.commission_rate  = COALESCE(NULLIF(b.commission_rate, 0), h.commission_rate, 10),
+        b.platform_revenue = ROUND(b.total_price * COALESCE(NULLIF(b.commission_rate, 0), h.commission_rate, 10) / 100, 2),
+        b.hotel_payout     = ROUND(b.total_price * (1 - COALESCE(NULLIF(b.commission_rate, 0), h.commission_rate, 10) / 100), 2),
+        b.payout_status    = 'READY'
+    WHERE b.status        = 'completed'
+      AND b.payout_status = 'HOLDING'
+      AND b.payment_flow  = 'platform_collect'
+      AND b.check_out     < CURDATE()
 ");
 
 require_once __DIR__ . '/secrets.php';
