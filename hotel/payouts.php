@@ -51,11 +51,11 @@ $other_bookings = $conn->query("
       AND b.payout_status IN ('HOLDING','FROZEN')
       AND b.status NOT IN ('cancelled','pending')
       AND b.payment_flow = 'platform_collect'
-    ORDER BY b.check_out ASC
+    ORDER BY b.check_out DESC
     LIMIT 50
 ")->fetch_all(MYSQLI_ASSOC);
 
-function badge_payout($s) {
+function badge_payout(string $s): string {
     $map = ['HOLDING'=>['badge-holding','Đang giữ'],'READY'=>['badge-ready','Sẵn sàng'],'FROZEN'=>['badge-frozen','Đóng băng'],'PAID'=>['badge-paid','Đã giải ngân']];
     [$cls, $lbl] = $map[$s] ?? ['badge-holding', $s];
     return "<span class=\"badge $cls\">$lbl</span>";
