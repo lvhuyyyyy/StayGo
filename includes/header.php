@@ -67,6 +67,7 @@ $blog_pages = ['blog-list.php', 'blog-detail.php'];
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Be+Vietnam+Pro:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/assets/css/style.css">
+    <link rel="stylesheet" href="/assets/css/responsive.css">
     <script src="/assets/js/main.js" defer></script>
     <script src="/assets/js/payment.js" defer></script>
 </head>
@@ -82,7 +83,17 @@ $blog_pages = ['blog-list.php', 'blog-detail.php'];
                 style="width:auto;height:60px;object-fit:contain;">
         </a>
 
-        <nav>
+        <!-- Hamburger (hiển thị trên mobile/tablet, ẩn trên desktop) -->
+        <button class="nav-toggle" id="navToggle"
+                aria-label="Mở menu điều hướng"
+                aria-expanded="false"
+                aria-controls="mainNav">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
+
+        <nav id="mainNav">
             <a href="/"
             class="<?= in_array($current_page, ['index.php','home.php']) ? 'active' : '' ?>">
             Trang chủ
@@ -175,6 +186,9 @@ $blog_pages = ['blog-list.php', 'blog-detail.php'];
         </nav>
     </div>
 </header>
+
+<!-- Overlay tối phía sau mobile nav drawer -->
+<div class="nav-overlay" id="navOverlay" aria-hidden="true"></div>
 
 <?php
 $uri = rtrim(parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH), '/');

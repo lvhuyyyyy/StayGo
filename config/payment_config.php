@@ -162,6 +162,70 @@ function momo_create_payment(string $order_code, float $amount, int $booking_id)
     return ['success' => false, 'message' => $res['message'] ?? 'MoMo từ chối yêu cầu. Vui lòng thử lại.'];
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// PayOS — cổng thanh toán Việt Nam (by VNPay)
+// Đăng ký tại: https://payos.vn → Dashboard → Lấy API Keys
+// ═══════════════════════════════════════════════════════════════════
+define('PAYOS_CLIENT_ID',    getenv('PAYOS_CLIENT_ID')    ?: 'ae5ad459-f562-4513-9ae5-1a66cae70928');
+define('PAYOS_API_KEY',      getenv('PAYOS_API_KEY')      ?: '743049b3-0896-4560-a247-d34ce146263d');
+define('PAYOS_CHECKSUM_KEY', getenv('PAYOS_CHECKSUM_KEY') ?: '7ea8fef4d5ad3de4bc95128c4d8e193aa91a671801c32a683b0fd6ceb8d7c601');
+define('PAYOS_ENDPOINT',     'https://api-merchant.payos.vn/v2/payment-requests');
+
+/**
+ * Tạo link thanh toán PayOS và trả về checkoutUrl.
+ * @param int    $booking_id  ID booking (dùng làm orderCode, phải là integer dương)
+ * @param float  $amount      Số tiền VNĐ
+ * @param string $description Mô tả (tối đa 25 ký tự, chỉ ASCII)
+ * @return array ['success'=>true,'pay_url'=>'...'] hoặc ['success'=>false,'message'=>'...']
+ */
+function payos_create_payment(int $booking_id, float $amount, string $description): array {
+    $returnUrl = site_url('pages/payos_return.php');
+    $cancelUrl = site_url('pages/payos_return.php?cancel=true');
+
+    // Chữ ký HMAC-SHA256: ghép các field theo thứ tự alphabet
+    $signData  = 'amount='      . (int)$amount
+               . '&cancelUrl='  . $cancelUrl
+               . '&description='. $description
+               . '&orderCode='  . $booking_id
+               . '&returnUrl='  . $returnUrl;
+    $signature = hash_hmac('sha256', $signData, PAYOS_CHECKSUM_KEY);
+
+    $body = json_encode([
+        'orderCode'   => $booking_id,
+        'amount'      => (int)$amount,
+        'description' => $description,
+        'returnUrl'   => $returnUrl,
+        'cancelUrl'   => $cancelUrl,
+        'signature'   => $signature,
+    ]);
+
+    $ch = curl_init(PAYOS_ENDPOINT);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => $body,
+        CURLOPT_HTTPHEADER     => [
+            'Content-Type: application/json',
+            'x-client-id: ' . PAYOS_CLIENT_ID,
+            'x-api-key: '   . PAYOS_API_KEY,
+        ],
+        CURLOPT_TIMEOUT        => 15,
+        CURLOPT_SSL_VERIFYPEER => true,
+    ]);
+    $response = curl_exec($ch);
+    $err      = curl_error($ch);
+    curl_close($ch);
+
+    if (!$response) {
+        return ['success' => false, 'message' => 'Không thể kết nối PayOS: ' . $err];
+    }
+    $res = json_decode($response, true);
+    if (($res['code'] ?? '') === '00' && !empty($res['data']['checkoutUrl'])) {
+        return ['success' => true, 'pay_url' => $res['data']['checkoutUrl']];
+    }
+    return ['success' => false, 'message' => $res['desc'] ?? 'PayOS từ chối yêu cầu. Vui lòng thử lại.'];
+}
+
 /**
  * Xác minh chữ ký MoMo (dùng cho cả return URL GET params và IPN POST data).
  */

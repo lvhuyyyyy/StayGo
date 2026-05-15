@@ -94,8 +94,8 @@ function _email_wrap(string $title, string $body): string {
   .header p{margin:6px 0 0;color:rgba(255,255,255,.75);font-size:13px}
   .content{padding:32px}
   .greeting{font-size:16px;color:#2d3748;margin-bottom:20px}
-  .box{background:#f7fafc;border-radius:12px;padding:20px 24px;margin:20px 0}
-  .row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #e2e8f0;font-size:14px}
+  .box{background:#f7fafc;border-radius:12px;padding:8px 24px 4px;margin:20px 0}
+  .row{display:flex;justify-content:space-between;padding:12px 4px;border-bottom:1px solid #e2e8f0;font-size:14px;gap:16px}
   .row:last-child{border-bottom:none;font-weight:700;font-size:15px;color:#1e73be}
   .label{color:#718096}
   .otp-box{text-align:center;margin:28px 0}
@@ -136,6 +136,7 @@ function _booking_template(array $d): string {
         'bank'  => 'Chuyển khoản ngân hàng',
         'momo'  => 'Ví MoMo',
         'vnpay' => 'VNPay',
+        'payos' => 'PayOS',
         'hotel' => 'Thanh toán tại khách sạn',
         'card'  => 'Thẻ quốc tế',
     ];

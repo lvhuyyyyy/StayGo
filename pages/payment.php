@@ -170,6 +170,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'bank'  => 'Chuyển khoản ngân hàng',
         'momo'  => 'Ví MoMo',
         'vnpay' => 'VNPay',
+        'payos' => 'PayOS',
         'hotel' => 'Thanh toán tại khách sạn',
         'card'  => 'Thẻ quốc tế',
     ];
@@ -215,6 +216,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $error_msg = 'MoMo: ' . $momo['message'];
     }
+    if ($payment_method === 'payos') {
+        $desc  = 'Thanh toan #' . $booking_id;
+        $payos = payos_create_payment($booking_id, $total_price, $desc);
+        if ($payos['success']) {
+            header('Location: ' . $payos['pay_url']);
+            exit();
+        }
+        $error_msg = 'PayOS: ' . $payos['message'];
+    }
+
+    // Thanh toán tại khách sạn: auto-confirm ngay (không cần đợi admin duyệt)
+    if ($payment_method === 'hotel') {
+        $conn->query("UPDATE bookings SET status='confirmed' WHERE id=$booking_id");
+    }
 
     // Gửi email xác nhận đặt phòng cho thanh toán không qua gateway
     send_booking_email($email, $full_name, [
@@ -227,6 +242,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'total_price'    => $total_price,
         'full_name'      => $full_name,
     ]);
+
+    // Gửi email thông báo đặt phòng mới đến khách sạn (hotel_collect)
+    if ($payment_method === 'hotel') {
+        $hotel_email_row = $conn->query("SELECT partner_email FROM hotels WHERE id=$hotel_id LIMIT 1");
+        $hotel_partner   = $hotel_email_row ? $hotel_email_row->fetch_assoc() : null;
+        if ($hotel_partner && !empty($hotel_partner['partner_email'])) {
+            send_hotel_new_booking_email($hotel_partner['partner_email'], [
+                'order_code'     => $order_code,
+                'hotel_name'     => $hotel['name'],
+                'full_name'      => $full_name,
+                'guest_email'    => $email,
+                'room_name'      => $room_name_val,
+                'checkin'        => $checkin,
+                'checkout'       => $checkout,
+                'payment_method' => $payment_method_label,
+                'amount'         => $total_price,
+            ]);
+        }
+    }
 
     $qr_content = urlencode("StayGo | Ma don: $order_code | Ho ten: $full_name | Email: $email | SDT: $phone | Tong tien: " . number_format($total_price, 0, ',', '.') . "d | PT: $payment_method");
     $qr_data = [
@@ -420,6 +454,22 @@ require_once __DIR__ . '/../includes/header.php';
                     <span class="method-check">✓</span>
                 </label>
 
+                <!-- PayOS -->
+                <label class="method-card" id="m_payos" onclick="showMethodDetail('payos')">
+                    <input type="radio" name="payment_method" value="payos" onchange="selectMethod(this)">
+                    <div class="method-logo">
+                        <svg width="46" height="46" viewBox="0 0 46 46" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect width="46" height="46" rx="10" fill="#0066CC"/>
+                            <text x="23" y="29" text-anchor="middle" font-family="Arial,sans-serif" font-size="13" font-weight="bold" fill="white" letter-spacing="0.5">PayOS</text>
+                        </svg>
+                    </div>
+                    <div class="method-info">
+                        <div class="method-name">PayOS</div>
+                        <div class="method-desc">Cổng thanh toán · QR & thẻ ngân hàng</div>
+                    </div>
+                    <span class="method-check">✓</span>
+                </label>
+
                 <!-- Thanh toán tại khách sạn -->
                 <label class="method-card" id="m_hotel" onclick="showMethodDetail('hotel')">
                     <input type="radio" name="payment_method" value="hotel" onchange="selectMethod(this)">
@@ -595,6 +645,53 @@ require_once __DIR__ . '/../includes/header.php';
                         <div class="vnpay-secure-row">
                             <span>🔒 Giao dịch được mã hóa SSL 256-bit</span>
                             <span>✅ Chứng nhận PCI DSS</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PANEL: PayOS -->
+            <div id="detail_payos" class="method-detail-panel" style="display:none">
+                <div class="panel-header" style="background:linear-gradient(135deg,#0055bb,#0088ff);color:#fff;display:flex;align-items:center;gap:10px;padding:14px 20px;border-radius:12px 12px 0 0;font-weight:700;font-size:14px">
+                    <svg width="20" height="20" viewBox="0 0 46 46" fill="none"><rect width="46" height="46" rx="10" fill="rgba(255,255,255,0.25)"/><text x="23" y="29" text-anchor="middle" font-family="Arial,sans-serif" font-size="13" font-weight="bold" fill="white">PayOS</text></svg>
+                    Cổng thanh toán PayOS
+                </div>
+                <div class="vnpay-layout">
+                    <div class="vnpay-explain">
+                        <div class="vnpay-logo-row">
+                            <svg width="80" height="30" viewBox="0 0 80 30" fill="none"><rect width="80" height="30" rx="6" fill="#0066CC"/><text x="40" y="21" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" font-weight="bold" fill="white" letter-spacing="1">PayOS</text></svg>
+                            <span class="vnpay-badge" style="background:#e6f0ff;color:#0055bb;border-color:#b3d0ff">Cổng thanh toán bảo mật</span>
+                        </div>
+                        <p class="vnpay-desc">
+                            <strong>PayOS</strong> là cổng thanh toán điện tử được cấp phép bởi Ngân hàng Nhà nước Việt Nam.
+                            Khi xác nhận đặt phòng, bạn sẽ được chuyển đến trang PayOS để thanh toán an toàn qua QR hoặc thẻ ngân hàng.
+                        </p>
+                        <div class="vnpay-support-list">
+                            <div class="vnpay-support-item">
+                                <span class="vnpay-icon">📱</span>
+                                <div>
+                                    <strong>QR Code</strong>
+                                    <p>Quét QR bằng app ngân hàng bất kỳ hoặc ví điện tử</p>
+                                </div>
+                            </div>
+                            <div class="vnpay-support-item">
+                                <span class="vnpay-icon">💳</span>
+                                <div>
+                                    <strong>Thẻ ATM / Internet Banking</strong>
+                                    <p>Tất cả thẻ ATM nội địa có đăng ký Internet Banking</p>
+                                </div>
+                            </div>
+                            <div class="vnpay-support-item">
+                                <span class="vnpay-icon">🏦</span>
+                                <div>
+                                    <strong>30+ ngân hàng hỗ trợ</strong>
+                                    <p>BIDV, VietinBank, Techcombank, MB, Agribank...</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="vnpay-secure-row">
+                            <span>🔒 Mã hóa SSL 256-bit</span>
+                            <span>✅ Được cấp phép bởi NHNN</span>
                         </div>
                     </div>
                 </div>

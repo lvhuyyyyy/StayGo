@@ -791,3 +791,81 @@ document.addEventListener('DOMContentLoaded', function () {
             });
     }, 5000); // poll mỗi 5 giây
 });
+
+/* ================================================================
+   HAMBURGER NAVIGATION — Mobile/Tablet responsive nav
+================================================================ */
+(function () {
+    var toggle  = document.getElementById('navToggle');
+    var nav     = document.getElementById('mainNav');
+    var overlay = document.getElementById('navOverlay');
+    if (!toggle || !nav) return;
+
+    function openNav() {
+        toggle.classList.add('open');
+        nav.classList.add('open');
+        toggle.setAttribute('aria-expanded', 'true');
+        if (overlay) overlay.classList.add('open');
+        document.body.style.overflow = 'hidden';   // chặn cuộn trang sau drawer
+    }
+
+    function closeNav() {
+        toggle.classList.remove('open');
+        nav.classList.remove('open');
+        toggle.setAttribute('aria-expanded', 'false');
+        if (overlay) overlay.classList.remove('open');
+        document.body.style.overflow = '';
+    }
+
+    /* Toggle khi bấm hamburger */
+    toggle.addEventListener('click', function () {
+        nav.classList.contains('open') ? closeNav() : openNav();
+    });
+
+    /* Bấm overlay → đóng */
+    if (overlay) overlay.addEventListener('click', closeNav);
+
+    /* Phím Escape → đóng */
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && nav.classList.contains('open')) {
+            closeNav();
+            toggle.focus();
+        }
+    });
+
+    /* Resize về desktop → tự đóng + bỏ lock scroll */
+    var resizeTimer;
+    window.addEventListener('resize', function () {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function () {
+            if (window.innerWidth >= 1024) closeNav();
+        }, 100);
+    });
+
+    /* Click link bên trong nav → đóng (trừ user-trigger) */
+    nav.querySelectorAll('a:not(.dropdown-item)').forEach(function (a) {
+        a.addEventListener('click', function () {
+            if (window.innerWidth < 1024) closeNav();
+        });
+    });
+})();
+
+/* ================================================================
+   STICKY HEADER — thêm class .scrolled khi cuộn xuống
+================================================================ */
+(function () {
+    var header = document.querySelector('.header');
+    if (!header) return;
+    var ticking = false;
+
+    function onScroll() {
+        if (!ticking) {
+            requestAnimationFrame(function () {
+                header.classList.toggle('scrolled', window.scrollY > 10);
+                ticking = false;
+            });
+            ticking = true;
+        }
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+})();

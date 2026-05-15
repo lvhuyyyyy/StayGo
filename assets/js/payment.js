@@ -137,7 +137,7 @@ function selectMethod(radio) {
     radio.closest('.method-card').classList.add('selected');
 }
 
-var allPanels = ['bank','momo','vnpay','hotel','card'];
+var allPanels = ['bank','momo','vnpay','payos','hotel','card'];
 function showMethodDetail(type) {
     allPanels.forEach(function(p) {
         var el = document.getElementById('detail_' + p);

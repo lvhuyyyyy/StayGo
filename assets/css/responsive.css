@@ -1,0 +1,450 @@
+/* ================================================================
+   STAYGO — RESPONSIVE.CSS  (Mobile-First Supplement)
+   Chiến lược: Mobile-First, mở rộng lên Tablet → Desktop
+   Breakpoints:
+     Mobile   : default (< 768px)
+     Tablet   : min-width: 768px  →  max 1023px
+     Desktop  : min-width: 1024px
+   Load sau style.css — các rule ở đây ghi đè khi cần.
+================================================================ */
+
+/* ================================================================
+   0. RESET CÁ NHÂN HÓA
+================================================================ */
+*, *::before, *::after { box-sizing: border-box; }
+
+/* Ngăn ngang scroll trên mọi thiết bị */
+html, body { overflow-x: hidden; }
+
+/* Hình ảnh fluid theo mặc định */
+img, video, svg, picture { max-width: 100%; height: auto; display: block; }
+
+/* Focus visible (WCAG 2.1 AA) */
+:focus-visible {
+    outline: 3px solid #1e73be;
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+/* ================================================================
+   1. HAMBURGER BUTTON
+   Hiển thị trên mobile + tablet, ẩn trên desktop
+================================================================ */
+.nav-toggle {
+    display: none;          /* ẩn mặc định — desktop */
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 5px;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;        /* touch target ≥ 44px */
+    background: none;
+    border: 1.5px solid rgba(30,114,190,0.25);
+    border-radius: 10px;
+    cursor: pointer;
+    padding: 8px;
+    transition: background 0.2s, border-color 0.2s;
+    flex-shrink: 0;
+    z-index: 1002;
+    -webkit-tap-highlight-color: transparent;
+}
+.nav-toggle:hover,
+.nav-toggle:focus-visible {
+    background: rgba(30,114,190,0.08);
+    border-color: #1e73be;
+    outline: none;
+}
+
+/* 3 gạch → dấu X khi mở */
+.nav-toggle span {
+    display: block;
+    width: 20px;
+    height: 2.5px;
+    background: #1a202c;
+    border-radius: 2px;
+    transition: transform 0.3s ease, opacity 0.2s ease, width 0.2s;
+    transform-origin: center;
+}
+.nav-toggle.open span:nth-child(1) { transform: translateY(7.5px) rotate(45deg); }
+.nav-toggle.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+.nav-toggle.open span:nth-child(3) { transform: translateY(-7.5px) rotate(-45deg); }
+
+/* ================================================================
+   2. MOBILE NAV — slide/fade xuất hiện khi hamburger bấm
+   Áp dụng khi < 1024px (mobile + tablet)
+================================================================ */
+@media (max-width: 1023px) {
+
+    /* Hiện hamburger */
+    .nav-toggle { display: flex; }
+
+    /* Header không cho nav xuống hàng nữa */
+    .header-flex {
+        flex-wrap: nowrap !important;
+        gap: 0 !important;
+        height: 64px;
+        padding: 0 16px !important;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .header { padding: 0 !important; }
+
+    /* Mobile nav — full-screen drawer */
+    #mainNav {
+        display: none;                          /* mặc định: ẩn */
+        position: fixed;
+        top: 64px;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: #fff;
+        flex-direction: column !important;
+        padding: 20px 16px 40px;
+        gap: 2px;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        z-index: 1000;
+        border-top: 1px solid #e9ecef;
+        animation: none;
+    }
+    #mainNav.open {
+        display: flex !important;
+        animation: navSlideDown 0.22s ease;
+    }
+    @keyframes navSlideDown {
+        from { opacity: 0; transform: translateY(-8px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* --- Link thường trong nav mobile --- */
+    #mainNav > a:not(.btn-login-nav) {
+        display: flex !important;
+        align-items: center;
+        padding: 14px 16px !important;
+        font-size: 15px !important;
+        font-weight: 600 !important;
+        color: #1a202c !important;
+        text-decoration: none !important;
+        border-radius: 10px !important;
+        margin-left: 0 !important;
+        min-height: 52px;
+        transition: background 0.15s;
+    }
+    #mainNav > a:not(.btn-login-nav):hover,
+    #mainNav > a:not(.btn-login-nav).active {
+        background: #ebf4ff !important;
+        color: #1e73be !important;
+    }
+
+    /* --- Nút đăng nhập trong nav mobile --- */
+    #mainNav .btn-login-nav {
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+        margin-top: 12px !important;
+        padding: 14px 20px !important;
+        font-size: 15px !important;
+        border-radius: 10px !important;
+        min-height: 52px;
+        text-align: center;
+    }
+
+    /* --- User dropdown trong nav mobile --- */
+    #mainNav .user-dropdown {
+        width: 100% !important;
+        display: block;
+    }
+    #mainNav .user-trigger {
+        display: flex !important;
+        width: 100%;
+        padding: 14px 16px !important;
+        font-size: 15px !important;
+        font-weight: 600 !important;
+        color: #1a202c !important;
+        min-height: 52px;
+        border-radius: 10px;
+    }
+    #mainNav .user-trigger:hover { background: #ebf4ff; }
+    #mainNav .dropdown-menu {
+        position: static !important;
+        opacity: 1 !important;
+        transform: none !important;
+        pointer-events: all !important;
+        box-shadow: none !important;
+        border: 1.5px solid #e9ecef;
+        border-radius: 12px;
+        margin-top: 6px;
+        display: none;          /* ẩn mặc định, mở khi click trigger */
+    }
+    #mainNav .user-dropdown.open .dropdown-menu { display: block !important; }
+
+    /* Dropdown items chiều cao đủ touch */
+    #mainNav .dropdown-item { min-height: 48px; }
+}
+
+/* ================================================================
+   3. NAV OVERLAY (lớp tối phía sau drawer)
+================================================================ */
+.nav-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 30, 55, 0.45);
+    z-index: 999;
+    -webkit-backdrop-filter: blur(1px);
+    backdrop-filter: blur(1px);
+}
+.nav-overlay.open { display: block; }
+
+/* ================================================================
+   4. DESKTOP — đặt lại nav về inline như cũ
+================================================================ */
+@media (min-width: 1024px) {
+
+    /* Ẩn hamburger */
+    .nav-toggle { display: none !important; }
+
+    /* Nav hiển thị ngang như thiết kế gốc */
+    #mainNav {
+        display: flex !important;
+        position: static !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        background: none !important;
+        padding: 0 !important;
+        gap: 0 !important;
+        border: none !important;
+        overflow: visible !important;
+        animation: none !important;
+        height: auto !important;
+        bottom: auto !important;
+    }
+
+    /* Overlay không hiển thị trên desktop */
+    .nav-overlay { display: none !important; }
+
+    /* Body scroll tự do trên desktop */
+    body.nav-open { overflow: auto !important; }
+
+    /* Font cơ sở 16px cho desktop */
+    html { font-size: 16px; }
+
+    /* Container giới hạn chiều rộng */
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+}
+
+/* ================================================================
+   5. TABLET (768px – 1023px) — 2 cột, icon nav thu gọn
+================================================================ */
+@media (min-width: 768px) and (max-width: 1023px) {
+
+    html { font-size: 15px; }
+
+    /* Container padding vừa phải */
+    .container { padding: 0 20px; }
+
+    /* Header chiều cao nhất quán */
+    .header-flex { height: 64px; padding: 0 20px !important; }
+
+    /* Logo không bị thu nhỏ quá */
+    .logo-link img { height: 50px; }
+
+    /* Hero search 2 cột */
+    .hero-search-box {
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        border-radius: 14px;
+        padding: 12px !important;
+    }
+    .hsb-field {
+        flex: 1 1 calc(50% - 8px) !important;
+        border-right: 1px solid #e2e8f0 !important;
+        border-bottom: 1px solid #e2e8f0 !important;
+        padding: 10px 12px !important;
+        width: auto !important;
+    }
+    .hsb-field:nth-child(2n) { border-right: none !important; }
+    .hsb-btn {
+        width: 100% !important;
+        margin-top: 8px;
+        flex: 0 0 100% !important;
+        justify-content: center;
+    }
+
+    /* Grids 2 cột */
+    .fh-grid,
+    .deal-grid  { grid-template-columns: repeat(2, 1fr) !important; gap: 18px; }
+    .destination-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 14px; }
+    .bl-list { grid-template-columns: repeat(2, 1fr) !important; }
+    .hs-blog-grid { grid-template-columns: repeat(2, 1fr) !important; }
+    .deals-grid { grid-template-columns: repeat(2, 1fr) !important; }
+
+    /* Padding section */
+    .weekend-deals,
+    .featured-hotels,
+    .destinations,
+    .promo-wrapper { padding: 44px 0; }
+
+    /* Footer 2 cột brand + link */
+    .footer-container { grid-template-columns: 1fr 1fr !important; gap: 28px 32px !important; padding: 44px 20px !important; }
+    .footer-brand { grid-column: 1 / -1; }
+}
+
+/* ================================================================
+   6. MOBILE (< 768px) — single column, touch-friendly
+================================================================ */
+@media (max-width: 767px) {
+
+    html { font-size: 14px; }
+
+    /* Section padding gọn hơn */
+    .weekend-deals,
+    .featured-hotels,
+    .destinations,
+    .promo-wrapper { padding: 28px 0; }
+
+    /* Section title nhỏ hơn */
+    .section-title { font-size: 20px !important; }
+    .fh-title      { font-size: 18px !important; }
+
+    /* Touch targets tối thiểu 48x48px */
+    .btn,
+    a.btn,
+    button.btn,
+    .btn-primary,
+    .btn-login-nav,
+    .bl-btn,
+    .fh-book-btn,
+    .btn-deal,
+    .hsb-btn {
+        min-height: 48px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    /* Ngăn iOS tự zoom khi focus input */
+    input, select, textarea { font-size: 16px !important; }
+
+    /* Thêm inputmode gợi ý đúng bàn phím */
+    input[type="tel"]    { -webkit-text-size-adjust: none; }
+    input[type="number"] { -moz-appearance: textfield; }
+}
+
+/* ================================================================
+   7. MOBILE < 480px — single column grids (ghi đè style.css)
+================================================================ */
+@media (max-width: 479px) {
+
+    /* Grids 1 cột */
+    .fh-grid,
+    .deal-grid,
+    .destination-grid,
+    .deals-grid,
+    .hs-blog-grid,
+    .bl-list,
+    .places-grid,
+    .places-blog-grid,
+    .bd-more-grid { grid-template-columns: 1fr !important; }
+
+    /* Hero search ngăn xếp */
+    .hero-search-box { flex-direction: column !important; gap: 6px !important; padding: 12px !important; }
+    .hsb-field { border-right: none !important; border-bottom: 1px solid #f0f4f8 !important; }
+    .hsb-field:last-of-type { border-bottom: none !important; }
+    .hsb-btn   { width: 100% !important; }
+
+    /* Quick tags ẩn đi để không tràn */
+    .hero-quick-tags { display: none; }
+
+    /* Footer 1 cột */
+    .footer-container { grid-template-columns: 1fr !important; gap: 24px !important; }
+
+    /* Blog */
+    .bd-nav { grid-template-columns: 1fr !important; }
+}
+
+/* ================================================================
+   8. CONTAINER — nhất quán trên mọi breakpoint
+================================================================ */
+/* Mobile default */
+.container,
+.bd-container,
+.bl-container,
+.deals-container,
+.footer-container {
+    padding-left:  16px;
+    padding-right: 16px;
+}
+
+@media (min-width: 768px) {
+    .container,
+    .bd-container,
+    .bl-container,
+    .deals-container { padding-left: 20px; padding-right: 20px; }
+}
+
+@media (min-width: 1024px) {
+    .container { max-width: 1200px; margin-left: auto; margin-right: auto; }
+}
+
+/* ================================================================
+   9. HÌNH ẢNH — lazy loading ready, không bị kéo giãn
+================================================================ */
+img[loading="lazy"] {
+    /* placeholder mờ khi chưa load */
+    background: #f0f4f8;
+}
+
+/* Ảnh trong card: chiều cao fixed chuẩn responsive */
+@media (max-width: 479px) {
+    .deal-card   img,
+    .fh-card img { height: 200px !important; }
+}
+
+/* ================================================================
+   10. WCAG 2.1 AA — Contrast & Focus
+================================================================ */
+
+/* Focus rõ ràng trên mọi interactive element */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+    outline: 3px solid #1e73be;
+    outline-offset: 2px;
+}
+
+/* Đảm bảo placeholder đủ contrast (>= 4.5:1 vs white bg) */
+::placeholder { color: #6b7a8d; opacity: 1; }
+
+/* ================================================================
+   11. PRINT — ẩn nav, sidebar, chatbot khi in
+================================================================ */
+@media print {
+    .header,
+    .site-footer,
+    .nav-toggle,
+    .nav-overlay,
+    .chatbot-wrap,
+    .contact-floating,
+    .scroll-top-btn { display: none !important; }
+
+    body { font-size: 12pt; color: #000; }
+    a    { color: #000; text-decoration: underline; }
+}
+
+/* ================================================================
+   12. STICKY HEADER — đổ bóng khi cuộn
+================================================================ */
+.header {
+    position: sticky;
+    top: 0;
+    z-index: 1001;
+    transition: box-shadow 0.2s;
+}
+.header.scrolled {
+    box-shadow: 0 4px 20px rgba(0,0,0,0.12) !important;
+}
