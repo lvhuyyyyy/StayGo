@@ -23,16 +23,25 @@ $conn->set_charset("utf8mb4");
 // Đồng bộ múi giờ MySQL với PHP (UTC+7)
 $conn->query("SET time_zone = '+07:00'");
 
-// Auto-hoàn thành: confirmed + check_out đã qua → completed, đồng thời trả lại số phòng
-// Guard: chỉ xử lý booking có ngày hợp lệ (check_out IS NOT NULL AND check_out > check_in)
-// để tránh side-effect từ dữ liệu bẩn
+// One-time migration: thêm cancel_free_days nếu chưa có (idempotent, MySQL 8+)
+$conn->query("ALTER TABLE hotels ADD COLUMN IF NOT EXISTS cancel_free_days TINYINT UNSIGNED NOT NULL DEFAULT 1");
+
+// Auto-hoàn thành: confirmed + check_out đã qua → completed + tính payout
+// Dùng JOIN để lấy commission_rate từ hotel, tính hotel_payout và platform_revenue
 $conn->query("
-    UPDATE bookings SET status = 'completed'
-    WHERE status = 'confirmed'
-      AND check_out IS NOT NULL
-      AND check_in IS NOT NULL
-      AND check_out > check_in
-      AND check_out < CURDATE()
+    UPDATE bookings b
+    JOIN rooms r  ON b.room_id  = r.id
+    JOIN hotels h ON r.hotel_id = h.id
+    SET b.status           = 'completed',
+        b.payout_status    = CASE WHEN COALESCE(b.payment_flow,'platform_collect') = 'hotel_collect' THEN 'HOLDING' ELSE 'READY' END,
+        b.commission_rate  = CASE WHEN COALESCE(b.payment_flow,'platform_collect') = 'hotel_collect' THEN 0 ELSE COALESCE(b.commission_rate, h.commission_rate, 10) END,
+        b.platform_revenue = CASE WHEN COALESCE(b.payment_flow,'platform_collect') = 'hotel_collect' THEN 0 ELSE ROUND(b.total_price * COALESCE(b.commission_rate, h.commission_rate, 10) / 100, 2) END,
+        b.hotel_payout     = CASE WHEN COALESCE(b.payment_flow,'platform_collect') = 'hotel_collect' THEN 0 ELSE ROUND(b.total_price * (1 - COALESCE(b.commission_rate, h.commission_rate, 10) / 100), 2) END
+    WHERE b.status    = 'confirmed'
+      AND b.check_out IS NOT NULL
+      AND b.check_in  IS NOT NULL
+      AND b.check_out > b.check_in
+      AND b.check_out < CURDATE()
 ");
 
 require_once __DIR__ . '/secrets.php';

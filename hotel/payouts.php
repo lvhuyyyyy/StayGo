@@ -132,7 +132,7 @@ function badge_payout($s) {
                 <td style="font-weight:600;font-size:13px"><?= htmlspecialchars($b['full_name']) ?></td>
                 <td style="font-size:13px"><?= htmlspecialchars($b['room_name']) ?></td>
                 <td style="font-size:12px;color:#718096"><?= date('d/m/Y', strtotime($b['check_out'])) ?></td>
-                <td style="font-weight:600"><?= number_format($b['hotel_payout'], 0, ',', '.') ?>đ</td>
+                <td style="font-weight:600"><?= number_format((float)($b['hotel_payout'] ?? 0), 0, ',', '.') ?>đ</td>
                 <td><?= badge_payout($b['payout_status']) ?></td>
             </tr>
             <?php endforeach; ?>
