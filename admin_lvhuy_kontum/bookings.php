@@ -85,6 +85,7 @@ $error_map = [
     'invalid'      => 'Yêu cầu không hợp lệ.',
     'notfound'     => 'Không tìm thấy đơn đặt phòng.',
     'already_done' => 'Đơn này đã được xử lý trước đó.',
+    'overbooking'  => 'Không thể xác nhận — phòng đã hết chỗ trong ngày này (overbooking).',
 ];
 if(isset($_GET['success']) && isset($success_map[$_GET['success']])):
     $n = $success_map[$_GET['success']];

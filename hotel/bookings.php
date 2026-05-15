@@ -3,6 +3,7 @@ $page_title    = 'Quản lý đặt phòng';
 $page_subtitle = 'Xác nhận, từ chối và theo dõi đặt phòng';
 require_once __DIR__ . '/../includes/hotel_header.php';
 require_once __DIR__ . '/../includes/security.php';
+require_once __DIR__ . '/../includes/email_helper.php';
 
 $msg   = null;
 $error = null;
@@ -16,7 +17,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['booking_action'])) {
 
     // Verify booking thuộc hotel này
     $chk = $conn->prepare("
-        SELECT b.id, b.status, b.order_code FROM bookings b
+        SELECT b.id, b.status, b.order_code, b.email, b.full_name,
+               b.check_in, b.check_out, b.total_price
+        FROM bookings b
         JOIN rooms r ON b.room_id = r.id
         WHERE b.id = ? AND r.hotel_id = ? AND b.status = 'pending'
     ");
@@ -38,16 +41,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['booking_action'])) {
         if (!$reason) $reason = 'Khách sạn không thể nhận đặt phòng này.';
         $reason_esc = $conn->real_escape_string($reason);
         $conn->query("UPDATE bookings SET status='cancelled' WHERE id=$bid");
-        // Hoàn phòng
-        $conn->query("
-            UPDATE rooms SET quantity = quantity + 1
-            WHERE id = (SELECT room_id FROM bookings WHERE id = $bid)
-        ");
         $conn->query("
             INSERT INTO booking_logs (booking_id, actor_type, actor_id, actor_name, action, description)
             VALUES ($bid, 'HOTEL', $hotel_id, '" . $conn->real_escape_string($_SESSION['hotel_name']) . "',
                     'REJECTED', '$reason_esc')
         ");
+        send_booking_rejected_email($target['email'], $target['full_name'], [
+            'order_code'  => $target['order_code'],
+            'hotel_name'  => $_SESSION['hotel_name'],
+            'check_in'    => $target['check_in'],
+            'check_out'   => $target['check_out'],
+            'total_price' => $target['total_price'],
+            'reason'      => $reason,
+        ]);
         $msg = 'Đã từ chối đặt phòng ' . htmlspecialchars($target['order_code']) . '.';
     }
 }
@@ -64,7 +70,7 @@ $bookings = $conn->query("
     SELECT b.id, b.order_code, b.full_name, b.email, b.phone,
            b.check_in, b.check_out, b.total_price,
            b.status, b.payout_status, b.created_at, b.note,
-           r.room_name
+           b.payment_method, r.room_name
     FROM bookings b
     JOIN rooms r ON b.room_id = r.id
     WHERE r.hotel_id = $hotel_id $where_status
@@ -136,6 +142,7 @@ function badge_payout($s) {
                     <th>Phòng</th>
                     <th>Nhận/Trả phòng</th>
                     <th>Tổng tiền</th>
+                    <th>Thanh toán</th>
                     <th>Trạng thái</th>
                     <th>Giải ngân</th>
                     <th>Thao tác</th>
@@ -171,6 +178,21 @@ function badge_payout($s) {
                 </td>
                 <td style="font-weight:700;color:#276749;white-space:nowrap">
                     <?= number_format($b['total_price'], 0, ',', '.') ?>đ
+                </td>
+                <td>
+                    <?php
+                    $pm_labels = [
+                        'vnpay'  => ['VNPay',    '#ebf4ff','#2b6cb0'],
+                        'payos'  => ['PayOS',    '#f0fff4','#276749'],
+                        'bank'   => ['CK Ngân hàng','#faf5ff','#6b46c1'],
+                        'hotel'  => ['Tại quầy', '#fffbeb','#92400e'],
+                        'momo'   => ['MoMo',     '#fff5f5','#c53030'],
+                        'card'   => ['Thẻ QT',   '#f0fff4','#276749'],
+                    ];
+                    $pm = $b['payment_method'] ?? '';
+                    [$lbl,$bg,$fg] = $pm_labels[$pm] ?? [$pm,'#f0f4f8','#4a5568'];
+                    echo "<span style=\"background:$bg;color:$fg;font-size:11px;font-weight:700;padding:3px 8px;border-radius:20px\">$lbl</span>";
+                    ?>
                 </td>
                 <td><?= badge_status($b['status']) ?></td>
                 <td><?= badge_payout($b['payout_status']) ?></td>

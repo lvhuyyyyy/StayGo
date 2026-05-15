@@ -87,9 +87,6 @@ if ($booking['status'] === 'pending') {
     $stmt2->execute();
 }
 
-// Trả lại 1 phòng vào số lượng còn lại
-$conn->query("UPDATE rooms SET quantity = quantity + 1 WHERE id = $room_id");
-
 header("Location: my_bookings.php?cancelled=1");
 exit();
 

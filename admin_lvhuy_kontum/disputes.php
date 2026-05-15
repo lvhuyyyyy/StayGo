@@ -28,12 +28,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             WHERE id=$dispute_id
         ");
 
-        // Đóng băng giải ngân nếu admin tích chọn
+        // Đóng băng giải ngân nếu admin tích chọn (dispute chấp nhận, khách thắng)
         if ($action === 'resolve' && !empty($_POST['freeze_payout'])) {
             $d = $conn->query("SELECT booking_id FROM disputes WHERE id=$dispute_id")->fetch_assoc();
             if ($d) {
                 $bid = (int)$d['booking_id'];
-                $conn->query("UPDATE bookings SET payout_status='FROZEN' WHERE id=$bid");
+                $conn->query("UPDATE bookings SET payout_status='FROZEN' WHERE id=$bid AND payout_status NOT IN ('PAID','FROZEN')");
                 $conn->query("
                     INSERT INTO booking_logs (booking_id, actor_type, actor_id, actor_name, action, description)
                     VALUES ($bid, 'ADMIN', $admin_id, '$admin_name', 'PAYOUT_FROZEN',
@@ -42,12 +42,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        // Gỡ đóng băng nếu reject
+        // Gỡ đóng băng nếu reject (dispute vô lý, hotel thắng)
         if ($action === 'reject') {
-            $d = $conn->query("SELECT booking_id FROM disputes WHERE id=$dispute_id")->fetch_assoc();
+            $d = $conn->query("SELECT dp.booking_id, b.status AS booking_status FROM disputes dp JOIN bookings b ON b.id=dp.booking_id WHERE dp.id=$dispute_id")->fetch_assoc();
             if ($d) {
-                $bid = (int)$d['booking_id'];
-                $conn->query("UPDATE bookings SET payout_status='READY' WHERE id=$bid AND payout_status='FROZEN' AND status='completed'");
+                $bid     = (int)$d['booking_id'];
+                $bstatus = $d['booking_status'];
+                // Booking đã hoàn thành → unfreeze về READY (chờ giải ngân)
+                $conn->query("UPDATE bookings SET payout_status='READY'
+                    WHERE id=$bid AND payout_status='FROZEN' AND status='completed'");
+                // Booking đang hoạt động → unfreeze về HOLDING (chưa đến lúc giải ngân)
+                $conn->query("UPDATE bookings SET payout_status='HOLDING'
+                    WHERE id=$bid AND payout_status='FROZEN' AND status IN ('confirmed','checked_in')");
+                $conn->query("
+                    INSERT INTO booking_logs (booking_id, actor_type, actor_id, actor_name, action, description)
+                    VALUES ($bid, 'ADMIN', $admin_id, '$admin_name', 'PAYOUT_UNFROZEN',
+                        'Gỡ đóng băng giải ngân do khiếu nại #$dispute_id bị từ chối')
+                ");
             }
         }
 

@@ -88,9 +88,6 @@ while ($b = $candidates->fetch_assoc()) {
         $log("  [platform_collect] Completed booking #{$b['order_code']} | payout={$hotel_payout}đ | commission={$platform_rev}đ");
     }
 
-    // Trả lại số lượng phòng
-    $conn->query("UPDATE rooms SET quantity = quantity + 1 WHERE id = $room_id");
-
     // Ghi booking_log
     $meta = $conn->real_escape_string(json_encode([
         'payment_flow'    => $payment_flow,

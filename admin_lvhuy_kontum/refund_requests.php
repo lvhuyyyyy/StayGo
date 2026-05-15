@@ -13,11 +13,6 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
         if ($action === 'approve') {
             $conn->query("UPDATE bookings SET status = 'cancelled', refund_requested = 2 WHERE id = $id");
             $conn->query("UPDATE payments SET payment_status = 'refunded' WHERE booking_id = $id");
-            // Chỉ restore quantity nếu booking CHƯA bị cancelled trước đó
-            // (tránh double-restore khi cancel_booking.php hoặc update_booking.php đã +1 rồi)
-            if ($booking['status'] !== 'cancelled') {
-                $conn->query("UPDATE rooms SET quantity = quantity + 1 WHERE id = " . (int)$booking['room_id']);
-            }
             log_activity($conn, 'approve_refund', 'booking', $id, "Duyệt hoàn tiền đơn #$id");
             header("Location: refund_requests.php?success=approved");
         } elseif ($action === 'reject') {

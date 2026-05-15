@@ -182,6 +182,39 @@ function _payment_template(array $d): string {
     return _email_wrap('Thanh toán thành công - StayGo', $body);
 }
 
+// ─────────────────────────────────────────────────────────────────
+// 5. Gửi email thông báo từ chối đặt phòng đến KHÁCH HÀNG
+// ─────────────────────────────────────────────────────────────────
+function send_booking_rejected_email(string $to_email, string $to_name, array $d): bool {
+    return _send_via_resend(
+        $to_email,
+        '[StayGo] Đặt phòng #' . $d['order_code'] . ' không được chấp nhận',
+        _booking_rejected_template($to_name, $d)
+    );
+}
+
+function _booking_rejected_template(string $name, array $d): string {
+    $body = '
+<div class="header"><h1>🏨 StayGo</h1><p>Thông báo về đặt phòng của bạn</p></div>
+<div class="content">
+  <p class="greeting">Xin chào <strong>' . htmlspecialchars($name) . '</strong>,</p>
+  <p style="color:#4a5568;font-size:15px">Rất tiếc, khách sạn không thể nhận đặt phòng của bạn. Dưới đây là thông tin đơn:</p>
+  <div class="box">
+    <div class="row"><span class="label">Mã đơn hàng</span><span><strong>' . htmlspecialchars($d['order_code']) . '</strong></span></div>
+    <div class="row"><span class="label">Khách sạn</span><span>' . htmlspecialchars($d['hotel_name']) . '</span></div>
+    <div class="row"><span class="label">Nhận phòng</span><span>' . date('d/m/Y', strtotime($d['check_in'])) . '</span></div>
+    <div class="row"><span class="label">Trả phòng</span><span>' . date('d/m/Y', strtotime($d['check_out'])) . '</span></div>
+    <div class="row"><span class="label">Số tiền</span><span>' . number_format($d['total_price'], 0, ',', '.') . ' VNĐ</span></div>
+  </div>
+  <div class="warning">
+    <strong>Lý do từ chối:</strong> ' . htmlspecialchars($d['reason']) . '
+  </div>
+  <p style="margin-top:20px;font-size:13.5px;color:#4a5568">Nếu bạn đã thanh toán trước, chúng tôi sẽ hoàn tiền trong vòng 3–5 ngày làm việc. Bạn có thể tìm và đặt phòng khác tại <a href="https://staygo.up.railway.app" style="color:#1e73be">StayGo</a>.</p>
+  <p style="font-size:13px;color:#718096">Mọi thắc mắc vui lòng liên hệ qua email hoặc hotline <strong>037 384 8395</strong>.</p>
+</div>';
+    return _email_wrap('Đặt phòng không được chấp nhận - StayGo', $body);
+}
+
 function _hotel_booking_template(array $d): string {
     $nights = max(1, (int)((strtotime($d['checkout']) - strtotime($d['checkin'])) / 86400));
     $body = '

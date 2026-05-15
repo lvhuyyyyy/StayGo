@@ -87,10 +87,6 @@ if ($status === 'completed') {
         ");
     }
 
-    // Trả phòng
-    $room_id = (int)$booking['room_id'];
-    $conn->query("UPDATE rooms SET quantity = quantity + 1 WHERE id = $room_id");
-
     // Ghi booking_log
     $meta_esc = $conn->real_escape_string(json_encode([
         'payment_flow'     => $payment_flow,
@@ -107,6 +103,24 @@ if ($status === 'completed') {
     ");
 
 } elseif ($status === 'confirmed') {
+    // Kiểm tra overbooking trước khi confirm
+    $room_id   = (int)$booking['room_id'];
+    $chk_in    = $booking['check_in'];
+    $chk_out   = $booking['check_out'];
+    $ov_stmt   = $conn->prepare("
+        SELECT COUNT(*) AS cnt FROM bookings
+        WHERE room_id = ? AND id != ? AND status NOT IN ('cancelled')
+          AND check_in < ? AND check_out > ?
+    ");
+    $ov_stmt->bind_param("iiss", $room_id, $id, $chk_out, $chk_in);
+    $ov_stmt->execute();
+    $booked_cnt = (int)$ov_stmt->get_result()->fetch_assoc()['cnt'];
+    $room_qty   = (int)$conn->query("SELECT quantity FROM rooms WHERE id=$room_id")->fetch_assoc()['quantity'];
+    if ($booked_cnt >= $room_qty) {
+        header("Location: bookings.php?error=overbooking");
+        exit;
+    }
+
     $conn->query("UPDATE bookings SET status='confirmed' WHERE id=$id");
 
     $conn->query("
@@ -124,12 +138,6 @@ if ($status === 'completed') {
 
 } elseif ($status === 'cancelled') {
     $conn->query("UPDATE bookings SET status='cancelled' WHERE id=$id");
-
-    // Trả phòng
-    if (in_array($booking['status'], ['pending', 'confirmed', 'checked_in'])) {
-        $room_id = (int)$booking['room_id'];
-        $conn->query("UPDATE rooms SET quantity = quantity + 1 WHERE id = $room_id");
-    }
 
     // Nếu booking đã confirmed + platform_collect → tạo refund request 100%
     // hotel_collect: platform không giữ tiền, không cần refund qua hệ thống
