@@ -51,34 +51,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     exit;
 }
 
-// ── Xử lý auto-complete booking quá check_out ────────────────────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'run_autocomplete') {
-    $candidates = $conn->query("
-        SELECT b.id, b.order_code, b.room_id, b.total_price, b.payment_flow,
-               b.commission_rate, h.commission_rate AS h_commission_rate
-        FROM bookings b
-        JOIN rooms r  ON b.room_id  = r.id
-        JOIN hotels h ON r.hotel_id = h.id
-        WHERE b.status    = 'confirmed'
-          AND b.check_out < CURDATE()
-    ");
-    $done = 0;
-    while ($b = $candidates->fetch_assoc()) {
-        $id    = (int)$b['id'];
-        $total = (float)$b['total_price'];
-        if (($b['payment_flow'] ?? '') === 'hotel_collect') {
-            $conn->query("UPDATE bookings SET status='completed', commission_rate=0, platform_revenue=0, hotel_payout=0 WHERE id=$id");
-        } else {
-            $rate   = (float)($b['commission_rate'] ?: $b['h_commission_rate'] ?? 10.0);
-            $rev    = round($total * $rate / 100, 2);
-            $payout = round($total - $rev, 2);
-            $conn->query("UPDATE bookings SET status='completed', payout_status='READY', commission_rate=$rate, platform_revenue=$rev, hotel_payout=$payout WHERE id=$id");
-        }
-        $done++;
+// ── Auto-complete: chuyển booking quá check_out → completed + READY ──
+// Chạy mỗi lần trang load — không cần cron hay trigger thủ công.
+// HOLDING → READY ngay khi check_out qua vì không còn rủi ro hủy.
+$_ac = $conn->query("
+    SELECT b.id, b.total_price, b.payment_flow,
+           b.commission_rate, h.commission_rate AS h_commission_rate
+    FROM bookings b
+    JOIN rooms r  ON b.room_id  = r.id
+    JOIN hotels h ON r.hotel_id = h.id
+    WHERE b.status = 'confirmed' AND b.check_out < CURDATE()
+");
+while ($_ac && $_row = $_ac->fetch_assoc()) {
+    $_id = (int)$_row['id'];
+    if (($_row['payment_flow'] ?? '') === 'hotel_collect') {
+        $conn->query("UPDATE bookings SET status='completed', commission_rate=0, platform_revenue=0, hotel_payout=0 WHERE id=$_id");
+    } else {
+        $_rate   = (float)($_row['commission_rate'] ?: $_row['h_commission_rate'] ?? 10.0);
+        $_rev    = round((float)$_row['total_price'] * $_rate / 100, 2);
+        $_payout = round((float)$_row['total_price'] - $_rev, 2);
+        $conn->query("UPDATE bookings SET status='completed', payout_status='READY', commission_rate=$_rate, platform_revenue=$_rev, hotel_payout=$_payout WHERE id=$_id");
     }
-    header("Location: payout.php?autocomplete=$done");
-    exit;
 }
+unset($_ac, $_row);
 
 $page_title    = 'Giải ngân';
 $page_subtitle = 'Quản lý giải ngân cho hotel';
@@ -126,11 +121,6 @@ $total_paid = $conn->query("SELECT COALESCE(SUM(amount),0) as t FROM payouts p $
 $success_msg = '';
 if (isset($_GET['success']) && $_GET['success'] === 'payout') {
     $success_msg = '✅ Đã giải ngân thành công!';
-} elseif (isset($_GET['autocomplete'])) {
-    $n = (int)$_GET['autocomplete'];
-    $success_msg = $n > 0
-        ? "✅ Auto-complete: {$n} booking đã chuyển sang Hoàn thành và sẵn sàng giải ngân."
-        : '✅ Không có booking nào cần auto-complete lúc này.';
 }
 $error_msg = '';
 if (isset($_GET['error'])) {
@@ -155,13 +145,6 @@ if (isset($_GET['error'])) {
         <h2 style="font-size:20px;font-weight:800;color:#1a202c;margin:0">💸 Giải ngân cho Hotel</h2>
         <p style="color:#718096;font-size:13px;margin:4px 0 0">Danh sách booking đã completed và sẵn sàng giải ngân</p>
     </div>
-    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-    <form method="POST" style="margin:0" onsubmit="return confirm('Chạy auto-complete: chuyển tất cả booking đã qua check_out sang READY để giải ngân?')">
-        <input type="hidden" name="action" value="run_autocomplete">
-        <button type="submit" style="padding:8px 16px;background:#744210;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">
-            ⚙️ Auto-complete booking
-        </button>
-    </form>
     <form method="GET" style="display:flex;align-items:center;gap:8px">
         <select name="hotel_id"
                 style="padding:8px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;color:#2d3748;background:#fff;cursor:pointer"
@@ -177,7 +160,6 @@ if (isset($_GET['error'])) {
             ← Finance
         </a>
     </form>
-    </div>
 </div>
 
 <!-- ── Summary ───────────────────────────────────────────────────── -->
