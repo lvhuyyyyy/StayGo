@@ -1,22 +1,22 @@
--- Cập nhật bảng support_requests — idempotent (IF NOT EXISTS / IF EXISTS)
+-- support_requests migration — MySQL compatible (no IF NOT EXISTS in ALTER)
+-- Dùng với mysql --force
 
--- Cập nhật giá trị status cũ (chạy an toàn nếu không có dữ liệu cũ)
+-- Cập nhật status cũ
 UPDATE `support_requests` SET `status` = 'pending'    WHERE `status` = 'new';
 UPDATE `support_requests` SET `status` = 'processing' WHERE `status` = 'contacted';
 UPDATE `support_requests` SET `status` = 'resolved'   WHERE `status` = 'done';
 
--- Đổi ENUM (chạy lại cũng an toàn)
+-- Đổi ENUM
 ALTER TABLE `support_requests`
     MODIFY COLUMN `status` ENUM('pending','processing','resolved') NOT NULL DEFAULT 'pending';
 
--- Thêm cột (IF NOT EXISTS — MySQL 8.0.3+)
-ALTER TABLE `support_requests`
-    ADD COLUMN IF NOT EXISTS `user_id`    INT          DEFAULT NULL   AFTER `id`,
-    ADD COLUMN IF NOT EXISTS `email`      VARCHAR(100) DEFAULT NULL   AFTER `phone`,
-    ADD COLUMN IF NOT EXISTS `subject`    VARCHAR(200) DEFAULT NULL   AFTER `email`,
-    ADD COLUMN IF NOT EXISTS `admin_note` TEXT         DEFAULT NULL,
-    ADD COLUMN IF NOT EXISTS `updated_at` TIMESTAMP    DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;
+-- Thêm cột (mỗi cột riêng để --force bỏ qua từng lỗi duplicate)
+ALTER TABLE `support_requests` ADD COLUMN `user_id`    int          DEFAULT NULL;
+ALTER TABLE `support_requests` ADD COLUMN `email`      varchar(100) DEFAULT NULL;
+ALTER TABLE `support_requests` ADD COLUMN `subject`    varchar(200) DEFAULT NULL;
+ALTER TABLE `support_requests` ADD COLUMN `admin_note` text         DEFAULT NULL;
+ALTER TABLE `support_requests` ADD COLUMN `updated_at` timestamp    DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;
 
--- Thêm index (IF NOT EXISTS)
-CREATE INDEX IF NOT EXISTS `idx_sr_user_id` ON `support_requests` (`user_id`);
-CREATE INDEX IF NOT EXISTS `idx_sr_status`  ON `support_requests` (`status`);
+-- Indexes
+ALTER TABLE `support_requests` ADD KEY `idx_sr_user_id` (`user_id`);
+ALTER TABLE `support_requests` ADD KEY `idx_sr_status`  (`status`);

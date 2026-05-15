@@ -1,6 +1,6 @@
--- Tối ưu hiệu suất truy vấn bảng hotels
--- Idempotent: dùng CREATE INDEX IF NOT EXISTS (MySQL 8.0+)
+-- Tối ưu hiệu suất truy vấn bảng hotels — MySQL compatible
+-- Dùng với mysql --force: lỗi "Duplicate key name" (1061) sẽ bị bỏ qua
 
-CREATE INDEX IF NOT EXISTS `idx_hotels_location_id` ON `hotels` (`location_id`);
-CREATE INDEX IF NOT EXISTS `idx_hotels_is_active`   ON `hotels` (`is_active`);
-CREATE INDEX IF NOT EXISTS `idx_hotels_rating`       ON `hotels` (`rating`);
+ALTER TABLE `hotels` ADD KEY `idx_hotels_location_id` (`location_id`);
+ALTER TABLE `hotels` ADD KEY `idx_hotels_is_active`   (`is_active`);
+ALTER TABLE `hotels` ADD KEY `idx_hotels_rating`       (`rating`);
