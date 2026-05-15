@@ -27,15 +27,12 @@ $conn->query("SET time_zone = '+07:00'");
 // Guard: chỉ xử lý booking có ngày hợp lệ (check_out IS NOT NULL AND check_out > check_in)
 // để tránh side-effect từ dữ liệu bẩn
 $conn->query("
-    UPDATE bookings b
-    JOIN rooms r ON b.room_id = r.id
-    SET b.status = 'completed',
-        r.quantity = r.quantity + 1
-    WHERE b.status = 'confirmed'
-      AND b.check_out IS NOT NULL
-      AND b.check_in IS NOT NULL
-      AND b.check_out > b.check_in
-      AND b.check_out < CURDATE()
+    UPDATE bookings SET status = 'completed'
+    WHERE status = 'confirmed'
+      AND check_out IS NOT NULL
+      AND check_in IS NOT NULL
+      AND check_out > check_in
+      AND check_out < CURDATE()
 ");
 
 require_once __DIR__ . '/secrets.php';
