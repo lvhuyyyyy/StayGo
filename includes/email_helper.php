@@ -1,5 +1,5 @@
 <?php
-define('RESEND_API_KEY', getenv('RESEND_API_KEY') ?: '');
+if (!defined('RESEND_API_KEY')) define('RESEND_API_KEY', getenv('RESEND_API_KEY') ?: '');
 define('MAIL_FROM',      'onboarding@resend.dev');
 define('MAIL_FROM_NAME', 'StayGo');
 
