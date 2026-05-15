@@ -354,6 +354,15 @@ $method_map = [
 
                     <?php endif; ?>
 
+                    <?php if (in_array($b['status'], ['confirmed','completed','checked_in'])): ?>
+                    <div style="margin-top:10px">
+                        <a href="/pages/invoice.php?id=<?= $b['id'] ?>" target="_blank"
+                           style="display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600;color:#2b6cb0;text-decoration:none;padding:6px 12px;background:#ebf8ff;border-radius:7px">
+                            🧾 Xem hóa đơn
+                        </a>
+                    </div>
+                    <?php endif; ?>
+
                     <?php if ($b['status'] === 'completed'): ?>
                     <div style="margin-top:10px;padding-top:10px;border-top:1px solid #f0f4f8">
                         <?php if ($b['review_id']): ?>

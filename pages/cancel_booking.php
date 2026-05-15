@@ -17,9 +17,13 @@ if (!$booking_id) {
 
 // Cho hủy booking pending hoặc confirmed thuộc về user này
 $stmt = $conn->prepare("
-    SELECT id, room_id, status, total_price, refund_requested, check_in, payment_method
-    FROM bookings
-    WHERE id = ? AND user_id = ? AND status IN ('pending','confirmed')
+    SELECT b.id, b.room_id, b.status, b.total_price, b.refund_requested,
+           b.check_in, b.payment_method,
+           COALESCE(h.cancel_free_days, 1) AS cancel_free_days
+    FROM bookings b
+    LEFT JOIN rooms r ON b.room_id = r.id
+    LEFT JOIN hotels h ON r.hotel_id = h.id
+    WHERE b.id = ? AND b.user_id = ? AND b.status IN ('pending','confirmed')
 ");
 $stmt->bind_param("ii", $booking_id, $user_id);
 $stmt->execute();
@@ -36,10 +40,11 @@ if ((int)($booking['refund_requested'] ?? 0) > 0) {
     exit();
 }
 
-// Server-side: confirmed booking không được hủy trong vòng 24h trước check-in
+// Confirmed booking không được hủy nếu đã qua hạn miễn phí theo cancel_free_days của khách sạn
 if ($booking['status'] === 'confirmed') {
-    $hours_to_checkin = (strtotime($booking['check_in']) - time()) / 3600;
-    if ($hours_to_checkin <= 24) {
+    $free_days       = (int)($booking['cancel_free_days'] ?? 1);
+    $days_to_checkin = (strtotime($booking['check_in']) - time()) / 86400;
+    if ($days_to_checkin < $free_days) {
         header("Location: my_bookings.php?error=too_late");
         exit();
     }
@@ -51,7 +56,7 @@ if ($booking['status'] === 'pending') {
     // Kiểm tra xem đã có payment 'paid' chưa (bank transfer đã chuyển khoản)
     $pay_res = $conn->query("SELECT payment_status, payment_method FROM payments WHERE booking_id = $booking_id ORDER BY id DESC LIMIT 1");
     $pay_row = $pay_res ? $pay_res->fetch_assoc() : null;
-    $already_paid = ($pay_row && $pay_row['payment_status'] === 'paid');
+    $already_paid = $pay_row && $pay_row['payment_status'] === 'paid';
 
     if ($already_paid) {
         // Đã thu tiền (bank transfer xác nhận) → hoàn 100%

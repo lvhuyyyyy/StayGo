@@ -10,7 +10,8 @@ $errors = [];
 // Lấy thông tin đầy đủ của hotel
 $stmt = $conn->prepare("
     SELECT id, name, address, description, commission_rate, partner_status,
-           partner_email, contact_name, contact_phone, bank_info, image, rating, review_count
+           partner_email, contact_name, contact_phone, bank_info, image, rating, review_count,
+           COALESCE(cancel_free_days, 1) AS cancel_free_days
     FROM hotels WHERE id = ?
 ");
 $stmt->bind_param("i", $hotel_id);
@@ -44,6 +45,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $hotel['contact_phone'] = $contact_phone;
             $hotel['bank_info']     = $bank_info;
         }
+
+    } elseif ($action === 'cancel_policy') {
+        $days = max(0, min(30, (int)($_POST['cancel_free_days'] ?? 1)));
+        $conn->query("UPDATE hotels SET cancel_free_days = $days WHERE id = $hotel_id");
+        $hotel['cancel_free_days'] = $days;
+        $msg = 'Đã cập nhật chính sách hủy phòng.';
 
     } elseif ($action === 'password') {
         $cur_pw  = $_POST['current_password'] ?? '';
@@ -156,6 +163,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <input type="password" name="confirm_password" required placeholder="••••••••">
             </div>
             <button type="submit" class="btn btn-primary">🔑 Đổi mật khẩu</button>
+        </form>
+    </div>
+</div>
+
+<!-- Chính sách hủy phòng -->
+<div class="card" style="grid-column:1/-1;max-width:500px">
+    <div class="card-header"><span class="card-title">🚫 Chính sách hủy phòng</span></div>
+    <div class="card-body">
+        <form method="POST" class="form-row">
+            <?= csrf_field() ?>
+            <input type="hidden" name="form_action" value="cancel_policy">
+            <div class="form-group">
+                <label>Cho phép hủy miễn phí trước bao nhiêu ngày check-in?</label>
+                <select name="cancel_free_days" style="padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;font-family:inherit;width:100%">
+                    <?php
+                    $options = [0=>'Không cho hủy miễn phí',1=>'1 ngày',2=>'2 ngày',3=>'3 ngày',5=>'5 ngày',7=>'7 ngày',14=>'14 ngày',30=>'30 ngày'];
+                    foreach ($options as $v => $lbl):
+                    ?>
+                    <option value="<?= $v ?>" <?= (int)$hotel['cancel_free_days'] === $v ? 'selected' : '' ?>>
+                        <?= $lbl ?>
+                    </option>
+                    <?php endforeach; ?>
+                </select>
+                <div style="font-size:12px;color:#718096;margin-top:6px;line-height:1.5">
+                    Khách hủy trong thời hạn này sẽ được hoàn tiền 100%.<br>
+                    Hủy sau thời hạn (hoặc nếu chọn "Không cho hủy miễn phí") sẽ bị phí hủy 20%.
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">💾 Lưu chính sách</button>
         </form>
     </div>
 </div>

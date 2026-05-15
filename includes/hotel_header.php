@@ -220,6 +220,9 @@ if ($pr) $payout_ready = (int)$pr->fetch_assoc()['c'];
         <a href="/hotel/rooms.php" class="<?= $current_page === 'rooms.php' ? 'active' : '' ?>">
             🛏️ Phòng của tôi
         </a>
+        <a href="/hotel/images.php" class="<?= $current_page === 'images.php' ? 'active' : '' ?>">
+            🖼️ Ảnh khách sạn
+        </a>
         <a href="/hotel/profile.php" class="<?= $current_page === 'profile.php' ? 'active' : '' ?>">
             ⚙️ Thông tin khách sạn
         </a>

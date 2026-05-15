@@ -298,6 +298,34 @@ function bed_icon(string $bed): string {
                 </div>
             </div>
 
+            <!-- Chính sách hủy -->
+            <div class="hd-card">
+                <h2 class="hd-card-title">🚫 Chính sách hủy phòng</h2>
+                <?php
+                $free_days = (int)($hotel['cancel_free_days'] ?? 1);
+                if ($free_days === 0):
+                ?>
+                <div style="display:flex;align-items:flex-start;gap:12px;background:#fff5f5;border-radius:10px;padding:14px 16px">
+                    <span style="font-size:20px">❌</span>
+                    <div>
+                        <div style="font-weight:700;color:#c53030;font-size:14px">Không hoàn tiền</div>
+                        <div style="font-size:13px;color:#4a5568;margin-top:4px">Khách sạn không áp dụng chính sách hoàn tiền. Vui lòng cân nhắc trước khi đặt phòng.</div>
+                    </div>
+                </div>
+                <?php else: ?>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:560px">
+                    <div style="background:#f0fff4;border-radius:10px;padding:14px 16px;border:1px solid #c6f6d5">
+                        <div style="font-weight:700;color:#276749;font-size:13.5px">✅ Hủy miễn phí</div>
+                        <div style="font-size:12.5px;color:#4a5568;margin-top:4px">Trước <strong><?= $free_days ?> ngày</strong> check-in → hoàn tiền 100%</div>
+                    </div>
+                    <div style="background:#fff5f5;border-radius:10px;padding:14px 16px;border:1px solid #fed7d7">
+                        <div style="font-weight:700;color:#c53030;font-size:13.5px">💸 Hủy muộn</div>
+                        <div style="font-size:12.5px;color:#4a5568;margin-top:4px">Trong vòng <?= $free_days ?> ngày trước check-in → phí hủy 20%</div>
+                    </div>
+                </div>
+                <?php endif; ?>
+            </div>
+
             <!-- Phòng trống -->
             <div class="hd-card" id="rooms">
                 <div class="hd-rooms-header-row">
