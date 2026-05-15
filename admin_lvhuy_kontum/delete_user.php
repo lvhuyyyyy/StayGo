@@ -1,12 +1,12 @@
 ﻿<?php
-session_start();
-include "../config/database.php";
-
-if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
-    header("Location: users.php?error=invalid"); exit();
+require_once 'admin_bootstrap.php'; // auth + CSRF
+csrf_check();
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    header('Location: users.php'); exit;
 }
 
-$user_id  = (int)$_GET['id'];
+$user_id  = (int)($_POST['id'] ?? 0);
+if (!$user_id) { header("Location: users.php?error=invalid"); exit(); }
 $admin_id = (int)$_SESSION['admin_id'];
 
 if ($user_id === $admin_id) {

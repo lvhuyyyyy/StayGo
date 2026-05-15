@@ -1,4 +1,12 @@
 <?php
+// One-time setup utility. Run only with correct token: ?token=staygo_create_admin_2026
+define('SETUP_TOKEN', 'staygo_create_admin_2026');
+if (PHP_SAPI !== 'cli' && ($_GET['token'] ?? '') !== SETUP_TOKEN) {
+    http_response_code(403);
+    echo '403 Forbidden';
+    exit;
+}
+
 require_once __DIR__ . '/../config/database.php';
 
 /*

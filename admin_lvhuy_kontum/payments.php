@@ -543,12 +543,20 @@ $count_failed  = $counts['failed']  ?? 0;
 
                 <td style="white-space:nowrap">
                     <?php if ($row['payment_status'] === 'pending'): ?>
-                        <a href="update_payment.php?id=<?= $row['id'] ?>&status=paid"
-                           class="btn btn-paid"
-                           onclick="adminConfirm('Xác nhận thanh toán đơn này?', this.href, '✅'); return false;">✅ Xác nhận</a>
-                        <a href="update_payment.php?id=<?= $row['id'] ?>&status=failed"
-                           class="btn btn-reject"
-                           onclick="adminConfirm('Từ chối thanh toán đơn này?', this.href, '❌'); return false;">❌ Từ chối</a>
+                        <form id="pay_paid_<?= $row['id'] ?>" method="POST" action="update_payment.php" style="display:none">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="id" value="<?= $row['id'] ?>">
+                            <input type="hidden" name="status" value="paid">
+                        </form>
+                        <form id="pay_fail_<?= $row['id'] ?>" method="POST" action="update_payment.php" style="display:none">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="id" value="<?= $row['id'] ?>">
+                            <input type="hidden" name="status" value="failed">
+                        </form>
+                        <button type="button" class="btn btn-paid"
+                            onclick="adminConfirmPost('Xác nhận thanh toán đơn này?', 'pay_paid_<?= $row['id'] ?>', '✅')">✅ Xác nhận</button>
+                        <button type="button" class="btn btn-reject"
+                            onclick="adminConfirmPost('Từ chối thanh toán đơn này?', 'pay_fail_<?= $row['id'] ?>', '❌')">❌ Từ chối</button>
                     <?php elseif ($row['payment_status'] === 'paid'): ?>
                         <span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;background:#f0fff4;color:#276749;border-radius:50%;font-size:16px;font-weight:700" title="Đã thanh toán">✅</span>
                     <?php elseif ($row['payment_status'] === 'failed'): ?>

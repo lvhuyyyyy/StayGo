@@ -363,13 +363,19 @@ function users_qs($overrides = []) {
                 onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#fff'">
                 Hủy
             </button>
-            <a id="delete-confirm-btn" href="#"
-                style="flex:1;padding:12px;border-radius:10px;background:#e53e3e;color:#fff;font-size:14px;font-weight:700;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:6px"
+            <button type="button" id="delete-confirm-btn"
+                onclick="document.getElementById('deleteUserForm').submit()"
+                style="flex:1;padding:12px;border-radius:10px;background:#e53e3e;color:#fff;font-size:14px;font-weight:700;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px"
                 onmouseover="this.style.background='#c53030'" onmouseout="this.style.background='#e53e3e'">
                 Xác nhận xóa
-            </a>
+            </button>
         </div>
     </div>
 </div>
+
+<form id="deleteUserForm" method="POST" action="delete_user.php" style="display:none">
+    <?= csrf_field() ?>
+    <input type="hidden" id="delete-user-id" name="id" value="">
+</form>
 
 <?php include "../includes/admin_footer.php"; ?>

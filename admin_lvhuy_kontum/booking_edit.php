@@ -1,13 +1,14 @@
 <?php
-include "../config/database.php";
+require_once 'admin_bootstrap.php'; // auth + DB + CSRF
 
-$id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+$id = (int)($_GET['id'] ?? 0);
 if (!$id) { header("Location: bookings.php"); exit; }
 
 $errors = [];
 
 // ---- Xử lý POST ----
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    csrf_check();
     $check_in  = trim($_POST['check_in']  ?? '');
     $check_out = trim($_POST['check_out'] ?? '');
     $room_id   = (int)($_POST['room_id']  ?? 0);

@@ -1,8 +1,12 @@
 <?php
-include "../config/database.php";
+require_once 'admin_bootstrap.php'; // auth + CSRF
+csrf_check();
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    header('Location: payments.php'); exit;
+}
 
-$id     = isset($_GET['id'])     ? (int)$_GET['id']                          : 0;
-$status = isset($_GET['status']) ? $conn->real_escape_string($_GET['status']) : '';
+$id     = (int)($_POST['id']     ?? 0);
+$status = $conn->real_escape_string($_POST['status'] ?? '');
 
 $allowed = ['paid', 'failed', 'refunded'];
 

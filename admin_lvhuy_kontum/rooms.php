@@ -140,9 +140,12 @@ function rooms_qs($overrides = []) {
                 </td>
                 <td>
                     <a href="edit_room.php?action=edit&id=<?= $row['id'] ?>" class="btn btn-edit">Sửa</a>
-                    <a href="delete_room.php?id=<?= $row['id'] ?>"
-                       class="btn btn-delete"
-                       onclick="adminConfirm('Bạn có chắc muốn xóa phòng \"<?= addslashes($row['room_name']) ?>\"?', this.href, '🗑️'); return false;">Xóa</a>
+                    <form id="del_room_<?= $row['id'] ?>" method="POST" action="delete_room.php" style="display:none">
+                        <?= csrf_field() ?>
+                        <input type="hidden" name="id" value="<?= $row['id'] ?>">
+                    </form>
+                    <button type="button" class="btn btn-delete"
+                        onclick="adminConfirmPost(<?= json_encode('Bạn có chắc muốn xóa phòng "' . $row['room_name'] . '"?') ?>, 'del_room_<?= $row['id'] ?>', '🗑️')">Xóa</button>
                 </td>
             </tr>
             <?php endwhile; ?>

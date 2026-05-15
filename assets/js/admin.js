@@ -3,7 +3,7 @@
     window.confirmDelete = function (userId, userName, userEmail) {
         document.getElementById('delete-username').textContent = userName;
         document.getElementById('delete-email').textContent    = userEmail;
-        document.getElementById('delete-confirm-btn').href     = 'delete_user.php?id=' + userId;
+        document.getElementById('delete-user-id').value        = userId;
         document.getElementById('deleteModal').style.display   = 'flex';
     };
 

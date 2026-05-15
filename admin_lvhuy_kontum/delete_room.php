@@ -1,15 +1,15 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) session_start();
-include "../config/database.php";
+require_once 'admin_bootstrap.php'; // auth + CSRF
+csrf_check();
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    header('Location: /admin_lvhuy_kontum/rooms.php'); exit;
+}
 
-
-
-if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
+$id = (int)($_POST['id'] ?? 0);
+if (!$id) {
     header('Location: /admin_lvhuy_kontum/rooms.php?error=invalid_id');
     exit;
 }
-
-$id = (int)$_GET['id'];
 
 $res  = $conn->query("SELECT * FROM rooms WHERE id = $id");
 $room = $res ? $res->fetch_assoc() : null;
