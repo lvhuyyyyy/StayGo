@@ -10,13 +10,16 @@ $errors = [];
 // Lấy thông tin đầy đủ của hotel
 $stmt = $conn->prepare("
     SELECT id, name, address, description, commission_rate, partner_status,
-           partner_email, contact_name, contact_phone, bank_info, image, rating, review_count,
-           COALESCE(cancel_free_days, 1) AS cancel_free_days
+           partner_email, contact_name, contact_phone, bank_info, image, rating, review_count
     FROM hotels WHERE id = ?
 ");
 $stmt->bind_param("i", $hotel_id);
 $stmt->execute();
 $hotel = $stmt->get_result()->fetch_assoc();
+
+// Lấy cancel_free_days riêng — column có thể chưa tồn tại (migration chưa chạy)
+$cfd = $conn->query("SELECT cancel_free_days FROM hotels WHERE id = $hotel_id");
+$hotel['cancel_free_days'] = ($cfd && $row = $cfd->fetch_assoc()) ? (int)$row['cancel_free_days'] : 1;
 
 // ── POST: Cập nhật thông tin liên hệ ─────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

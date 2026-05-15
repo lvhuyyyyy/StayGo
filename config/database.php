@@ -23,8 +23,10 @@ $conn->set_charset("utf8mb4");
 // Đồng bộ múi giờ MySQL với PHP (UTC+7)
 $conn->query("SET time_zone = '+07:00'");
 
-// One-time migration: thêm cancel_free_days nếu chưa có (idempotent, MySQL 8+)
-$conn->query("ALTER TABLE hotels ADD COLUMN IF NOT EXISTS cancel_free_days TINYINT UNSIGNED NOT NULL DEFAULT 1");
+// One-time migration: thêm cancel_free_days nếu chưa có (tương thích mọi MySQL version)
+if (!$conn->query("SELECT cancel_free_days FROM hotels LIMIT 0")) {
+    $conn->query("ALTER TABLE hotels ADD COLUMN cancel_free_days TINYINT UNSIGNED NOT NULL DEFAULT 1");
+}
 
 // Auto-hoàn thành: confirmed + check_out đã qua → completed + tính payout
 // Dùng JOIN để lấy commission_rate từ hotel, tính hotel_payout và platform_revenue
