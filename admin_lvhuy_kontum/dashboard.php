@@ -1,67 +1,73 @@
 ﻿<?php
 include "../config/database.php";
 
-// Thống kê
-$total_users    = $conn->query("SELECT COUNT(*) as t FROM users")->fetch_assoc()['t'];
-$total_hotels   = $conn->query("SELECT COUNT(*) as t FROM hotels WHERE is_active=1")->fetch_assoc()['t'];
-$total_rooms    = $conn->query("SELECT COUNT(*) as t FROM rooms")->fetch_assoc()['t'];
-$total_bookings = $conn->query("SELECT COUNT(*) as t FROM bookings")->fetch_assoc()['t'];
-$total_revenue  = $conn->query("SELECT COALESCE(SUM(total_price),0) as t FROM bookings WHERE status != 'cancelled'")->fetch_assoc()['t'];
-$pending_count  = $conn->query("SELECT COUNT(*) as t FROM bookings WHERE status='pending'")->fetch_assoc()['t'];
-$refund_pending   = (int)$conn->query("SELECT COUNT(*) as c FROM bookings WHERE refund_requested = 1")->fetch_assoc()['c'];
-$support_pending  = (int)$conn->query("SELECT COUNT(*) as c FROM support_requests WHERE status='pending'")->fetch_assoc()['c'];
+// Safe query helper — trả default nếu query fail (column/table chưa migrate)
+function qval(mysqli $db, string $sql, string $col = 't', $default = 0) {
+    $r = @$db->query($sql);
+    return $r ? ($r->fetch_assoc()[$col] ?? $default) : $default;
+}
+function qrows(mysqli $db, string $sql): array {
+    $r = @$db->query($sql);
+    return $r ? $r->fetch_all(MYSQLI_ASSOC) : [];
+}
 
-// Platform finance metrics
-$platform_gmv     = (float)$conn->query("SELECT COALESCE(SUM(total_price),0) as t FROM bookings WHERE status IN ('confirmed','checked_in','completed')")->fetch_assoc()['t'];
-$platform_commission = (float)$conn->query("SELECT COALESCE(SUM(platform_revenue),0) as t FROM bookings WHERE status != 'cancelled'")->fetch_assoc()['t'];
-$payout_ready_amt = (float)$conn->query("SELECT COALESCE(SUM(hotel_payout),0) as t FROM bookings WHERE payout_status='READY'")->fetch_assoc()['t'];
-$payout_frozen_cnt= (int)$conn->query("SELECT COUNT(*) as t FROM bookings WHERE payout_status='FROZEN'")->fetch_assoc()['t'];
+// Thống kê cơ bản (base schema — luôn tồn tại)
+$total_users    = qval($conn, "SELECT COUNT(*) as t FROM users");
+$total_hotels   = qval($conn, "SELECT COUNT(*) as t FROM hotels WHERE is_active=1");
+$total_rooms    = qval($conn, "SELECT COUNT(*) as t FROM rooms");
+$total_bookings = qval($conn, "SELECT COUNT(*) as t FROM bookings");
+$total_revenue  = qval($conn, "SELECT COALESCE(SUM(total_price),0) as t FROM bookings WHERE status != 'cancelled'");
+$pending_count  = qval($conn, "SELECT COUNT(*) as t FROM bookings WHERE status='pending'");
+$refund_pending   = (int)qval($conn, "SELECT COUNT(*) as c FROM bookings WHERE refund_requested = 1", 'c');
+$support_pending  = (int)qval($conn, "SELECT COUNT(*) as c FROM support_requests WHERE status='pending'", 'c');
+
+// Platform finance metrics (cột từ migration — safe nếu chưa migrate)
+$platform_gmv        = (float)qval($conn, "SELECT COALESCE(SUM(total_price),0) as t FROM bookings WHERE status IN ('confirmed','checked_in','completed')");
+$platform_commission = (float)qval($conn, "SELECT COALESCE(SUM(platform_revenue),0) as t FROM bookings WHERE status != 'cancelled'");
+$payout_ready_amt    = (float)qval($conn, "SELECT COALESCE(SUM(hotel_payout),0) as t FROM bookings WHERE payout_status='READY'");
+$payout_frozen_cnt   = (int)qval($conn,   "SELECT COUNT(*) as t FROM bookings WHERE payout_status='FROZEN'");
 
 // Guest vs User bookings
-$bookings_by_user  = (int)$conn->query("SELECT COUNT(*) as t FROM bookings WHERE user_id IS NOT NULL")->fetch_assoc()['t'];
-$bookings_by_guest = (int)$conn->query("SELECT COUNT(*) as t FROM bookings WHERE user_id IS NULL")->fetch_assoc()['t'];
+$bookings_by_user  = (int)qval($conn, "SELECT COUNT(*) as t FROM bookings WHERE user_id IS NOT NULL");
+$bookings_by_guest = (int)qval($conn, "SELECT COUNT(*) as t FROM bookings WHERE user_id IS NULL");
 
-// Hotel partner alerts
-$hotels_pending_approval = (int)$conn->query("SELECT COUNT(*) as t FROM hotels WHERE partner_status='PENDING'")->fetch_assoc()['t'];
+// Hotel partner alerts (cột partner_status từ migration)
+$hotels_pending_approval = (int)qval($conn, "SELECT COUNT(*) as t FROM hotels WHERE partner_status='PENDING'");
 
-// Dispute alerts
-$dispute_open   = 0;
-$dr = $conn->query("SELECT COUNT(*) as c FROM disputes WHERE status='OPEN'");
-if ($dr) $dispute_open = (int)$dr->fetch_assoc()['c'];
+// Dispute alerts (bảng disputes từ migration)
+$dispute_open = (int)qval($conn, "SELECT COUNT(*) as c FROM disputes WHERE status='OPEN'", 'c');
 
 // New users this month
-$new_users_month = (int)$conn->query("SELECT COUNT(*) as t FROM users WHERE MONTH(created_at)=MONTH(NOW()) AND YEAR(created_at)=YEAR(NOW()) AND role='user'")->fetch_assoc()['t'];
+$new_users_month = (int)qval($conn, "SELECT COUNT(*) as t FROM users WHERE MONTH(created_at)=MONTH(NOW()) AND YEAR(created_at)=YEAR(NOW()) AND role='user'");
 
 // Bookings today
-$bookings_today = (int)$conn->query("SELECT COUNT(*) as t FROM bookings WHERE DATE(created_at)=CURDATE()")->fetch_assoc()['t'];
+$bookings_today = (int)qval($conn, "SELECT COUNT(*) as t FROM bookings WHERE DATE(created_at)=CURDATE()");
 
 // Doanh thu 6 tháng gần nhất
 $monthly = [];
 for ($i = 5; $i >= 0; $i--) {
     $m   = date('m', strtotime("-$i months"));
     $y   = date('Y', strtotime("-$i months"));
-    $rev = $conn->query("SELECT COALESCE(SUM(total_price),0) as t FROM bookings
-                        WHERE MONTH(created_at)=$m AND YEAR(created_at)=$y AND status != 'cancelled'")->fetch_assoc()['t'];
-    $cnt = $conn->query("SELECT COUNT(*) as t FROM bookings
-                        WHERE MONTH(created_at)=$m AND YEAR(created_at)=$y")->fetch_assoc()['t'];
+    $rev = qval($conn, "SELECT COALESCE(SUM(total_price),0) as t FROM bookings WHERE MONTH(created_at)=$m AND YEAR(created_at)=$y AND status != 'cancelled'");
+    $cnt = qval($conn, "SELECT COUNT(*) as t FROM bookings WHERE MONTH(created_at)=$m AND YEAR(created_at)=$y");
     $monthly[] = ['label' => "$m/$y", 'revenue' => (int)$rev, 'bookings' => (int)$cnt];
 }
 
 // Top 5 khách sạn được đặt nhiều
-$top_hotels = $conn->query("
+$top_hotels = qrows($conn, "
     SELECT h.name, COUNT(b.id) as total_bookings, COALESCE(SUM(b.total_price),0) as revenue
     FROM bookings b
     LEFT JOIN rooms r  ON b.room_id  = r.id
     LEFT JOIN hotels h ON r.hotel_id = h.id
     WHERE h.name IS NOT NULL AND b.status != 'cancelled'
     GROUP BY h.id ORDER BY total_bookings DESC LIMIT 5
-")->fetch_all(MYSQLI_ASSOC);
+");
 
 // Tỉ lệ trạng thái
-$status_stats_raw = $conn->query("SELECT status, COUNT(*) as cnt FROM bookings GROUP BY status")->fetch_all(MYSQLI_ASSOC);
+$status_stats_raw = qrows($conn, "SELECT status, COUNT(*) as cnt FROM bookings GROUP BY status");
 
 // 5 booking gần nhất
-$recent = $conn->query("
+$recent = qrows($conn, "
     SELECT b.order_code, b.full_name, b.total_price, b.status, b.created_at,
         h.name AS hotel_name
     FROM bookings b
@@ -69,7 +75,7 @@ $recent = $conn->query("
     LEFT JOIN hotels h ON r.hotel_id = h.id
     ORDER BY b.created_at DESC
     LIMIT 5
-")->fetch_all(MYSQLI_ASSOC);
+");
 
 $status_map = [
     'pending'   => ['Chờ xác nhận', '#b7791f', '#fffbeb'],
