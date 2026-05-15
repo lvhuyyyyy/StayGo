@@ -2,7 +2,7 @@
 /**
  * moderate_review(string $text): array
  *
- * Gọi Claude API để kiểm duyệt nội dung đánh giá trước khi lưu vào DB.
+ * Gọi OpenAI GPT-4o-mini để kiểm duyệt nội dung đánh giá trước khi lưu vào DB.
  * Return: ['status'=>'safe'|'violated'|'uncertain', 'labels'=>[], 'reason'=>'', 'suggestion'=>'', 'confidence'=>0.0]
  *
  * - safe      → lưu với is_active=1
@@ -13,7 +13,7 @@
 function moderate_review(string $text): array {
     $safe_fallback = ['status' => 'safe', 'labels' => [], 'reason' => '', 'suggestion' => '', 'confidence' => 1.0];
 
-    $api_key = defined('ANTHROPIC_API_KEY') ? ANTHROPIC_API_KEY : getenv('ANTHROPIC_API_KEY');
+    $api_key = defined('OPENAI_API_KEY') ? OPENAI_API_KEY : getenv('OPENAI_API_KEY');
     if (!$api_key) return $safe_fallback;
 
     $system_prompt = <<<'PROMPT'
@@ -38,27 +38,29 @@ LƯU Ý QUAN TRỌNG:
 PROMPT;
 
     $payload = json_encode([
-        'model'      => 'claude-haiku-4-5-20251001',
-        'max_tokens' => 300,
-        'system'     => $system_prompt,
-        'messages'   => [['role' => 'user', 'content' => $text]],
+        'model'       => 'gpt-4o-mini',
+        'max_tokens'  => 300,
+        'temperature' => 0,
+        'messages'    => [
+            ['role' => 'system', 'content' => $system_prompt],
+            ['role' => 'user',   'content' => $text],
+        ],
     ]);
 
-    $ch = curl_init('https://api.anthropic.com/v1/messages');
+    $ch = curl_init('https://api.openai.com/v1/chat/completions');
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_POST           => true,
         CURLOPT_POSTFIELDS     => $payload,
         CURLOPT_HTTPHEADER     => [
-            'x-api-key: ' . $api_key,
-            'anthropic-version: 2023-06-01',
+            'Authorization: Bearer ' . $api_key,
             'Content-Type: application/json',
         ],
         CURLOPT_TIMEOUT => 20,
     ]);
     $response  = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
+    unset($ch);
 
     if ($http_code !== 200 || !$response) {
         error_log('StayGo moderation error: HTTP ' . $http_code . ' — ' . $response);
@@ -66,11 +68,11 @@ PROMPT;
     }
 
     $data    = json_decode($response, true);
-    $content = $data['content'][0]['text'] ?? '{}';
+    $content = $data['choices'][0]['message']['content'] ?? '{}';
     $result  = json_decode($content, true);
 
     if (!$result || !isset($result['status'])) {
-        error_log('StayGo moderation: invalid JSON from Claude — ' . $content);
+        error_log('StayGo moderation: invalid JSON from GPT — ' . $content);
         return ['status' => 'uncertain', 'labels' => [], 'reason' => 'Không thể phân tích nội dung, vui lòng thử lại.', 'suggestion' => '', 'confidence' => 0.5];
     }
 
