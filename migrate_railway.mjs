@@ -74,5 +74,37 @@ if (cols7.length === 0) {
   console.log('ℹ️  bookings: refund_requested already exists');
 }
 
+// #8: first_booking_only cho vouchers (chỉ tài khoản mới / đặt lần đầu)
+const [cols8] = await conn.query("SHOW COLUMNS FROM vouchers LIKE 'first_booking_only'");
+if (cols8.length === 0) {
+  await conn.query("ALTER TABLE vouchers ADD COLUMN first_booking_only TINYINT(1) NOT NULL DEFAULT 0 AFTER description");
+  console.log('✅ vouchers: added first_booking_only');
+} else {
+  console.log('ℹ️  vouchers: first_booking_only already exists');
+}
+// Đánh dấu SUMMER2026 là voucher chỉ dành cho lần đầu
+await conn.query("UPDATE vouchers SET first_booking_only = 1 WHERE code = 'SUMMER2026'");
+console.log('✅ SUMMER2026 marked as first_booking_only');
+
+// #9: voucher_uses — theo dõi ai đã dùng voucher để chặn lợi dụng
+const [vutables] = await conn.query("SHOW TABLES LIKE 'voucher_uses'");
+if (vutables.length === 0) {
+  await conn.query(`CREATE TABLE voucher_uses (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    voucher_id INT NOT NULL,
+    user_id INT NULL,
+    email VARCHAR(255) NOT NULL DEFAULT '',
+    phone VARCHAR(20)  NOT NULL DEFAULT '',
+    booking_id INT NOT NULL,
+    used_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_vu_email  (voucher_id, email(30)),
+    INDEX idx_vu_phone  (voucher_id, phone),
+    INDEX idx_vu_uid    (voucher_id, user_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+  console.log('✅ Created voucher_uses table');
+} else {
+  console.log('ℹ️  voucher_uses: already exists');
+}
+
 await conn.end();
 console.log('✅ Migration Railway hoàn tất!');

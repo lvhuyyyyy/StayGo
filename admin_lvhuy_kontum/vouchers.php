@@ -39,7 +39,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $max_uses    = max(1, (int)  ($_POST['max_uses']     ?? 1));
     $expires_at  = trim($_POST['expires_at'] ?? '');
     $description = $conn->real_escape_string(trim($_POST['description'] ?? ''));
-    $is_active   = isset($_POST['is_active']) ? 1 : 0;
+    $is_active          = isset($_POST['is_active'])          ? 1 : 0;
+    $first_booking_only = isset($_POST['first_booking_only']) ? 1 : 0;
 
     if (!$code) $errors[] = 'Mã voucher không được trống.';
     elseif (!preg_match('/^[A-Z0-9_\-]{3,30}$/', $code)) $errors[] = 'Mã chỉ gồm chữ in hoa, số, dấu _ hoặc - (3–30 ký tự).';
@@ -57,7 +58,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($pid) {
             $ok = $conn->query("UPDATE vouchers SET code='$code_esc', type='$type', value=$value,
                 min_order=$min_order, max_uses=$max_uses, expires_at=$exp_sql,
-                is_active=$is_active, description='$description' WHERE id=$pid");
+                is_active=$is_active, first_booking_only=$first_booking_only,
+                description='$description' WHERE id=$pid");
             if (!$ok) {
                 $errors[] = 'Lỗi cơ sở dữ liệu: ' . $conn->error;
             } else {
@@ -65,8 +67,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 header("Location: vouchers.php?msg=updated"); exit;
             }
         } else {
-            $conn->query("INSERT INTO vouchers (code,type,value,min_order,max_uses,expires_at,is_active,description)
-                VALUES ('$code_esc','$type',$value,$min_order,$max_uses,$exp_sql,$is_active,'$description')");
+            $conn->query("INSERT INTO vouchers (code,type,value,min_order,max_uses,expires_at,is_active,first_booking_only,description)
+                VALUES ('$code_esc','$type',$value,$min_order,$max_uses,$exp_sql,$is_active,$first_booking_only,'$description')");
             log_activity($conn, 'add_voucher', 'voucher', $conn->insert_id, "Thêm voucher: $code");
             header("Location: vouchers.php?msg=added"); exit;
         }
@@ -160,12 +162,19 @@ endif;
                 value="<?= htmlspecialchars($_POST['description'] ?? $edit_row['description'] ?? '') ?>"
                 style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13.5px;box-sizing:border-box">
         </div>
-        <div style="display:flex;align-items:center;gap:16px">
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
             <label style="display:flex;align-items:center;gap:7px;font-size:13.5px;color:#4a5568;font-weight:600;cursor:pointer">
                 <input type="checkbox" name="is_active" value="1"
                     <?= (isset($_POST['is_active']) ? $_POST['is_active'] : ($edit_row['is_active'] ?? 1)) ? 'checked' : '' ?>
                     style="width:16px;height:16px">
                 Kích hoạt ngay
+            </label>
+            <label style="display:flex;align-items:center;gap:7px;font-size:13.5px;color:#7c3aed;font-weight:600;cursor:pointer"
+                   title="Chỉ cho phép email/SĐT chưa từng đặt phòng và chưa dùng mã này">
+                <input type="checkbox" name="first_booking_only" value="1"
+                    <?= (isset($_POST['first_booking_only']) ? $_POST['first_booking_only'] : ($edit_row['first_booking_only'] ?? 0)) ? 'checked' : '' ?>
+                    style="width:16px;height:16px;accent-color:#7c3aed">
+                🔒 Chỉ khách đặt lần đầu
             </label>
             <button type="submit"
                 style="padding:10px 24px;background:#1e73be;color:#fff;border:none;border-radius:9px;font-size:13.5px;font-weight:700;cursor:pointer">

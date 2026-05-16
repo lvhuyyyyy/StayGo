@@ -111,11 +111,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $total_price = $original_price;
     }
 
-    // Voucher
+    // ── Validate email/phone format ─────────────────────────────────────────
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $error_msg = 'Email không đúng định dạng. Vui lòng kiểm tra lại.';
+    }
+    $phone_clean = preg_replace('/[\s\-\.]/', '', $phone);
+    if (!$error_msg && !preg_match('/^0[3-9]\d{8}$/', $phone_clean)) {
+        $error_msg = 'Số điện thoại không hợp lệ. Vui lòng nhập SĐT Việt Nam 10 số (03x / 05x / 07x / 08x / 09x).';
+    }
+
+    // ── Voucher ──────────────────────────────────────────────────────────────
     $voucher_code = strtoupper(trim($_POST['voucher_code'] ?? ''));
     $voucher_disc = 0;
     $voucher_row  = null;
-    if ($voucher_code) {
+    if (!$error_msg && $voucher_code) {
         $vs = $conn->prepare("
             SELECT * FROM vouchers
             WHERE code = ? AND is_active = 1
@@ -125,12 +134,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $vs->bind_param("s", $voucher_code);
         $vs->execute();
         $voucher_row = $vs->get_result()->fetch_assoc();
-        if ($voucher_row && $total_price >= $voucher_row['min_order']) {
-            $voucher_disc = ($voucher_row['type'] === 'percent')
-                ? round($total_price * $voucher_row['value'] / 100)
-                : min((float)$voucher_row['value'], $total_price);
-            $total_price     -= $voucher_disc;
-            $discount_amount += $voucher_disc;
+
+        if ($voucher_row) {
+            $voucher_err = null;
+
+            // Kiểm tra first_booking_only (chống lợi dụng nhiều tài khoản/SĐT/email)
+            if (!empty($voucher_row['first_booking_only'])) {
+                $vid       = (int)$voucher_row['id'];
+                $email_esc = $conn->real_escape_string(strtolower($email));
+                $phone_esc = $conn->real_escape_string($phone_clean);
+                $conds     = ["email='$email_esc'", "phone='$phone_esc'"];
+                if ($userId) $conds[] = "user_id=" . (int)$userId;
+                $where = implode(' OR ', $conds);
+
+                // Đã dùng mã này rồi?
+                $already = $conn->query(
+                    "SELECT id FROM voucher_uses WHERE voucher_id=$vid AND ($where) LIMIT 1"
+                )->num_rows > 0;
+                if ($already) {
+                    $voucher_err = 'Mã ' . htmlspecialchars($voucher_code) . ' chỉ dùng được 1 lần — email hoặc SĐT này đã sử dụng rồi.';
+                } else {
+                    // Đã từng đặt phòng thành công?
+                    $prior = $conn->query(
+                        "SELECT id FROM bookings
+                         WHERE status IN ('pending','confirmed','completed') AND ($where) LIMIT 1"
+                    )->num_rows > 0;
+                    if ($prior) {
+                        $voucher_err = 'Mã ' . htmlspecialchars($voucher_code) . ' chỉ dành cho khách đặt phòng lần đầu tiên tại StayGo.';
+                    }
+                }
+            }
+
+            if ($voucher_err) {
+                $error_msg   = $voucher_err;
+                $voucher_row = null;
+            } elseif ($total_price >= $voucher_row['min_order']) {
+                $voucher_disc = ($voucher_row['type'] === 'percent')
+                    ? round($total_price * $voucher_row['value'] / 100)
+                    : min((float)$voucher_row['value'], $total_price);
+                $total_price     -= $voucher_disc;
+                $discount_amount += $voucher_disc;
+            } else {
+                $voucher_row = null;
+            }
         }
     }
 
@@ -228,9 +274,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['new_user_discount_used'] = true;
     }
 
-    // Tăng used_count voucher
+    // Tăng used_count voucher + ghi log voucher_uses (chống lợi dụng)
     if ($voucher_row) {
         $conn->query("UPDATE vouchers SET used_count = used_count + 1 WHERE id = " . (int)$voucher_row['id']);
+        $vu_email = $conn->real_escape_string(strtolower($email));
+        $vu_phone = $conn->real_escape_string($phone_clean ?? preg_replace('/[\s\-\.]/', '', $phone));
+        $vu_uid   = $userId ? (int)$userId : 'NULL';
+        @$conn->query("INSERT INTO voucher_uses (voucher_id, user_id, email, phone, booking_id)
+            VALUES ({$voucher_row['id']}, $vu_uid, '$vu_email', '$vu_phone', $booking_id)");
+        // Lưu voucher_code và discount vào bản ghi booking
+        $vc_esc = $conn->real_escape_string($voucher_code);
+        @$conn->query("UPDATE bookings SET voucher_code='$vc_esc', discount_amount=$voucher_disc WHERE id=$booking_id");
     }
 
     // ── Redirect sang cổng thanh toán thật ────────────────────────────
@@ -1139,6 +1193,58 @@ window.VOUCHER_VALUE    = 0;
 window.VOUCHER_MIN_ORDER= 0;
 window.VOUCHER_CODE     = '';
 
+// ── Real-time email / phone format validation ────────────────────────────────
+function validateEmailFmt(val) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(val.trim());
+}
+function validatePhoneFmt(val) {
+    return /^0[3-9]\d{8}$/.test(val.trim().replace(/[\s\-\.]/g, ''));
+}
+function setupContactValidation() {
+    var emailEl = document.querySelector('input[name="email"]');
+    var phoneEl = document.querySelector('input[name="phone"]');
+    function showHint(el, ok, msg) {
+        var hint = el.parentNode.querySelector('.contact-hint');
+        if (!hint) {
+            hint = document.createElement('div');
+            hint.className = 'contact-hint';
+            hint.style.cssText = 'font-size:12px;margin-top:4px;';
+            el.parentNode.appendChild(hint);
+        }
+        hint.textContent = msg;
+        hint.style.color = ok ? '#16a34a' : '#dc2626';
+        el.style.borderColor = ok ? '#86efac' : '#fca5a5';
+    }
+    if (emailEl) {
+        emailEl.addEventListener('blur', function() {
+            if (!this.value) return;
+            var ok = validateEmailFmt(this.value);
+            showHint(this, ok, ok ? '✓ Email hợp lệ' : '✗ Email không đúng định dạng');
+            // Re-validate voucher nếu đã có mã
+            if (window.VOUCHER_CODE && !ok) { removeVoucher(true); }
+        });
+        emailEl.addEventListener('input', function() {
+            var hint = this.parentNode.querySelector('.contact-hint');
+            if (hint) { hint.textContent = ''; }
+            this.style.borderColor = '';
+        });
+    }
+    if (phoneEl) {
+        phoneEl.addEventListener('blur', function() {
+            if (!this.value) return;
+            var ok = validatePhoneFmt(this.value);
+            showHint(this, ok, ok ? '✓ Số điện thoại hợp lệ' : '✗ SĐT Việt Nam 10 số (03x / 05x / 07x / 08x / 09x)');
+            if (window.VOUCHER_CODE && !ok) { removeVoucher(true); }
+        });
+        phoneEl.addEventListener('input', function() {
+            var hint = this.parentNode.querySelector('.contact-hint');
+            if (hint) { hint.textContent = ''; }
+            this.style.borderColor = '';
+        });
+    }
+}
+document.addEventListener('DOMContentLoaded', setupContactValidation);
+
 function applyVoucher() {
     var code  = document.getElementById('voucherInput').value.trim();
     var msgEl = document.getElementById('voucherMsg');
@@ -1147,9 +1253,13 @@ function applyVoucher() {
     var amount = window._baseTotalForVoucher || 0;
     showVoucherMsg('Đang kiểm tra...', null);
 
+    var emailEl = document.querySelector('input[name="email"]');
+    var phoneEl = document.querySelector('input[name="phone"]');
     var fd = new FormData();
     fd.append('code', code);
     fd.append('amount', amount);
+    if (emailEl) fd.append('email', emailEl.value.trim());
+    if (phoneEl) fd.append('phone', phoneEl.value.trim());
 
     fetch('/pages/voucher_check.php', { method: 'POST', body: fd })
         .then(r => r.json())
