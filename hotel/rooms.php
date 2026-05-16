@@ -37,8 +37,13 @@ $rooms = $conn->query("
 <div class="alert alert-error">⚠️ <?= htmlspecialchars($error) ?></div>
 <?php endif; ?>
 
+<?php if (!empty($_GET['added'])): ?>
+<div class="alert alert-success">✅ Đã thêm phòng mới thành công.</div>
+<?php endif; ?>
+
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
     <div style="font-size:13.5px;color:#718096"><?= count($rooms) ?> phòng tổng cộng</div>
+    <a href="/hotel/add_room.php" class="btn btn-primary btn-sm">➕ Thêm phòng mới</a>
 </div>
 
 <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px">
@@ -104,7 +109,7 @@ $rooms = $conn->query("
 
 <?php if (empty($rooms)): ?>
 <div style="grid-column:1/-1;text-align:center;padding:60px;color:#a0aec0;background:#fff;border-radius:16px">
-    Chưa có phòng nào. Liên hệ Admin để thêm phòng cho khách sạn của bạn.
+    Chưa có phòng nào. <a href="/hotel/add_room.php" class="btn btn-primary btn-sm" style="margin-left:12px">➕ Thêm phòng đầu tiên</a>
 </div>
 <?php endif; ?>
 </div>
