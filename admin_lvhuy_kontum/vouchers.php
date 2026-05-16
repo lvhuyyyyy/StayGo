@@ -30,7 +30,9 @@ if ($edit_id) {
 
 // ---- Xử lý POST thêm/sửa ----
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    csrf_check();
+    if (!csrf_verify()) {
+        $errors[] = 'Phiên bảo mật hết hạn. Vui lòng tải lại trang và thử lại.';
+    }
     $pid         = (int)($_POST['id'] ?? 0);
     $code        = strtoupper(trim($_POST['code']        ?? ''));
     $type        = in_array($_POST['type'] ?? '', ['percent','fixed']) ? $_POST['type'] : 'percent';
