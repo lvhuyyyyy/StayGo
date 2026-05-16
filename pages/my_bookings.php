@@ -654,6 +654,18 @@ function confirmCancelConfirmed(id, code, refundAmt, isHotelCollect) {
 function closeCancelConfirmedModal() {
     document.getElementById('cancelConfirmedModal').style.display = 'none';
 }
+
+function confirmCancel(id, code) {
+    document.getElementById('cancel-order-code').textContent = '#' + code;
+    document.getElementById('cancel-confirm-btn').href = '/pages/cancel_booking.php?id=' + id;
+    document.getElementById('cancelModal').style.display = 'flex';
+}
+function closeCancelModal() {
+    document.getElementById('cancelModal').style.display = 'none';
+}
+function closeRefundModal() {
+    document.getElementById('refundModal').style.display = 'none';
+}
 </script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>

@@ -174,20 +174,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())");
             $stmt->bind_param("siisssssdss", $order_code, $user_id, $room_id, $full_name, $email, $phone, $checkin, $checkout, $total_price, $payment_method, $note);
         }
-        if (!$stmt->execute() && $conn->errno == 1062) {
+        $exec_ok = $stmt->execute();
+        if (!$exec_ok && $conn->errno == 1062) {
             $order_code = 'ORD' . time() . rand(1000, 9999);
             if ($has_payment_flow_col) {
                 $stmt->bind_param("siisssssdsss", $order_code, $user_id, $room_id, $full_name, $email, $phone, $checkin, $checkout, $total_price, $payment_method, $payment_flow, $note);
             } else {
                 $stmt->bind_param("siisssssdss", $order_code, $user_id, $room_id, $full_name, $email, $phone, $checkin, $checkout, $total_price, $payment_method, $note);
             }
-            $stmt->execute();
+            $exec_ok = $stmt->execute();
         }
-        $booking_id = $conn->insert_id;
+        $booking_id = (int)$conn->insert_id;
 
-        // Snapshot commission_rate: hotel_collect = 0 (platform không thu)
-        $snap_rate = ($payment_flow === 'hotel_collect') ? 0.0 : (float)$room_lock['commission_rate'];
-        $conn->query("UPDATE bookings SET commission_rate = $snap_rate WHERE id = $booking_id");
+        if (!$exec_ok || $booking_id <= 0) {
+            $conn->rollback();
+            $error_msg = 'Không thể tạo đơn đặt phòng (' . $conn->error . '). Vui lòng thử lại.';
+        } else {
+        // Snapshot commission_rate nếu cột tồn tại (bỏ qua nếu chưa migrate)
+        $snap_rate = ($payment_flow === 'hotel_collect') ? 0.0 : (float)($room_lock['commission_rate'] ?? 0);
+        @$conn->query("UPDATE bookings SET commission_rate = $snap_rate WHERE id = $booking_id");
 
         $conn->commit();
 
@@ -242,7 +247,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error_msg = 'MoMo: ' . $momo['message'];
     }
     if ($payment_method === 'payos') {
-        $desc  = 'Thanh toan #' . $booking_id;
+        $desc  = substr('Dat phong ' . $booking_id, 0, 25);
         $payos = payos_create_payment($booking_id, $total_price, $desc);
         if ($payos['success']) {
             header('Location: ' . $payos['pay_url']);
@@ -256,54 +261,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $conn->query("UPDATE bookings SET status='confirmed' WHERE id=$booking_id");
     }
 
-    // Gửi email xác nhận đặt phòng cho thanh toán không qua gateway
-    send_booking_email($email, $full_name, [
-        'order_code'     => $order_code,
-        'hotel_name'     => $hotel['name'],
-        'room_name'      => $room_name_val,
-        'checkin'        => $checkin,
-        'checkout'       => $checkout,
-        'payment_method' => $payment_method,
-        'total_price'    => $total_price,
-        'full_name'      => $full_name,
-    ]);
+    // Gửi email — chỉ khi không có lỗi gateway (bank/hotel/card không redirect nên luôn đến đây)
+    if (!$error_msg) {
+        send_booking_email($email, $full_name, [
+            'order_code'     => $order_code,
+            'hotel_name'     => $hotel['name'],
+            'room_name'      => $room_name_val,
+            'checkin'        => $checkin,
+            'checkout'       => $checkout,
+            'payment_method' => $payment_method,
+            'total_price'    => $total_price,
+            'full_name'      => $full_name,
+        ]);
 
-    // Gửi email thông báo đặt phòng mới đến khách sạn (hotel_collect)
-    if ($payment_method === 'hotel') {
-        $hotel_email_row = $conn->query("SELECT partner_email FROM hotels WHERE id=$hotel_id LIMIT 1");
-        $hotel_partner   = $hotel_email_row ? $hotel_email_row->fetch_assoc() : null;
-        if ($hotel_partner && !empty($hotel_partner['partner_email'])) {
-            send_hotel_new_booking_email($hotel_partner['partner_email'], [
-                'order_code'     => $order_code,
-                'hotel_name'     => $hotel['name'],
-                'full_name'      => $full_name,
-                'guest_email'    => $email,
-                'room_name'      => $room_name_val,
-                'checkin'        => $checkin,
-                'checkout'       => $checkout,
-                'payment_method' => $payment_method_label,
-                'amount'         => $total_price,
-            ]);
+        // Gửi email thông báo đặt phòng mới đến khách sạn (hotel_collect)
+        if ($payment_method === 'hotel') {
+            $hotel_email_row = $conn->query("SELECT partner_email FROM hotels WHERE id=$hotel_id LIMIT 1");
+            $hotel_partner   = $hotel_email_row ? $hotel_email_row->fetch_assoc() : null;
+            if ($hotel_partner && !empty($hotel_partner['partner_email'])) {
+                send_hotel_new_booking_email($hotel_partner['partner_email'], [
+                    'order_code'     => $order_code,
+                    'hotel_name'     => $hotel['name'],
+                    'full_name'      => $full_name,
+                    'guest_email'    => $email,
+                    'room_name'      => $room_name_val,
+                    'checkin'        => $checkin,
+                    'checkout'       => $checkout,
+                    'payment_method' => $payment_method_label,
+                    'amount'         => $total_price,
+                ]);
+            }
         }
-    }
 
-    $qr_content = urlencode("StayGo | Ma don: $order_code | Ho ten: $full_name | Email: $email | SDT: $phone | Tong tien: " . number_format($total_price, 0, ',', '.') . "d | PT: $payment_method");
-    $qr_data = [
-        'content'         => $qr_content,
-        'full_name'       => $full_name,
-        'email'           => $email,
-        'phone'           => $phone,
-        'order_code'      => $order_code,
-        'method'          => $payment_method,
-        'total'           => $total_price,
-        'original_price'  => $original_price,
-        'discount_amount' => $discount_amount,
-        'discount_pct'    => $new_user_discount,
-        'voucher_code'    => $voucher_code,
-        'voucher_disc'    => $voucher_disc,
-        'checkin'         => $checkin,
-        'checkout'        => $checkout,
-    ];
+        $qr_content = urlencode("StayGo | Ma don: $order_code | Ho ten: $full_name | Email: $email | SDT: $phone | Tong tien: " . number_format($total_price, 0, ',', '.') . "d | PT: $payment_method");
+        $qr_data = [
+            'content'         => $qr_content,
+            'full_name'       => $full_name,
+            'email'           => $email,
+            'phone'           => $phone,
+            'order_code'      => $order_code,
+            'method'          => $payment_method,
+            'total'           => $total_price,
+            'original_price'  => $original_price,
+            'discount_amount' => $discount_amount,
+            'discount_pct'    => $new_user_discount,
+            'voucher_code'    => $voucher_code,
+            'voucher_disc'    => $voucher_disc,
+            'checkin'         => $checkin,
+            'checkout'        => $checkout,
+        ];
+    } // end if (!$error_msg)
+        } // end else (INSERT OK)
     } // end else (room available)
     } // end if (!isset($error_msg)) — date/room/method validation passed
 }

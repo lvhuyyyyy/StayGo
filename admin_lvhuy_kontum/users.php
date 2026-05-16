@@ -378,4 +378,13 @@ function users_qs($overrides = []) {
     <input type="hidden" id="delete-user-id" name="id" value="">
 </form>
 
+<script>
+function confirmDelete(id, name, email) {
+    document.getElementById('delete-user-id').value = id;
+    document.getElementById('delete-username').textContent = name;
+    document.getElementById('delete-email').textContent = email;
+    document.getElementById('deleteModal').style.display = 'flex';
+}
+</script>
+
 <?php include "../includes/admin_footer.php"; ?>
