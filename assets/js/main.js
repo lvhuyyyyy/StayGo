@@ -265,6 +265,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
 /* ===== CHATBOT ===== */
 const staffAvatar = "https://img.freepik.com/premium-vector/woman-with-headphones-microphone-with-laptop_1023984-24634.jpg";
+const CHAT_STORAGE_KEY = 'staygo_chat_v1';
 
 function toggleChat() {
     let box = document.getElementById("chatBox");
@@ -277,7 +278,8 @@ function toggleChat() {
     if (floating) floating.style.display = isOpen ? "" : "none";
 }
 
-function appendMessage(text, type) {
+// Chỉ render vào DOM, không lưu sessionStorage (dùng khi restore)
+function _renderMessage(text, type) {
     let content = document.getElementById("chatContent");
     let msg = document.createElement("div");
     msg.className = "message " + type;
@@ -293,6 +295,17 @@ function appendMessage(text, type) {
     msg.appendChild(bubble);
     content.appendChild(msg);
     content.scrollTop = content.scrollHeight;
+}
+
+// Render + lưu vào sessionStorage để persist khi chuyển trang
+function appendMessage(text, type) {
+    _renderMessage(text, type);
+    try {
+        let history = JSON.parse(sessionStorage.getItem(CHAT_STORAGE_KEY) || '[]');
+        history.push({ type: type, html: text });
+        if (history.length > 60) history = history.slice(-60);
+        sessionStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(history));
+    } catch(e) {}
 }
 
 function showTyping() {
@@ -333,8 +346,16 @@ function sendMessage() {
 }
 
 function loadWelcome() {
-    appendMessage("Xin chào! 👋<br><br>Mình là <b>Nhân viên tư vấn StayGo</b>.<br>Mình có thể giúp bạn chọn tour, báo giá hoặc tư vấn lịch trình phù hợp.<br><br>Bạn có thể tham khảo nhanh các câu hỏi dưới đây:", "bot");
-    showSuggestions();
+    // Restore lịch sử chat từ sessionStorage nếu có
+    let history = [];
+    try { history = JSON.parse(sessionStorage.getItem(CHAT_STORAGE_KEY) || '[]'); } catch(e) {}
+
+    if (history.length > 0) {
+        history.forEach(function(item) { _renderMessage(item.html, item.type); });
+    } else {
+        appendMessage("Xin chào! 👋<br><br>Mình là <b>Nhân viên tư vấn StayGo</b>.<br>Mình có thể giúp bạn chọn tour, báo giá hoặc tư vấn lịch trình phù hợp.<br><br>Bạn có thể tham khảo nhanh các câu hỏi dưới đây:", "bot");
+        showSuggestions();
+    }
     let flag = document.createElement("div");
     flag.id = "welcomeLoaded";
     document.body.appendChild(flag);

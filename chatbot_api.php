@@ -872,21 +872,26 @@ switch ($intent) {
         if (!$foundHotel) goto fallback_label;
         $hotelId = (int)$foundHotel['id'];
         $result  = $mysqli->query(
-            "SELECT h.name, h.address, h.description, h.rating, h.review_text,
-                    h.review_count, h.price, h.old_price, l.name AS location_name
-            FROM hotels h LEFT JOIN locations l ON h.location_id = l.id
-            WHERE h.id = $hotelId"
+            "SELECT h.name, h.address, h.description, h.rating, h.review_text, h.review_count,
+                    l.name AS location_name,
+                    COALESCE(MIN(r.price), h.price) AS min_price,
+                    COALESCE(MAX(r.price), h.price) AS max_price
+             FROM hotels h
+             LEFT JOIN locations l ON h.location_id = l.id
+             LEFT JOIN rooms r ON r.hotel_id = h.id AND r.quantity > 0
+             WHERE h.id = $hotelId
+             GROUP BY h.id, h.name, h.address, h.description, h.rating,
+                      h.review_text, h.review_count, l.name, h.price"
         );
         if ($result && $row = $result->fetch_assoc()) {
-            $discount = ($row['old_price'] > $row['price'])
-                ? " <s style='color:#999'>" . number_format($row['old_price']) . "</s>
-                <span style='color:#e53e3e;font-size:12px'> (-" . round((1 - $row['price']/$row['old_price'])*100) . "%)</span>"
-                : "";
-            echo "?? <b>{$row['name']}</b><br>";
+            $priceRange = ((int)$row['max_price'] > (int)$row['min_price'])
+                ? number_format($row['min_price']) . ' – ' . number_format($row['max_price'])
+                : number_format($row['min_price']);
+            echo "🏨 <b>{$row['name']}</b><br>";
             echo "{$row['address']}" . ($row['location_name'] ? " - {$row['location_name']}" : "") . "<br>";
             echo "{$row['rating']} - {$row['review_text']} ({$row['review_count']} đánh giá)<br>";
-            echo "Từ <b>" . number_format($row['price']) . " VNĐ/đêm</b>$discount<br><br>";
-            if ($row['description']) echo "?? {$row['description']}<br><br>";
+            echo "Từ <b>" . $priceRange . " VNĐ/đêm</b><br><br>";
+            if ($row['description']) echo "📋 {$row['description']}<br><br>";
             echo "<a href=\"/pages/hotel_detail.php?id={$hotelId}\" style=\"color:#2563eb;font-weight:600\">Xem chi tiết &amp; đặt phòng</a>";
         }
         break;
@@ -940,30 +945,45 @@ switch ($intent) {
                 "SELECT COUNT(*) AS c FROM hotels WHERE is_active = 1 AND location_id = $locId"
             )->fetch_assoc()['c'];
             $result  = $mysqli->query(
-                "SELECT id, name, address, rating, review_text, review_count, price, old_price
-                FROM hotels WHERE is_active = 1 AND location_id = $locId
-                ORDER BY rating DESC LIMIT 8"
+                "SELECT h.id, h.name, h.address, h.rating, h.review_text, h.review_count,
+                        COALESCE(MIN(r.price), h.price) AS min_price,
+                        COALESCE(MAX(r.price), h.price) AS max_price
+                 FROM hotels h
+                 LEFT JOIN rooms r ON r.hotel_id = h.id AND r.quantity > 0
+                 WHERE h.is_active = 1 AND h.location_id = $locId
+                 GROUP BY h.id, h.name, h.address, h.rating, h.review_text, h.review_count, h.price
+                 ORDER BY h.rating DESC LIMIT 8"
             );
             echo "<b>$locName có $total khách sạn:</b><br><br>";
             while ($row = $result->fetch_assoc()) {
-                $discount = ($row['old_price'] > $row['price'])
-                    ? " <small><s>" . number_format($row['old_price']) . "</s></small>" : "";
+                $priceRange = ((int)$row['max_price'] > (int)$row['min_price'])
+                    ? number_format($row['min_price']) . ' – ' . number_format($row['max_price'])
+                    : number_format($row['min_price']);
                 echo "<b>{$row['name']}</b><br>";
                 echo "{$row['rating']} - {$row['review_text']} ({$row['review_count']} đánh giá)<br>";
-                echo "Từ <b>" . number_format($row['price']) . " VNĐ/đêm</b>$discount<br>";
+                echo "Từ <b>" . $priceRange . " VNĐ/đêm</b><br>";
                 echo '<a href="/pages/hotel_detail.php?id=' . $row['id'] . '" style="color:#2563eb;font-size:12px">Xem chi tiết</a><br><br>';
             }
         } else {
             $result = $mysqli->query(
-                "SELECT h.id, h.name, h.address, h.rating, h.review_text, h.price, l.name AS loc
-                FROM hotels h JOIN locations l ON h.location_id = l.id
-                WHERE h.is_active = 1 ORDER BY h.rating DESC LIMIT 6"
+                "SELECT h.id, h.name, h.address, h.rating, h.review_text, l.name AS loc,
+                        COALESCE(MIN(r.price), h.price) AS min_price,
+                        COALESCE(MAX(r.price), h.price) AS max_price
+                 FROM hotels h
+                 JOIN locations l ON h.location_id = l.id
+                 LEFT JOIN rooms r ON r.hotel_id = h.id AND r.quantity > 0
+                 WHERE h.is_active = 1
+                 GROUP BY h.id, h.name, h.address, h.rating, h.review_text, l.name, h.price
+                 ORDER BY h.rating DESC LIMIT 6"
             );
             echo "<b>Khách sạn nổi bật:</b><br><br>";
             while ($row = $result->fetch_assoc()) {
+                $priceRange = ((int)$row['max_price'] > (int)$row['min_price'])
+                    ? number_format($row['min_price']) . ' – ' . number_format($row['max_price'])
+                    : number_format($row['min_price']);
                 echo "<b>{$row['name']}</b> - {$row['loc']}<br>";
                 echo "{$row['rating']} - {$row['review_text']}<br>";
-                echo "Từ " . number_format($row['price']) . " VNĐ/đêm<br>";
+                echo "Từ " . $priceRange . " VNĐ/đêm<br>";
                 echo '<a href="/pages/hotel_detail.php?id=' . $row['id'] . '" style="color:#2563eb;font-size:12px">Xem chi tiết</a><br><br>';
             }
         }
