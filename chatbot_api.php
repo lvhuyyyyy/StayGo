@@ -118,6 +118,51 @@ function extractBudget(string $msg): int|float|null {
     return null;
 }
 
+function extractDays(string $msg): int {
+    if (preg_match('/(\d+)\s*ngày/u', $msg, $m))  return max(1, min(30, (int)$m[1]));
+    if (preg_match('/một tuần|1 tuần/u', $msg))    return 7;
+    if (preg_match('/nửa tuần/u', $msg))           return 3;
+    if (preg_match('/cuối tuần/u', $msg))          return 2;
+    if (preg_match('/hai ngày|2 ngày/u', $msg))    return 2;
+    if (preg_match('/ba ngày|3 ngày/u', $msg))     return 3;
+    return 0;
+}
+
+function findAllLocationsInMessage(string $msg, mysqli $mysqli): array {
+    $result = $mysqli->query("SELECT id, name FROM locations");
+    $found = [];
+    while ($row = $result->fetch_assoc()) {
+        $n = mb_strtolower($row['name'], 'UTF-8');
+        if (mb_strpos($msg, $n) !== false) {
+            $found[] = $row;
+        }
+    }
+    return $found;
+}
+
+function getLocationAttractions(): string {
+    return <<<'ATTRACT'
+
+## DỮ LIỆU ĐỊA ĐIỂM THAM QUAN & ĐẶC SẢN (dùng để lập lịch trình)
+
+### Kon Tum (thành phố tỉnh lỵ)
+Địa điểm: Nhà thờ gỗ Kon Tum (công trình trăm tuổi, kiến trúc độc đáo), Làng văn hóa Kon Kơ Tu (làng Ba Na bên sông Đăk Bla), Bảo tàng tỉnh Kon Tum, Cầu treo Kon Klor, Sông Đăk Bla (ngắm hoàng hôn), Chùa Bác Ái, Quảng trường 16/3.
+Ẩm thực: Cà phê Kon Tum, cơm lam, gà nướng thui, phở khô Gia Lai–Kon Tum, xôi đen, bánh tét lá đỏ, rượu cần.
+Đi lại: Cách Măng Đen ~50km (1 giờ xe). Thích hợp làm điểm dừng 1 ngày kết hợp văn hóa + ẩm thực.
+
+### Măng Đen (huyện Kon Plông – cao nguyên)
+Địa điểm: Hồ Toong Zơri (hồ xanh giữa rừng thông), Hồ Toong Đam, Thác Pa Sỹ, Thác Lô Ba (đẹp mùa mưa), Rừng thông Măng Đen (chụp ảnh), Vườn dâu tây, Đồi chè xanh, Làng Kon Bring (văn hóa Xê Đăng).
+Ẩm thực: Cá tầm Măng Đen (đặc sản số 1), dâu tây tươi, nấm hương rừng, rau rừng xào tỏi, cơm lam, gà nướng lá lốt, rượu ủ truyền thống, cà phê Arabica.
+Thời tiết: Mát mẻ 15–25°C quanh năm, sáng sớm có sương mù. Mưa nhiều tháng 7–10.
+Phù hợp: Nghỉ dưỡng, chill, chụp ảnh, đi bộ rừng, cặp đôi, gia đình.
+
+### Quảng Ngãi (tỉnh + TP Quảng Ngãi)
+Địa điểm chính: Đảo Lý Sơn (tàu 25 phút từ Sa Kỳ – nên đi 1 ngày), Biển Mỹ Khê Quảng Ngãi, Biển Sa Huỳnh (bình yên, ít người), Khu chứng tích Sơn Mỹ (lịch sử Mỹ Lai), Thác Trắng (Sơn Hà), Cổng Tò Vò (Lý Sơn), Núi Lửa Thới Lới (Lý Sơn).
+Ẩm thực: Tỏi Lý Sơn (đặc sản nổi tiếng), mực Lý Sơn, cá bống sông Trà, mì Quảng Ngãi, bánh tráng gạo cuốn, hải sản Sa Huỳnh, bún cá.
+Phù hợp: Du lịch biển, lịch sử, khám phá đảo, ẩm thực hải sản.
+ATTRACT;
+}
+
 // ── Hàm xây dựng profile người dùng từ lịch sử đặt phòng ────────────────────
 function buildUserProfile(int $userId, $mysqli): array {
     $profile = [
@@ -224,7 +269,9 @@ function getQuickReplies(string $intent, ?array $foundHotel = null, ?array $foun
         'book_room'      => ["Xem giá phòng", "Điều kiện hủy phòng?", "Đánh giá khách sạn", "Ưu đãi hiện có"],
         'blog'           => ["Khách sạn nổi bật", "Ưu đãi hôm nay", "Tư vấn chọn phòng", "Đặt phòng ngay"],
         'room_price'     => ["Đặt phòng ngay", "Tư vấn chọn phòng", "Xem ưu đãi", "Bài viết du lịch"],
-        'fallback'       => ["Khách sạn nổi bật", "Ưu đãi hôm nay", "Tư vấn chọn phòng", "Bài viết du lịch"],
+        'trip_plan'      => ["Xem khách sạn phù hợp", "Ưu đãi tốt nhất", "Đặt phòng ngay", "Lịch trình chi tiết hơn"],
+        'place_info'     => ["Khách sạn ở đây", "Lập kế hoạch chuyến đi", "Ưu đãi hiện có", "Đặt phòng"],
+        'fallback'       => ["Khách sạn nổi bật", "Ưu đãi hôm nay", "Tư vấn chọn phòng", "Lập kế hoạch du lịch"],
     ];
     return $map[$intent] ?? $map['fallback'];
 }
@@ -322,6 +369,25 @@ if (!$foundHotel && hasKeyword($messageLower, ['giá phòng', 'phòng giá', 'gi
     $score['room_price'] += 6;
 if ($foundLocation) $score['room_price'] += 2;
 
+// --- trip_plan ---
+$score['trip_plan'] = 0;
+if (hasKeyword($messageLower, ['lập kế hoạch', 'kế hoạch', 'lịch trình', 'itinerary', 'hành trình', 'chuyến đi', 'plan du lịch']))
+    $score['trip_plan'] += 12;
+if (extractDays($messageLower) > 0) $score['trip_plan'] += 6;
+if (hasKeyword($messageLower, ['ngày đêm', 'ngày mấy', 'mấy ngày']))
+    $score['trip_plan'] += 4;
+if ($foundLocation || count(findAllLocationsInMessage($messageLower, $mysqli)) > 0)
+    $score['trip_plan'] += 3;
+
+// --- place_info ---
+$score['place_info'] = 0;
+if (hasKeyword($messageLower, ['có gì', 'nên đi đâu', 'địa điểm tham quan', 'thăm quan', 'đặc sản', 'ăn gì', 'chơi gì', 'thời tiết', 'mùa nào', 'nên đi mùa', 'hay đến', 'đáng đi']))
+    $score['place_info'] += 10;
+if ($foundLocation && hasKeyword($messageLower, ['có gì', 'gì hay', 'đi đâu', 'ăn gì', 'thăm']))
+    $score['place_info'] += 5;
+if (hasKeyword($messageLower, ['du lịch', 'đi chơi', 'khám phá']) && $foundLocation)
+    $score['place_info'] += 3;
+
 // --- blog ---
 $score['blog'] = 0;
 if (hasKeyword($messageLower, ['bài viết', 'blog', 'tin tức', 'kinh nghiệm', 'đọc thêm', 'hướng dẫn', 'chia sẻ', 'cẩm nang']))
@@ -349,7 +415,7 @@ $_SESSION['chat_context']['last_intent'] = $intent;
 
 // Lưu lịch sử cho GPT (tối đa 6 tin)
 $_SESSION['chat_history'][] = ["role" => "user", "content" => $message];
-if (count($_SESSION['chat_history']) > 6) {
+if (count($_SESSION['chat_history']) > 10) {
     array_shift($_SESSION['chat_history']);
 }
 
@@ -953,6 +1019,119 @@ switch ($intent) {
         break;
 
     // ------------------------------------------------
+    case 'trip_plan':
+        $days     = extractDays($messageLower);
+        $daysText = $days > 0 ? "$days ngày" : "chuyến đi";
+        $allLocs  = findAllLocationsInMessage($messageLower, $mysqli);
+        if (empty($allLocs) && $foundLocation) $allLocs = [$foundLocation];
+        $locNames = !empty($allLocs) ? implode(' & ', array_column($allLocs, 'name')) : 'Kon Tum / Măng Đen / Quảng Ngãi';
+
+        // Lấy khách sạn của TẤT CẢ địa điểm được nhắc
+        $hotelsForPlan = [];
+        if (!empty($allLocs)) {
+            $locIds = implode(',', array_map(fn($l) => (int)$l['id'], $allLocs));
+            $res = $mysqli->query("
+                SELECT h.name, h.price, h.rating, h.review_text, h.id, h.description,
+                       h.star_category, l.name AS loc
+                FROM hotels h JOIN locations l ON h.location_id = l.id
+                WHERE h.is_active = 1 AND h.location_id IN ($locIds)
+                ORDER BY h.rating DESC LIMIT 8
+            ");
+            if ($res) while ($row = $res->fetch_assoc()) $hotelsForPlan[] = $row;
+        }
+        if (empty($hotelsForPlan)) {
+            // Không xác định được địa điểm → lấy top hotels toàn quốc
+            $res = $mysqli->query("
+                SELECT h.name, h.price, h.rating, h.review_text, h.id,
+                       h.star_category, l.name AS loc
+                FROM hotels h JOIN locations l ON h.location_id = l.id
+                WHERE h.is_active = 1 ORDER BY h.rating DESC LIMIT 6
+            ");
+            if ($res) while ($row = $res->fetch_assoc()) $hotelsForPlan[] = $row;
+        }
+
+        if (!empty($apiKey)) {
+            $hotelsData = "";
+            foreach ($hotelsForPlan as $h) {
+                $price = number_format((int)$h['price'], 0, ',', '.');
+                $hotelsData .= "- {$h['name']} ({$h['loc']}, {$h['star_category']}★, đánh giá {$h['rating']} — {$h['review_text']}): từ {$price} VNĐ/đêm | link: /pages/hotel_detail.php?id={$h['id']}\n";
+            }
+
+            $attractCtx  = getLocationAttractions();
+            $planSysPrompt = $v2SystemPrompt . $attractCtx;
+
+            $histPrev = array_slice($_SESSION['chat_history'], 0, -1);
+            $planMsgs = [["role" => "system", "content" => $planSysPrompt]];
+            foreach ($histPrev as $hh) $planMsgs[] = $hh;
+            $planMsgs[] = [
+                "role"    => "user",
+                "content" => $message . "\n\n[KHÁCH SẠN THỰC TẾ TẠI KHU VỰC - BẮT BUỘC chỉ gợi ý từ danh sách này]\n" . $hotelsData
+                    . "\nHãy lập lịch trình $daysText tại $locNames: gợi ý địa điểm tham quan theo từng ngày, ẩm thực địa phương nên thử, và khách sạn phù hợp từ danh sách trên. Trình bày tự nhiên như người địa phương tư vấn, không dùng template cứng.",
+            ];
+
+            $ch = curl_init("https://api.openai.com/v1/chat/completions");
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_POST           => true,
+                CURLOPT_TIMEOUT        => 25,
+                CURLOPT_HTTPHEADER     => ["Content-Type: application/json", "Authorization: Bearer $apiKey"],
+                CURLOPT_POSTFIELDS     => json_encode([
+                    "model"      => "gpt-4o-mini",
+                    "messages"   => $planMsgs,
+                    "max_tokens" => 1200,
+                ]),
+            ]);
+            $resp    = curl_exec($ch);
+            $parsed  = $resp ? json_decode($resp, true) : null;
+            $gpReply = $parsed['choices'][0]['message']['content'] ?? '';
+            if ($gpReply !== '') { echo $gpReply; break; }
+        }
+
+        // HTML fallback
+        echo "<b>Gợi ý $daysText tại $locNames:</b><br><br>";
+        foreach ($hotelsForPlan as $h) {
+            echo "<b>{$h['name']}</b> ({$h['loc']}) — " . number_format((int)$h['price']) . " VNĐ/đêm<br>";
+            echo "{$h['rating']} — {$h['review_text']}<br>";
+            echo '<a href="/pages/hotel_detail.php?id=' . $h['id'] . '" style="color:#2563eb;font-size:12px">Xem & đặt phòng</a><br><br>';
+        }
+        break;
+
+    // ------------------------------------------------
+    case 'place_info':
+        $locName = $foundLocation ? $foundLocation['name'] : null;
+        if (!empty($apiKey)) {
+            $attractCtx = getLocationAttractions();
+            $piSysPrompt = $v2SystemPrompt . $attractCtx;
+
+            $histPrev = array_slice($_SESSION['chat_history'], 0, -1);
+            $piMsgs   = [["role" => "system", "content" => $piSysPrompt]];
+            foreach ($histPrev as $hh) $piMsgs[] = $hh;
+            $piMsgs[] = ["role" => "user", "content" => $message];
+
+            $ch = curl_init("https://api.openai.com/v1/chat/completions");
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_POST           => true,
+                CURLOPT_TIMEOUT        => 15,
+                CURLOPT_HTTPHEADER     => ["Content-Type: application/json", "Authorization: Bearer $apiKey"],
+                CURLOPT_POSTFIELDS     => json_encode([
+                    "model"      => "gpt-4o-mini",
+                    "messages"   => $piMsgs,
+                    "max_tokens" => 700,
+                ]),
+            ]);
+            $resp    = curl_exec($ch);
+            $parsed  = $resp ? json_decode($resp, true) : null;
+            $gpReply = $parsed['choices'][0]['message']['content'] ?? '';
+            if ($gpReply !== '') { echo $gpReply; break; }
+        }
+        // Fallback đơn giản
+        echo $locName
+            ? "Tôi có thể tư vấn về địa điểm tham quan, ẩm thực và khách sạn tại <b>$locName</b>. Bạn muốn hỏi cụ thể điều gì?"
+            : "Bạn muốn khám phá khu vực nào? Tôi có thể tư vấn về <b>Kon Tum, Măng Đen</b> và <b>Quảng Ngãi</b>.";
+        break;
+
+    // ------------------------------------------------
     fallback_label:
     default:
         if (empty($apiKey)) {
@@ -991,7 +1170,7 @@ $botReply = ob_get_clean();
 
 // Lưu reply vào session history
 $_SESSION['chat_history'][] = ["role" => "assistant", "content" => strip_tags($botReply)];
-if (count($_SESSION['chat_history']) > 6) {
+if (count($_SESSION['chat_history']) > 10) {
     array_shift($_SESSION['chat_history']);
 }
 
