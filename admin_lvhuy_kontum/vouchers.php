@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../includes/security.php';
 include "../config/database.php";
 
 // ---- Xử lý xóa ----
@@ -29,6 +30,7 @@ if ($edit_id) {
 
 // ---- Xử lý POST thêm/sửa ----
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    csrf_check();
     $pid         = (int)($_POST['id'] ?? 0);
     $code        = strtoupper(trim($_POST['code']        ?? ''));
     $type        = in_array($_POST['type'] ?? '', ['percent','fixed']) ? $_POST['type'] : 'percent';
@@ -53,11 +55,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($errors)) {
         $exp_sql = $expires_at ? "'$expires_at'" : "NULL";
         if ($pid) {
-            $conn->query("UPDATE vouchers SET code='$code_esc', type='$type', value=$value,
+            $ok = $conn->query("UPDATE vouchers SET code='$code_esc', type='$type', value=$value,
                 min_order=$min_order, max_uses=$max_uses, expires_at=$exp_sql,
                 is_active=$is_active, description='$description' WHERE id=$pid");
-            log_activity($conn, 'edit_voucher', 'voucher', $pid, "Sửa voucher: $code");
-            header("Location: vouchers.php?msg=updated"); exit;
+            if (!$ok) {
+                $errors[] = 'Lỗi cơ sở dữ liệu: ' . $conn->error;
+            } else {
+                log_activity($conn, 'edit_voucher', 'voucher', $pid, "Sửa voucher: $code");
+                header("Location: vouchers.php?msg=updated"); exit;
+            }
         } else {
             $conn->query("INSERT INTO vouchers (code,type,value,min_order,max_uses,expires_at,is_active,description)
                 VALUES ('$code_esc','$type',$value,$min_order,$max_uses,$exp_sql,$is_active,'$description')");
@@ -107,6 +113,7 @@ endif;
     </div>
     <?php endif; ?>
     <form method="POST" action="vouchers.php<?= $edit_id ? "?edit=$edit_id" : '' ?>">
+        <?= csrf_field() ?>
         <?php if ($edit_id): ?><input type="hidden" name="id" value="<?= $edit_id ?>"><?php endif; ?>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:14px">
             <div>
