@@ -18,7 +18,7 @@ $stmt = $conn->prepare("
     SELECT b.*,
            r.room_name, r.bed_type, r.max_guests,
            h.name AS hotel_name, h.address AS hotel_address,
-           h.phone AS hotel_phone,
+           h.contact_phone AS hotel_phone,
            u.full_name AS user_fullname, u.email AS user_email
     FROM bookings b
     LEFT JOIN rooms   r ON b.room_id  = r.id
