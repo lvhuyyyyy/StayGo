@@ -18,7 +18,7 @@ if (!$booking_id) {
 // Cho hủy booking pending hoặc confirmed thuộc về user này
 $stmt = $conn->prepare("
     SELECT b.id, b.room_id, b.status, b.total_price, b.refund_requested,
-           b.check_in, b.payment_method,
+           b.check_in, b.payment_method, b.payment_flow,
            COALESCE(h.cancel_free_days, 1) AS cancel_free_days
     FROM bookings b
     LEFT JOIN rooms r ON b.room_id = r.id
@@ -77,19 +77,25 @@ if ($booking['status'] === 'pending') {
         $conn->query("UPDATE bookings SET status = 'cancelled' WHERE id = $booking_id");
     }
 } else {
-    // Confirmed → hủy có phí, set refund_requested = 1 để admin xử lý trả tiền
-    $refund_amount = round($booking['total_price'] * 0.8);
-    $now = date('Y-m-d H:i:s');
-    $stmt2 = $conn->prepare("
-        UPDATE bookings
-        SET status = 'cancelled',
-            refund_requested = 1,
-            refund_amount = ?,
-            refund_requested_at = ?
-        WHERE id = ?
-    ");
-    $stmt2->bind_param("dsi", $refund_amount, $now, $booking_id);
-    $stmt2->execute();
+    // Confirmed → kiểm tra payment_flow trước khi xử lý hoàn tiền
+    if (($booking['payment_flow'] ?? '') === 'hotel_collect') {
+        // Thanh toán tại quầy: platform chưa thu tiền → hủy tự do, không hoàn
+        $conn->query("UPDATE bookings SET status = 'cancelled' WHERE id = $booking_id");
+    } else {
+        // platform_collect: đã thu tiền → hủy có phí 20%, yêu cầu admin hoàn 80%
+        $refund_amount = round($booking['total_price'] * 0.8);
+        $now = date('Y-m-d H:i:s');
+        $stmt2 = $conn->prepare("
+            UPDATE bookings
+            SET status = 'cancelled',
+                refund_requested = 1,
+                refund_amount = ?,
+                refund_requested_at = ?
+            WHERE id = ?
+        ");
+        $stmt2->bind_param("dsi", $refund_amount, $now, $booking_id);
+        $stmt2->execute();
+    }
 }
 
 header("Location: my_bookings.php?cancelled=1");

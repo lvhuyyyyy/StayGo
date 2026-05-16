@@ -61,7 +61,7 @@ $stmt = $conn->prepare("
     SELECT
         b.id, b.order_code, b.full_name, b.email, b.phone,
         b.check_in, b.check_out, b.total_price,
-        b.payment_method, b.note, b.status, b.created_at,
+        b.payment_method, b.payment_flow, b.note, b.status, b.created_at,
         b.refund_requested, b.refund_amount,
         r.room_name, r.price AS room_price,
         h.id AS hotel_id, h.name AS hotel_name, h.address AS hotel_address,
@@ -181,15 +181,21 @@ $method_map = [
             $created_time = $b['created_at'] ? date('H:i', strtotime($b['created_at'])) : '?';
 
             // Kiểm tra điều kiện hoàn tiền
-            $can_refund    = false;
-            $refund_amount = 0;
-            $refund_fee    = 0;
+            $can_refund      = false;
+            $refund_amount   = 0;
+            $refund_fee      = 0;
+            $is_hotel_collect = ($b['payment_flow'] ?? '') === 'hotel_collect';
             if ($b['status'] === 'confirmed' && empty($b['refund_requested'])) {
                 $hours_to_checkin = (strtotime($b['check_in']) - time()) / 3600;
                 if ($hours_to_checkin > 24) {
                     $can_refund    = true;
-                    $refund_amount = $b['total_price'] * 0.8;
-                    $refund_fee    = $b['total_price'] * 0.2;
+                    if ($is_hotel_collect) {
+                        $refund_amount = 0;
+                        $refund_fee    = 0;
+                    } else {
+                        $refund_amount = $b['total_price'] * 0.8;
+                        $refund_fee    = $b['total_price'] * 0.2;
+                    }
                 }
             }
 
@@ -326,13 +332,17 @@ $method_map = [
                     <?php elseif ($can_refund): ?>
                         <div class="refund-info-box">
                             <div class="refund-info-text">
-                                Hủy phòng sẽ được hoàn lại:
-                                <strong style="color:#276749"><?= number_format($refund_amount,0,',','.') ?> VNĐ</strong><br>
-                                <span style="color:#c53030;font-size:11px">(trừ 20% phí hủy = <?= number_format($refund_fee,0,',','.') ?> VNĐ)</span>
+                                <?php if ($is_hotel_collect): ?>
+                                    Hủy phòng miễn phí — bạn chưa thanh toán qua platform.
+                                <?php else: ?>
+                                    Hủy phòng sẽ được hoàn lại:
+                                    <strong style="color:#276749"><?= number_format($refund_amount,0,',','.') ?> VNĐ</strong><br>
+                                    <span style="color:#c53030;font-size:11px">(trừ 20% phí hủy = <?= number_format($refund_fee,0,',','.') ?> VNĐ)</span>
+                                <?php endif; ?>
                             </div>
                             <a href="javascript:void(0)"
                                class="btn-cancel-action"
-                               onclick="confirmCancelConfirmed(<?= $b['id'] ?>, '<?= htmlspecialchars($b['order_code'], ENT_QUOTES) ?>', '<?= number_format($refund_amount,0,',','.') ?>')">
+                               onclick="confirmCancelConfirmed(<?= $b['id'] ?>, '<?= htmlspecialchars($b['order_code'], ENT_QUOTES) ?>', '<?= number_format($refund_amount,0,',','.') ?>', <?= $is_hotel_collect ? 'true' : 'false' ?>)">
                                 ❌ Hủy phòng
                             </a>
                         </div>
@@ -439,10 +449,14 @@ $method_map = [
         <div style="width:64px;height:64px;background:#fff5f5;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:30px">💸</div>
         <h3 style="font-size:18px;font-weight:800;color:#1a202c;margin:0 0 6px">Xác nhận hủy phòng?</h3>
         <p style="font-size:13px;color:#718096;margin:0 0 14px">Đơn <strong id="cc-order-code"></strong> đã được xác nhận.</p>
-        <div style="background:#fff8f0;border:1.5px solid #fbd38d;border-radius:10px;padding:12px 16px;margin-bottom:20px;font-size:13px;color:#b7791f;text-align:left">
+        <div id="cc-fee-box" style="background:#fff8f0;border:1.5px solid #fbd38d;border-radius:10px;padding:12px 16px;margin-bottom:20px;font-size:13px;color:#b7791f;text-align:left">
             ⚠️ Phí hủy <strong>20%</strong> sẽ bị trừ.<br>
             Bạn sẽ được hoàn lại: <strong id="cc-refund-amount" style="color:#276749;font-size:15px"></strong> VNĐ<br>
             <span style="font-size:11.5px;color:#718096">Admin sẽ xử lý hoàn tiền trong 1–3 ngày.</span>
+        </div>
+        <div id="cc-free-box" style="display:none;background:#f0fff4;border:1.5px solid #9ae6b4;border-radius:10px;padding:12px 16px;margin-bottom:20px;font-size:13px;color:#276749;text-align:left">
+            ✅ Bạn chưa thanh toán qua platform (thanh toán tại khách sạn).<br>
+            <strong>Hủy hoàn toàn miễn phí</strong>, không mất phí.
         </div>
         <div style="display:flex;gap:10px">
             <button onclick="closeCancelConfirmedModal()"
@@ -451,7 +465,7 @@ $method_map = [
                 onmouseout="this.style.background='#fff'">
                 Giữ đơn
             </button>
-            <a id="cc-confirm-btn" href="#"
+            <a id="cc-cancel-link" href="#"
                 style="flex:1;padding:12px;border-radius:10px;background:#e53e3e;color:#fff;font-size:14px;font-weight:700;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:6px"
                 onmouseover="this.style.background='#c53030'"
                 onmouseout="this.style.background='#e53e3e'">
@@ -618,6 +632,27 @@ function showRvMsg(text, type) {
     if (type === 'success') { el.style.background='#f0fff4'; el.style.color='#276749'; el.style.border='1px solid #9ae6b4'; }
     else { el.style.background='#fff5f5'; el.style.color='#c53030'; el.style.border='1px solid #feb2b2'; }
     el.style.display = 'block';
+}
+
+function confirmCancelConfirmed(id, code, refundAmt, isHotelCollect) {
+    document.getElementById('cc-order-code').textContent = '#' + code;
+    document.getElementById('cc-refund-amount').textContent = refundAmt;
+    var feeBox  = document.getElementById('cc-fee-box');
+    var freeBox = document.getElementById('cc-free-box');
+    if (isHotelCollect) {
+        feeBox.style.display  = 'none';
+        freeBox.style.display = 'block';
+    } else {
+        feeBox.style.display  = 'block';
+        freeBox.style.display = 'none';
+    }
+    document.getElementById('cc-cancel-link').href = '/pages/cancel_booking.php?id=' + id;
+    var m = document.getElementById('cancelConfirmedModal');
+    m.style.display = 'flex';
+}
+
+function closeCancelConfirmedModal() {
+    document.getElementById('cancelConfirmedModal').style.display = 'none';
 }
 </script>
 
