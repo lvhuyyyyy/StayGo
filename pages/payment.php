@@ -428,10 +428,20 @@ require_once __DIR__ . '/../includes/header.php';
             <!-- Voucher -->
             <div id="voucherWrap" class="voucher-wrap" style="display:none">
                 <label>Mã giảm giá <span style="font-weight:400;color:#718096">(tùy chọn)</span></label>
-                <div class="voucher-row">
-                    <input type="text" id="voucherInput" placeholder="Nhập mã voucher..." maxlength="30"
-                           style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">
+                <div class="voucher-row" style="position:relative">
+                    <input type="text" id="voucherInput" placeholder="Nhập hoặc chọn mã voucher..." maxlength="30"
+                           style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"
+                           onfocus="openVoucherDropdown()" autocomplete="off">
                     <button type="button" id="voucherApplyBtn" onclick="applyVoucher()" class="btn-apply-voucher">Áp dụng</button>
+
+                    <!-- Dropdown danh sách voucher -->
+                    <div id="voucherDropdown" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:999;
+                         background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.12);
+                         margin-top:6px;overflow:hidden;max-height:320px;overflow-y:auto">
+                        <div id="voucherDropdownInner" style="padding:8px 0">
+                            <div style="padding:16px;text-align:center;color:#a0aec0;font-size:13px">Đang tải...</div>
+                        </div>
+                    </div>
                 </div>
                 <div id="voucherMsg" class="voucher-msg" style="display:none"></div>
                 <input type="hidden" name="voucher_code" id="voucherCodeHidden" value="">
@@ -1176,6 +1186,92 @@ function showVoucherMsg(text, ok) {
     el.textContent = text;
     el.className = 'voucher-msg' + (ok === true ? ' success' : ok === false ? ' error' : '');
     el.style.display = 'block';
+}
+
+// ── Voucher dropdown ────────────────────────────────────────────────────
+var _voucherListCache = null;
+
+function openVoucherDropdown() {
+    var dd = document.getElementById('voucherDropdown');
+    if (document.getElementById('voucherInput').disabled) return;
+    dd.style.display = 'block';
+    if (!_voucherListCache) loadVoucherList();
+    else renderVoucherList(_voucherListCache);
+}
+
+function closeVoucherDropdown() {
+    setTimeout(function() {
+        var dd = document.getElementById('voucherDropdown');
+        if (dd) dd.style.display = 'none';
+    }, 200);
+}
+
+document.addEventListener('click', function(e) {
+    var wrap = document.getElementById('voucherWrap');
+    if (wrap && !wrap.contains(e.target)) {
+        var dd = document.getElementById('voucherDropdown');
+        if (dd) dd.style.display = 'none';
+    }
+});
+
+function loadVoucherList() {
+    var amount = window._baseTotalForVoucher || 0;
+    var fd = new FormData();
+    fd.append('amount', amount);
+    fetch('/pages/voucher_list.php', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(list => {
+            _voucherListCache = list;
+            renderVoucherList(list);
+        })
+        .catch(() => {
+            document.getElementById('voucherDropdownInner').innerHTML =
+                '<div style="padding:14px;text-align:center;color:#c53030;font-size:13px">Không thể tải danh sách voucher.</div>';
+        });
+}
+
+function renderVoucherList(list) {
+    var amount = window._baseTotalForVoucher || 0;
+    var inner = document.getElementById('voucherDropdownInner');
+    if (!list || list.length === 0) {
+        inner.innerHTML = '<div style="padding:14px;text-align:center;color:#a0aec0;font-size:13px">Không có voucher khả dụng.</div>';
+        return;
+    }
+    var html = '';
+    list.forEach(function(v) {
+        var ok = amount <= 0 || amount >= v.min_order;
+        var discLabel = v.type === 'percent'
+            ? 'Giảm ' + v.value + '%'
+            : 'Giảm ' + parseInt(v.value).toLocaleString('vi') + 'đ';
+        var minLabel = v.min_order > 0
+            ? 'Đơn từ ' + parseInt(v.min_order).toLocaleString('vi') + 'đ'
+            : 'Không giới hạn đơn tối thiểu';
+        var expLabel = v.expires_at ? 'HSD: ' + v.expires_at.split('-').reverse().join('/') : '';
+        html += '<div onclick="' + (ok ? 'pickVoucher(\'' + v.code + '\')' : '') + '" style="' +
+            'display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:' + (ok ? 'pointer' : 'default') + ';' +
+            'opacity:' + (ok ? '1' : '0.45') + ';border-bottom:1px solid #f0f4f8;' +
+            'background:' + (ok ? '#fff' : '#f7fafc') + '" ' +
+            (ok ? 'onmouseover="this.style.background=\'#f0fff4\'" onmouseout="this.style.background=\'#fff\'"' : '') + '>' +
+            '<div style="background:' + (ok ? '#276749' : '#a0aec0') + ';color:#fff;border-radius:8px;' +
+            'padding:6px 12px;font-size:13px;font-weight:800;white-space:nowrap;min-width:80px;text-align:center">' +
+            v.code + '</div>' +
+            '<div style="flex:1;min-width:0">' +
+            '<div style="font-size:13.5px;font-weight:700;color:#276749">' + discLabel + '</div>' +
+            '<div style="font-size:12px;color:#718096;margin-top:2px">' + (v.description || minLabel) + '</div>' +
+            (expLabel ? '<div style="font-size:11px;color:#a0aec0;margin-top:1px">' + expLabel + '</div>' : '') +
+            (!ok && v.min_order > 0 ? '<div style="font-size:11px;color:#e53e3e;margin-top:2px">⚠️ ' + minLabel + '</div>' : '') +
+            '</div>' +
+            (ok ? '<div style="color:#276749;font-size:18px">›</div>' : '') +
+            '</div>';
+    });
+    inner.innerHTML = html;
+}
+
+function pickVoucher(code) {
+    var input = document.getElementById('voucherInput');
+    input.value = code;
+    document.getElementById('voucherDropdown').style.display = 'none';
+    applyVoucher();
 }
 
 <?php if ($prefill_room_id && $prefill_checkin && $prefill_checkout): ?>
