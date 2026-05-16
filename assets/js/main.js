@@ -353,7 +353,7 @@ function loadWelcome() {
     if (history.length > 0) {
         history.forEach(function(item) { _renderMessage(item.html, item.type); });
     } else {
-        appendMessage("Xin chào! 👋<br><br>Mình là <b>Nhân viên tư vấn StayGo</b>.<br>Mình có thể giúp bạn chọn tour, báo giá hoặc tư vấn lịch trình phù hợp.<br><br>Bạn có thể tham khảo nhanh các câu hỏi dưới đây:", "bot");
+        appendMessage("Xin chào! 👋<br><br>Mình là <b>Nhân viên tư vấn StayGo</b>.<br><br>Bạn có thể tham khảo nhanh các câu hỏi dưới đây:", "bot");
         showSuggestions();
     }
     let flag = document.createElement("div");
