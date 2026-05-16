@@ -21,7 +21,7 @@ $mysqli = $conn; // dùng lại kết nối đã có, không tạo mới
 if (!isset($_SESSION['chat_rate'])) $_SESSION['chat_rate'] = [];
 $_SESSION['chat_rate'] = array_values(array_filter(
     $_SESSION['chat_rate'],
-    function($t) { return $t > time() - 60; }
+    fn($t) => $t > time() - 60
 ));
 if (count($_SESSION['chat_rate']) >= 20) {
     header('Content-Type: application/json; charset=utf-8');
@@ -66,14 +66,14 @@ if (!isset($_SESSION['chat_history'])) {
 // ==================================================
 // HÀM TIỆN ÍCH
 // ==================================================
-function hasKeyword($msg, array $keywords) {
+function hasKeyword(string $msg, array $keywords): bool {
     foreach ($keywords as $kw) {
         if (mb_strpos($msg, $kw) !== false) return true;
     }
     return false;
 }
 
-function findHotelInMessage($msg, $mysqli) {
+function findHotelInMessage(string $msg, mysqli $mysqli): ?array {
     $result = $mysqli->query("SELECT id, name FROM hotels WHERE is_active = 1");
     $best = null; $bestLen = 0;
     while ($row = $result->fetch_assoc()) {
@@ -88,7 +88,7 @@ function findHotelInMessage($msg, $mysqli) {
     return $best;
 }
 
-function findLocationInMessage($msg, $mysqli) {
+function findLocationInMessage(string $msg, mysqli $mysqli): ?array {
     $result = $mysqli->query("SELECT id, name FROM locations");
     $best = null; $bestLen = 0;
     while ($row = $result->fetch_assoc()) {
@@ -102,14 +102,14 @@ function findLocationInMessage($msg, $mysqli) {
     return $best;
 }
 
-function findOrderCodeInMessage($msg) {
+function findOrderCodeInMessage(string $msg): ?string {
     if (preg_match('/ORD\d{10,}/i', $msg, $matches)) {
         return strtoupper($matches[0]);
     }
     return null;
 }
 
-function extractBudget($msg) {
+function extractBudget(string $msg): int|float|null {
     if (preg_match('/dưới\s*(\d+)\s*triệu/u', $msg, $m)) return (int)$m[1] * 1000000;
     if (preg_match('/dưới\s*(\d+)tr/u', $msg, $m))       return (int)$m[1] * 1000000;
     if (preg_match('/dưới\s*(\d+)\s*k/u', $msg, $m))     return (int)$m[1] * 1000;
@@ -118,8 +118,97 @@ function extractBudget($msg) {
     return null;
 }
 
+// ── Hàm xây dựng profile người dùng từ lịch sử đặt phòng ────────────────────
+function buildUserProfile(int $userId, $mysqli): array {
+    $profile = [
+        'name'            => 'Khách',
+        'booking_history' => 'Chưa có lịch sử đặt phòng',
+        'preferences'     => 'Chưa xác định',
+        'dislikes'        => '',
+        'budget_range'    => 'Chưa xác định',
+        'trip_type'       => 'Chưa xác định',
+        'recent_searches' => '',
+    ];
+
+    $uid = (int)$userId;
+
+    $res = $mysqli->query("SELECT full_name FROM users WHERE id = $uid");
+    if ($res && $row = $res->fetch_assoc()) {
+        $profile['name'] = $row['full_name'] ?: 'Khách';
+    }
+
+    $res = $mysqli->query("
+        SELECT h.name AS hotel_name, l.name AS loc, h.star_category,
+               b.total_price, b.check_in, b.check_out,
+               GREATEST(1, DATEDIFF(b.check_out, b.check_in)) AS nights
+        FROM bookings b
+        JOIN rooms r     ON b.room_id     = r.id
+        JOIN hotels h    ON r.hotel_id    = h.id
+        JOIN locations l ON h.location_id = l.id
+        WHERE b.user_id = $uid AND b.status IN ('completed','confirmed')
+        ORDER BY b.created_at DESC LIMIT 10
+    ");
+
+    if (!$res || $res->num_rows === 0) return $profile;
+
+    $rows = []; $locCnt = []; $starSum = 0; $starCnt = 0; $priceList = [];
+    while ($row = $res->fetch_assoc()) {
+        $rows[] = $row;
+        $locCnt[$row['loc']] = ($locCnt[$row['loc']] ?? 0) + 1;
+        if ((int)$row['star_category'] > 0) {
+            $starSum += (int)$row['star_category'];
+            $starCnt++;
+        }
+        $n = max(1, (int)$row['nights']);
+        if ($row['total_price'] > 0) $priceList[] = round($row['total_price'] / $n);
+    }
+
+    arsort($locCnt);
+    $locParts = [];
+    foreach ($locCnt as $loc => $cnt) $locParts[] = "$loc ($cnt lần)";
+    $recentHotels = array_unique(array_column(array_slice($rows, 0, 3), 'hotel_name'));
+    $profile['booking_history'] = implode(', ', $locParts)
+        . '. Gần đây đã ở: ' . implode(', ', $recentHotels);
+
+    if (!empty($priceList)) {
+        $avg = (int)(array_sum($priceList) / count($priceList));
+        $profile['budget_range'] = number_format($avg, 0, ',', '.') . ' VNĐ/đêm (trung bình thực tế)';
+    }
+
+    if ($starCnt > 0) {
+        $avgStar = $starSum / $starCnt;
+        if ($avgStar >= 4)     $profile['preferences'] = 'Thường chọn khách sạn cao cấp 4-5 sao';
+        elseif ($avgStar >= 3) $profile['preferences'] = 'Thường chọn khách sạn 3-4 sao';
+        else                   $profile['preferences'] = 'Ưu tiên khách sạn bình dân tiết kiệm';
+    }
+
+    return $profile;
+}
+
+// ── Hàm lấy danh sách khách sạn thực tế để AI không hallucinate ──────────────
+function getHotelsContext($mysqli): string {
+    $res = $mysqli->query("
+        SELECT h.name, h.star_category, h.price, h.rating, h.review_text,
+               l.name AS loc, h.description
+        FROM hotels h
+        JOIN locations l ON h.location_id = l.id
+        WHERE h.is_active = 1
+        ORDER BY h.rating DESC
+    ");
+    if (!$res || $res->num_rows === 0) return '';
+
+    $lines = [];
+    while ($row = $res->fetch_assoc()) {
+        $price = number_format((int)$row['price'], 0, ',', '.');
+        $line  = "- {$row['name']} | {$row['loc']} | {$row['star_category']}★ | từ {$price} VNĐ/đêm | điểm {$row['rating']} ({$row['review_text']})";
+        if ($row['description']) $line .= " | {$row['description']}";
+        $lines[] = $line;
+    }
+    return implode("\n", $lines);
+}
+
 // Quick replies theo intent
-function getQuickReplies($intent, $foundHotel = null, $foundLocation = null) {
+function getQuickReplies(string $intent, ?array $foundHotel = null, ?array $foundLocation = null): array {
     $hotelName = $foundHotel ? $foundHotel['name'] : 'khách sạn này';
     $locName   = $foundLocation ? $foundLocation['name'] : null;
 
@@ -265,6 +354,165 @@ if (count($_SESSION['chat_history']) > 6) {
 }
 
 // ==================================================
+// BUILD USER PROFILE + V2 SYSTEM PROMPT
+// ==================================================
+$upData    = $userId ? buildUserProfile((int)$userId, $mysqli) : [];
+$hotelsCtx = getHotelsContext($mysqli);
+
+// ── System Prompt v3 ─────────────────────────────────────────────────────────
+$v2SystemPrompt = <<<'SYSTEM_V3'
+Bạn là trợ lý đặt phòng khách sạn AI của StayGo — hoạt động như người bạn am hiểu du lịch, không phải nhân viên tổng đài, không phải brochure quảng cáo.
+
+Website phục vụ các khu vực: Kon Tum, Măng Đen, Quảng Ngãi.
+
+## GIỚI HẠN QUAN TRỌNG — tuân thủ tuyệt đối
+
+- Chỉ gợi ý khách sạn từ DANH SÁCH THỰC TẾ được cung cấp bên dưới. Không tự bịa tên khách sạn, giá phòng, hoặc tiện ích cụ thể.
+- Nếu không chắc thông tin → nói rõ: "Em cần kiểm tra lại thông tin này cho chính xác."
+- Nếu bị hỏi ngoài phạm vi (hoàn tiền, khiếu nại, visa...) → chuyển hướng khéo: "Việc này em sẽ kết nối anh/chị với bộ phận phù hợp nhé."
+
+## XỬ LÝ HỒ SƠ KHÁCH HÀNG
+
+Khi nhận [USER_PROFILE]:
+- Profile đầy đủ → cá nhân hóa ngay, không hỏi lại
+- Thiếu 1–2 trường → dùng những gì có, hỏi bổ sung tự nhiên khi cần
+- Profile rỗng hoàn toàn → chào tự nhiên, hỏi 1 câu mở
+- Dữ liệu mâu thuẫn → ưu tiên thông tin mới nhất trong cuộc trò chuyện
+
+Dùng profile để suy luận, KHÔNG đọc lại cho khách nghe. Nhắc lịch sử cũ chỉ khi thực sự liên quan.
+
+## PHÂN TÍCH PATTERN TRƯỚC KHI TRẢ LỜI
+
+Từ booking_history, tự suy ra pattern ẩn:
+- Pattern địa điểm: thiên nhiên / đô thị / biển / núi
+- Pattern loại hình: resort / boutique / hotel thành phố
+- Khoảng trống chưa khám phá → có thể gợi ý khi phù hợp
+
+Khi khách tiết lộ thông tin mới trong hội thoại → ghi nhớ và dùng ngay:
+- "đi với bố mẹ già" → ưu tiên thang máy, ít bậc thang, tránh villa biệt lập
+- "hay bị mất ngủ" → tránh phòng gần đường lớn, bar, khu vui chơi
+- "công ty trả" → có thể nâng tầm gợi ý, nhấn mạnh tiện ích
+
+## PHÂN KHÚC HÀNH VI (tự xác định)
+
+- Biết mình muốn gì (profile rõ, ít thay đổi) → đi thẳng vào gợi ý, không hỏi nhiều
+- Hay khám phá (lịch sử đa dạng) → gợi ý khác kiểu cũ, nhấn mạnh yếu tố mới
+- Nhạy cảm về giá (hay hỏi giá, so sánh OTA) → justify giá trị sớm, đề cập ưu đãi
+- Trung thành thương hiệu → ưu tiên gợi ý trong chuỗi đó trước
+
+## NGUYÊN TẮC TRẢ LỜI
+
+- Dùng "anh/chị" hoặc tên riêng. Tuyệt đối không dùng "quý khách"
+- Gợi ý chủ động khi đã có profile — không chờ hỏi từng bước
+- Mỗi lượt chỉ hỏi 1 câu nếu cần thêm thông tin
+- Giải thích TẠI SAO gợi ý khách sạn đó phù hợp với người này cụ thể
+- Khi đưa nhiều lựa chọn, chỉ rõ sự khác biệt thực sự (không phải "cả hai đều tốt")
+- Thành thật về điểm trừ — không che giấu
+- 1 gợi ý rất đúng > 3 gợi ý ổn — không ép đủ số lượng nếu không cần
+- Không dùng từ sáo rỗng: "tuyệt vời", "hoàn hảo", "đẳng cấp", "trải nghiệm đỉnh cao"
+- Không ép đặt phòng khi khách chưa sẵn sàng
+
+## SUY LUẬN ĐA TẦNG — chạy nội bộ trước khi trả lời
+
+Câu hỏi 1 — Khách đang ở trạng thái nào?
+- Đang khám phá → gợi ý rộng, hỏi định hướng
+- Đang so sánh → giúp thu hẹp, chỉ rõ khác biệt quan trọng
+- Đã gần quyết định → xác nhận, tháo gỡ điểm ngại cuối
+- Phân vân vì lý do ẩn → tìm ra lý do trước, không gợi ý thêm vội
+
+Câu hỏi 2 — Có gì khách không nói ra?
+- "Hơi xa trung tâm không?" → lo lắng di chuyển, cần reassurance
+- "Đắt vậy à..." → chưa chắc từ chối, có thể cần justify giá trị
+- "Để mình nghĩ thêm" → có điều gì đó chưa được giải quyết
+
+Câu hỏi 3 — Gợi ý này có thực sự phù hợp không?
+- Có ít nhất 2 điểm khớp profile không?
+- Có điểm nào mâu thuẫn sở thích không? → nếu có, nói thẳng
+
+Điều chỉnh giọng điệu theo cảm xúc:
+- Hào hứng → khớp năng lượng, đi nhanh vào chi tiết
+- Do dự → chậm lại, đặt câu hỏi mở, không push
+- Mệt/vội → đơn giản hóa, đề xuất rõ 1 phương án tốt nhất
+- Khó tính → bình tĩnh, facts-first, không giải thích dài
+
+## CÁCH TRÌNH BÀY GỢI Ý
+
+Viết tự nhiên như đang nói chuyện — KHÔNG dùng template cứng bullet points.
+
+Ví dụ ĐÚNG: "Em nghĩ anh sẽ thích Fusion Maia — resort adults-only nên rất yên tĩnh, phòng nào cũng có bồn tắm riêng và nhìn thẳng ra biển. Đúng kiểu anh hay chọn. Chỉ lưu ý là hơi xa trung tâm khoảng 20 phút nếu anh muốn đi ăn tối ngoài."
+
+Ví dụ SAI: "→ Tại sao phù hợp: resort yên tĩnh | → Điểm nổi bật: bồn tắm, view biển | → Lưu ý: xa trung tâm"
+
+Kết thúc gợi ý bằng 1 câu mở — đa dạng hóa, không lặp cùng một mẫu.
+
+## NHỊP ĐIỆU HỘI THOẠI
+
+Độ dài phản hồi khớp với tin nhắn của khách:
+- Khách nhắn 1 câu ngắn → trả lời ngắn
+- Khách hỏi chi tiết → trả lời đầy đủ
+- Khách đang băn khoăn → đặt câu hỏi, không giải thích thêm
+
+Tránh pattern gây cảm giác máy móc:
+- Không mở đầu mọi câu bằng "Dạ," hoặc "Em hiểu rồi,"
+- Không kết thúc mọi gợi ý bằng "Anh/chị muốn đặt không?"
+- Không dùng cùng cấu trúc câu mở đầu ở mọi tin nhắn
+
+Xây dựng rapport:
+- Nhắc lịch sử cụ thể, không liệt kê: "Anh hay chọn chỗ yên tĩnh — Đà Lạt lần trước đúng kiểu đó."
+- Ghi nhận quyết định tốt: "Chọn tháng 4 đi Đà Nẵng hợp lý đấy — trước mùa mưa, ít đông hơn hè."
+- Được phép không chắc chắn: "Cái này thật ra hơi khó chọn vì cả hai đều khá hợp với anh..."
+
+## LUỒNG ĐẶT PHÒNG
+
+Khi khách đồng ý đặt, thu thập tuần tự mỗi lượt 1 câu:
+1. Ngày nhận phòng & số đêm
+2. Số người lớn / trẻ em (nếu liên quan)
+3. Yêu cầu đặc biệt (hỏi mở, không bắt buộc)
+4. Xác nhận tóm tắt ngắn gọn
+
+## EDGE CASES
+
+Khách đổi ý → không hỏi "ủa sao đổi?", tôn trọng và bắt đầu từ lựa chọn mới.
+Ngân sách mâu thuẫn sở thích → thành thật nhẹ nhàng, hỏi khách muốn linh hoạt theo hướng nào.
+Khách hỏi khách sạn không trong hệ thống → "Em chưa có thông tin về chỗ này — để em gợi ý chỗ tương tự anh xem sao?"
+Khách im lặng sau gợi ý → hỏi 1 lần: "Anh còn băn khoăn điểm nào không?" — không push lần 2.
+Khách đặt cho người khác → hỏi về người đi thực tế, không dùng profile của người đặt.
+Khách phàn nàn chuyến cũ → đồng cảm 1 câu → hỏi ngay: "Lần này anh muốn tránh điều gì nhất?"
+Khách hỏi ngoài phạm vi (visa, vé máy bay) → "Phần này em không hỗ trợ trực tiếp được — về khách sạn anh cứ để em lo."
+
+## KHÔNG ĐƯỢC LÀM
+
+✗ Hỏi nhiều câu trong cùng một tin nhắn
+✗ Tự bịa thông tin không có trong dữ liệu hệ thống
+✗ Gợi ý không liên quan đến profile mà không giải thích lý do
+✗ Nói "Tôi là AI nên không thể..." → chuyển hướng khéo léo
+✗ Lặp lại nguyên xi những gì khách vừa nói
+✗ Dùng "quý khách"
+✗ Template cứng khi văn xuôi tự nhiên phù hợp hơn
+✗ Giả định thông tin khi khách chưa cung cấp
+SYSTEM_V3;
+
+// Append danh sách khách sạn thực tế (anti-hallucination)
+$v2SystemPrompt .= "\n\n## DANH SÁCH KHÁCH SẠN THỰC TẾ (chỉ gợi ý từ danh sách này)\n\n" . $hotelsCtx;
+
+// Inject user profile nếu đã đăng nhập
+if (!empty($upData)) {
+    $v2SystemPrompt .= "\n\n[USER_PROFILE]
+- Họ tên: {$upData['name']}
+- Lịch sử đặt phòng: {$upData['booking_history']}
+- Sở thích: {$upData['preferences']}
+- Không thích: {$upData['dislikes']}
+- Ngân sách thường xuyên: {$upData['budget_range']}
+- Loại chuyến đi hay đặt: {$upData['trip_type']}
+- Tìm kiếm gần đây: {$upData['recent_searches']}
+[/USER_PROFILE]
+
+Dùng dữ liệu profile để cá nhân hóa từng phản hồi. Nếu profile thiếu một phần → hỏi khéo léo trong cuộc trò chuyện, không hỏi dồn nhiều câu.";
+} else {
+    $v2SystemPrompt .= "\n\nNgười dùng chưa đăng nhập — không có dữ liệu profile. Chào tự nhiên, hỏi 1 câu mở để bắt đầu tìm hiểu nhu cầu.";
+}
+
+// ==================================================
 // XỬ LÝ THEO INTENT
 // ==================================================
 ob_start();
@@ -396,7 +644,7 @@ switch ($intent) {
             } else {
                 echo "Hiện không còn phòng trống.<br><br>";
             }
-            echo '<a href="/pages/hotel_detail.php?id=' . $hotelId . '" style="background:#2563eb;color:white;padding:8px 16px;border-radius:8px;text-decoration:none;font-weight:600;display:inline-block">Đặt phòng ngay</a>';
+            echo "<a href=\"/pages/hotel_detail.php?id={$hotelId}\" style=\"background:#2563eb;color:white;padding:8px 16px;border-radius:8px;text-decoration:none;font-weight:600;display:inline-block\">Đặt phòng ngay</a>";
         } else {
             $result = $mysqli->query(
                 "SELECT l.name, COUNT(h.id) AS cnt FROM locations l
@@ -414,15 +662,15 @@ switch ($intent) {
 
     // ------------------------------------------------
     case 'suggest_room':
-        $locFilter     = $foundLocation ? " AND h.location_id = " . (int)$foundLocation['id'] : "";
-        $budgetSQL     = $budget ? " AND r.price <= " . (int)$budget : "";
+        $locFilter      = $foundLocation ? " AND h.location_id = " . (int)$foundLocation['id'] : "";
+        $budgetSQL      = $budget ? " AND r.price <= " . (int)$budget : "";
         $roomTypeFilter = "";
         if (hasKeyword($messageLower, ['gia đình', 'family']))
             $roomTypeFilter = " AND LOWER(r.room_name) LIKE '%gia đình%'";
         elseif (hasKeyword($messageLower, ['cặp đôi', 'đôi', 'couple', 'lãng mạn', 'honeymoon']))
             $roomTypeFilter = " AND (LOWER(r.room_name) LIKE '%đôi%' OR LOWER(r.room_name) LIKE '%deluxe%')";
         elseif (hasKeyword($messageLower, ['cao cấp', 'sang trọng', 'vip', 'suite']))
-            $roomTypeFilter = " AND (LOWER(r.room_name) LIKE '%cao c?p%' OR LOWER(r.room_name) LIKE '%suite%' OR LOWER(r.room_name) LIKE '%deluxe%')";
+            $roomTypeFilter = " AND (LOWER(r.room_name) LIKE '%cao cấp%' OR LOWER(r.room_name) LIKE '%suite%' OR LOWER(r.room_name) LIKE '%deluxe%')";
 
         $result = $mysqli->query(
             "SELECT r.room_name, r.price, r.quantity, h.name AS hotel_name,
@@ -433,15 +681,63 @@ switch ($intent) {
             WHERE h.is_active = 1 AND r.quantity > 0 $locFilter $budgetSQL $roomTypeFilter
             ORDER BY h.rating DESC, r.price ASC LIMIT 5"
         );
+
         if ($result && $result->num_rows > 0) {
+            $suggestRows = [];
+            while ($row = $result->fetch_assoc()) $suggestRows[] = $row;
+
+            if (!empty($apiKey)) {
+                // GPT trình bày tự nhiên, cá nhân hóa theo v2 system prompt
+                $roomsCtx = "";
+                foreach ($suggestRows as $row) {
+                    $price     = number_format((int)$row['price'], 0, ',', '.');
+                    $roomsCtx .= "- {$row['hotel_name']} ({$row['loc']}, đánh giá {$row['rating']} - {$row['review_text']}): "
+                        . "{$row['room_name']} giá {$price} VNĐ/đêm (còn {$row['quantity']} phòng)"
+                        . " | link đặt phòng: /pages/hotel_detail.php?id={$row['hotel_id']}\n";
+                }
+
+                $histPrev = array_slice($_SESSION['chat_history'], 0, -1);
+                $suggestMessages = [["role" => "system", "content" => $v2SystemPrompt]];
+                foreach ($histPrev as $h) $suggestMessages[] = $h;
+                $suggestMessages[] = [
+                    "role"    => "user",
+                    "content" => $message . "\n\n[DỮ LIỆU PHÒNG THỰC TẾ TỪ HỆ THỐNG - chỉ gợi ý từ danh sách này]\n" . $roomsCtx,
+                ];
+
+                $ch = curl_init("https://api.openai.com/v1/chat/completions");
+                curl_setopt_array($ch, [
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_POST           => true,
+                    CURLOPT_TIMEOUT        => 15,
+                    CURLOPT_HTTPHEADER     => [
+                        "Content-Type: application/json",
+                        "Authorization: Bearer $apiKey",
+                    ],
+                    CURLOPT_POSTFIELDS => json_encode([
+                        "model"      => "gpt-4o-mini",
+                        "messages"   => $suggestMessages,
+                        "max_tokens" => 700,
+                    ]),
+                ]);
+                $resp    = curl_exec($ch);
+                $parsed  = $resp ? json_decode($resp, true) : null;
+                $gpReply = $parsed['choices'][0]['message']['content'] ?? '';
+
+                if ($gpReply !== '') {
+                    echo $gpReply;
+                    break;
+                }
+            }
+
+            // HTML fallback (không có API key hoặc GPT lỗi)
             $locText    = $foundLocation ? " tại {$foundLocation['name']}" : "";
-            $budgetText = $budget ? " dưới " . number_format($budget) . " VNĐ" : "";
-            echo "<b>Gợi ý phòng phù hợp$locText$budgetText:</b><br><br>";
-            while ($row = $result->fetch_assoc()) {
-                echo "<b>{$row['hotel_name']}</b> - {$row['rating']} ({$row['review_text']})<br>";
-                echo "{$row['room_name']}: <b>" . number_format($row['price']) . " VNĐ/đêm</b> (còn {$row['quantity']} phòng)<br>";
-                echo "?? {$row['loc']}<br>";
-                echo '<a href="/pages/hotel_detail.php?id=' . $row['hotel_id'] . '" style="color:#2563eb;font-size:12px">Xem & đặt phòng</a><br><br>';
+            $budgetText = $budget ? " dưới " . number_format((int)$budget) . " VNĐ" : "";
+            echo "<b>Gợi ý phòng phù hợp{$locText}{$budgetText}:</b><br><br>";
+            foreach ($suggestRows as $row) {
+                echo "<b>{$row['hotel_name']}</b> — {$row['rating']} ({$row['review_text']})<br>";
+                echo "{$row['room_name']}: <b>" . number_format((int)$row['price']) . " VNĐ/đêm</b> (còn {$row['quantity']} phòng)<br>";
+                echo "📍 {$row['loc']}<br>";
+                echo "<a href=\"/pages/hotel_detail.php?id={$row['hotel_id']}\" style=\"color:#2563eb;font-size:12px\">Xem &amp; đặt phòng</a><br><br>";
             }
         } else {
             echo "Không tìm thấy phòng phù hợp với tiêu chí của bạn.<br>";
@@ -525,7 +821,7 @@ switch ($intent) {
             echo "{$row['rating']} - {$row['review_text']} ({$row['review_count']} đánh giá)<br>";
             echo "Từ <b>" . number_format($row['price']) . " VNĐ/đêm</b>$discount<br><br>";
             if ($row['description']) echo "?? {$row['description']}<br><br>";
-            echo '<a href="/pages/hotel_detail.php?id=' . $hotelId . '" style="color:#2563eb;font-weight:600">Xem chi tiết & đặt phòng</a>';
+            echo "<a href=\"/pages/hotel_detail.php?id={$hotelId}\" style=\"color:#2563eb;font-weight:600\">Xem chi tiết &amp; đặt phòng</a>";
         }
         break;
 
@@ -659,31 +955,15 @@ switch ($intent) {
     // ------------------------------------------------
     fallback_label:
     default:
-        // Nếu không có API key, trả về thông báo thân thiện
         if (empty($apiKey)) {
-            echo "Xin lỗi, tôi chưa hiểu câu hỏi này. Bạn có thể hỏi về: giá phòng, khách sạn tại Kon Tum/Măng Đen/Quảng Ngãi, hoặc các ưu đãi hiện có nhé!";
+            echo "Xin lỗi, em chưa hiểu câu hỏi này. Anh/chị có thể hỏi về: giá phòng, khách sạn tại Kon Tum/Măng Đen/Quảng Ngãi, hoặc các ưu đãi hiện có nhé!";
             break;
         }
-        // GPT với lịch sử session
-        $gptMessages = [
-            [
-                "role"    => "system",
-                "content" => "Bạn là nhân viên tư vấn thân thiện của website đặt phòng StayGo.
-Website phục vụ các khu vực: Kon Tum, Măng Đen, Quảng Ngãi.
-Trả lời ngắn gọn, thân thiện bằng tiếng Việt.
-Nếu câu hỏi ngoài phạm vi du lịch/khách sạn, lịch sự từ chối và gợi ý câu hỏi phù hợp."
-            ]
-        ];
-        // Thêm lịch sử session vào context GPT
+        // Dùng v2SystemPrompt đã có user profile + danh sách khách sạn thực tế
+        $gptMessages = [["role" => "system", "content" => $v2SystemPrompt]];
         foreach ($_SESSION['chat_history'] as $h) {
             $gptMessages[] = $h;
         }
-
-        $data = [
-            "model"      => "gpt-4o-mini",
-            "messages"   => $gptMessages,
-            "max_tokens" => 500
-        ];
 
         $ch = curl_init("https://api.openai.com/v1/chat/completions");
         curl_setopt_array($ch, [
@@ -692,15 +972,18 @@ Nếu câu hỏi ngoài phạm vi du lịch/khách sạn, lịch sự từ chố
             CURLOPT_TIMEOUT        => 15,
             CURLOPT_HTTPHEADER     => [
                 "Content-Type: application/json",
-                "Authorization: Bearer $apiKey"
+                "Authorization: Bearer $apiKey",
             ],
-            CURLOPT_POSTFIELDS => json_encode($data),
+            CURLOPT_POSTFIELDS => json_encode([
+                "model"      => "gpt-4o-mini",
+                "messages"   => $gptMessages,
+                "max_tokens" => 600,
+            ]),
         ]);
         $response = curl_exec($ch);
-
         if (!$response) { echo "Xin lỗi, hệ thống đang bận. Vui lòng thử lại!"; break; }
         $result = json_decode($response, true);
-        echo $result['choices'][0]['message']['content'] ?? "Xin lỗi, tôi chưa thể trả lời câu hỏi này.";
+        echo $result['choices'][0]['message']['content'] ?? "Xin lỗi, em chưa thể trả lời câu hỏi này.";
         break;
 }
 
