@@ -24,7 +24,7 @@ if (!in_array($payment_method, $allowed_methods, true)) die("Phương thức tha
 
 // ── Bước 1: Lấy thông tin phòng + khách sạn ──────────────────────────────────
 $stmt = $conn->prepare("
-    SELECT r.price, r.room_name, r.hotel_id, h.name AS hotel_name
+    SELECT r.price, r.room_name, r.hotel_id, r.min_stay, r.max_stay, h.name AS hotel_name
     FROM rooms r
     JOIN hotels h ON r.hotel_id = h.id
     WHERE r.id = ?
@@ -47,6 +47,11 @@ $end   = strtotime($check_out);
 $days  = ($end - $start) / (60 * 60 * 24);
 
 if ($days <= 0) die("Ngày trả phòng phải lớn hơn ngày nhận phòng!");
+
+$min_stay = (int)($roomData['min_stay'] ?? 1);
+$max_stay = $roomData['max_stay'] ? (int)$roomData['max_stay'] : null;
+if ($days < $min_stay) die("Phòng này yêu cầu lưu trú tối thiểu $min_stay đêm.");
+if ($max_stay && $days > $max_stay) die("Phòng này chỉ cho đặt tối đa $max_stay đêm.");
 
 // ── Bước 3: Tính tổng tiền ────────────────────────────────────────────────────
 $total_price = $price_per_day * $days;

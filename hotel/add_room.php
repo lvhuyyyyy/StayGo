@@ -15,6 +15,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $input['price']       = (int)($_POST['price'] ?? 0);
     $input['quantity']    = max(0, (int)($_POST['quantity'] ?? 1));
     $input['max_guests']  = max(1, (int)($_POST['max_guests'] ?? 2));
+    $input['min_stay']    = max(1, (int)($_POST['min_stay'] ?? 1));
+    $input['max_stay']    = ($_POST['max_stay'] ?? '') !== '' ? max(1, (int)$_POST['max_stay']) : null;
     $input['bed_type']    = trim($_POST['bed_type'] ?? '');
     $input['description'] = trim($_POST['description'] ?? '');
 
@@ -33,9 +35,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $upload_dir = __DIR__ . '/../assets/images/rooms/';
             if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
-            $filename = 'room_' . time() . '_' . rand(100, 999) . '.' . $ext;
-            if (move_uploaded_file($_FILES['image']['tmp_name'], $upload_dir . $filename)) {
-                $image = 'rooms/' . $filename;
+            $filename = "room_" . time() . "_" . rand(100, 999) . ".$ext";
+            if (move_uploaded_file($_FILES['image']['tmp_name'], "{$upload_dir}{$filename}")) {
+                $image = "rooms/$filename";
             } else {
                 $errors[] = 'Lỗi khi upload ảnh.';
             }
@@ -48,10 +50,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $desc_esc = $conn->real_escape_string($input['description']);
         $img_esc  = $conn->real_escape_string($image ?? '');
 
+        $max_stay_val = $input['max_stay'] !== null ? (int)$input['max_stay'] : 'NULL';
         $conn->query("
-            INSERT INTO rooms (hotel_id, room_name, bed_type, price, quantity, max_guests, description, image, is_active)
+            INSERT INTO rooms (hotel_id, room_name, bed_type, price, quantity, min_stay, max_stay, max_guests, description, image, is_active)
             VALUES ($hotel_id, '$rn_esc', '$bt_esc', {$input['price']}, {$input['quantity']},
-                    {$input['max_guests']}, '$desc_esc', " . ($image ? "'$img_esc'" : "NULL") . ", 1)
+                    {$input['min_stay']}, $max_stay_val, {$input['max_guests']}, '$desc_esc',
+                    " . ($image ? "'$img_esc'" : "NULL") . ", 1)
         ");
 
         // Cập nhật giá thấp nhất cho hotel
@@ -103,6 +107,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="form-group">
                     <label>Số khách tối đa</label>
                     <input type="number" name="max_guests" value="<?= $input['max_guests'] ?>" min="1" max="20">
+                </div>
+
+                <div class="form-group">
+                    <label>Lưu trú tối thiểu (đêm)</label>
+                    <input type="number" name="min_stay" value="<?= $input['min_stay'] ?>" min="1" max="30">
+                    <div style="font-size:12px;color:#a0aec0;margin-top:4px">Khách phải đặt ít nhất n đêm</div>
+                </div>
+
+                <div class="form-group">
+                    <label>Lưu trú tối đa (đêm, tuỳ chọn)</label>
+                    <input type="number" name="max_stay" value="<?= $input['max_stay'] ?? '' ?>" min="1" max="365" placeholder="Không giới hạn">
+                    <div style="font-size:12px;color:#a0aec0;margin-top:4px">Để trống = không giới hạn</div>
                 </div>
 
                 <div class="form-group">

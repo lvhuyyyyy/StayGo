@@ -27,6 +27,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $room_name   = trim($_POST['room_name'] ?? '');
     $price       = (int)($_POST['price'] ?? 0);
     $quantity    = (int)($_POST['quantity'] ?? 1);
+    $min_stay    = max(1, (int)($_POST['min_stay'] ?? 1));
+    $max_stay    = ($_POST['max_stay'] ?? '') !== '' ? max(1, (int)$_POST['max_stay']) : null;
     $description = trim($_POST['description'] ?? '');
 
     if (!$room_name) $errors[] = 'Tên phòng không được để trống.';
@@ -59,9 +61,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $desc_esc = $conn->real_escape_string($description);
         $img_esc  = $conn->real_escape_string($new_image);
 
+        $max_stay_val = $max_stay !== null ? (int)$max_stay : 'NULL';
         $conn->query("
             UPDATE rooms
             SET room_name = '$rn_esc', price = $price, quantity = $quantity,
+                min_stay = $min_stay, max_stay = $max_stay_val,
                 description = '$desc_esc', image = '$img_esc'
             WHERE id = $room_id AND hotel_id = $hotel_id
         ");
@@ -125,6 +129,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="form-group">
                     <label>Số phòng còn lại</label>
                     <input type="number" name="quantity" value="<?= (int)$room['quantity'] ?>" min="0">
+                </div>
+
+                <div class="form-group">
+                    <label>Lưu trú tối thiểu (đêm)</label>
+                    <input type="number" name="min_stay" value="<?= (int)($room['min_stay'] ?? 1) ?>" min="1" max="30">
+                    <div style="font-size:12px;color:#a0aec0;margin-top:4px">Khách phải đặt ít nhất n đêm</div>
+                </div>
+
+                <div class="form-group">
+                    <label>Lưu trú tối đa (đêm, tuỳ chọn)</label>
+                    <input type="number" name="max_stay" value="<?= $room['max_stay'] ?? '' ?>" min="1" max="365" placeholder="Không giới hạn">
+                    <div style="font-size:12px;color:#a0aec0;margin-top:4px">Để trống = không giới hạn</div>
                 </div>
 
                 <div class="form-group" style="grid-column:1/-1">

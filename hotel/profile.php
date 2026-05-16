@@ -110,7 +110,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div><strong>Đánh giá:</strong> <?= number_format($hotel['rating'], 1) ?> ⭐ (<?= (int)$hotel['review_count'] ?> đánh giá)</div>
         </div>
         <div style="font-size:12px;color:#a0aec0;margin-top:10px">
-            Để thay đổi tên, địa chỉ, ảnh khách sạn — vui lòng liên hệ Admin.
+            Để thay đổi tên, địa chỉ, ảnh khách sạn —
+            <a href="/hotel/request_change.php" style="color:#3182ce;font-weight:600">Gửi yêu cầu đến Admin →</a>
         </div>
     </div>
 </div>

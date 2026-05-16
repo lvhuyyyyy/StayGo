@@ -203,6 +203,7 @@ function badge_status(string $s): string {
                 borderColor: '#3182ce',
                 borderWidth: 2,
                 borderRadius: 8,
+                minBarLength: 4,
                 hoverBackgroundColor: 'rgba(49,130,206,0.35)',
             }]
         },

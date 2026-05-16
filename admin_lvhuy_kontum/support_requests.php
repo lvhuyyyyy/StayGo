@@ -19,7 +19,13 @@ include "../includes/admin_header.php";
 $filter = $_GET['filter'] ?? 'pending';
 if (!in_array($filter, ['pending','processing','resolved'])) $filter = 'pending';
 
-$rows = $conn->query("SELECT * FROM support_requests WHERE status='$filter' ORDER BY created_at DESC");
+$rows = $conn->query("
+    SELECT sr.*, h.name AS hotel_name
+    FROM support_requests sr
+    LEFT JOIN hotels h ON sr.hotel_id = h.id
+    WHERE sr.status='$filter'
+    ORDER BY sr.created_at DESC
+");
 
 $cnt_pending    = (int)$conn->query("SELECT COUNT(*) as c FROM support_requests WHERE status='pending'"   )->fetch_assoc()['c'];
 $cnt_processing = (int)$conn->query("SELECT COUNT(*) as c FROM support_requests WHERE status='processing'")->fetch_assoc()['c'];
@@ -80,7 +86,12 @@ $status_cfg = [
     ?>
         <tr style="border-bottom:1px solid #f1f5f9">
             <td style="padding:12px 16px;color:#94a3b8"><?= $row['id'] ?></td>
-            <td style="padding:12px 16px;font-weight:600;color:#1a202c"><?= htmlspecialchars($row['full_name']) ?></td>
+            <td style="padding:12px 16px;font-weight:600;color:#1a202c">
+                <?= htmlspecialchars($row['full_name']) ?>
+                <?php if ($row['type'] === 'hotel'): ?>
+                <div style="font-size:11px;font-weight:600;color:#3182ce;margin-top:2px">🏨 <?= htmlspecialchars($row['hotel_name'] ?? 'KS #'.$row['hotel_id']) ?></div>
+                <?php endif; ?>
+            </td>
             <td style="padding:12px 16px;color:#4a5568">
                 <?= htmlspecialchars($row['phone']) ?><br>
                 <span style="font-size:12px;color:#94a3b8"><?= htmlspecialchars($row['email'] ?? '') ?></span>
