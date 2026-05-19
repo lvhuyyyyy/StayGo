@@ -30,14 +30,33 @@ $errorMsg = 'Giao dịch thất bại.';
 if (!$validSig) {
     $errorMsg = 'Chữ ký không hợp lệ. Giao dịch không được xác nhận.';
 } elseif ($resultCode === 0) {
-    // Fix #3: Defense-in-depth — cross-check amount vs DB (như VNPay)
+    // P11: verify extraData.booking_id khớp với order_code trong DB
+    $extraRaw  = $_GET['extraData'] ?? '';
+    $extraJson = base64_decode($extraRaw, true);
+    $extraArr  = $extraJson ? json_decode($extraJson, true) : null;
+    $extraBid  = isset($extraArr['booking_id']) ? (int)$extraArr['booking_id'] : 0;
+    if ($extraBid > 0) {
+        $ex_chk = $conn->prepare("SELECT id FROM bookings WHERE id = ? AND order_code = ? LIMIT 1");
+        $ex_chk->bind_param('is', $extraBid, $orderCode);
+        $ex_chk->execute();
+        if (!$ex_chk->get_result()->fetch_assoc()) {
+            $errorMsg = 'Dữ liệu đơn hàng MoMo không hợp lệ. Vui lòng liên hệ hỗ trợ.';
+            error_log("[MoMo] extraData mismatch: booking_id={$extraBid}, order={$orderCode}");
+            goto momo_done;
+        }
+    }
+
+    // Defense-in-depth: cross-check amount (lower-bound và upper-bound)
     $momoAmount = (float)($_GET['amount'] ?? 0);
     $amt_chk = $conn->prepare("SELECT total_price FROM bookings WHERE order_code = ? LIMIT 1");
     $amt_chk->bind_param('s', $orderCode);
     $amt_chk->execute();
-    $amt_row = $amt_chk->get_result()->fetch_assoc();
-    if ($amt_row && $momoAmount < (float)$amt_row['total_price'] * 0.99) {
+    $amt_row  = $amt_chk->get_result()->fetch_assoc();
+    $expected = (float)($amt_row['total_price'] ?? 0);
+    // P10-equivalent: cả lower-bound lẫn upper-bound
+    if ($amt_row && ($momoAmount < $expected * 0.99 || $momoAmount > $expected * 1.01)) {
         $errorMsg = 'Số tiền MoMo không khớp với đơn hàng. Vui lòng liên hệ hỗ trợ.';
+        error_log("[MoMo] amount mismatch: expected={$expected}, got={$momoAmount}, order={$orderCode}");
         goto momo_done;
     }
 

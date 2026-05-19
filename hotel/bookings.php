@@ -82,6 +82,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['booking_action'])) {
             $error = 'Lỗi hệ thống khi xác nhận. Vui lòng thử lại.';
         }
     } elseif ($action === 'reject') {
+        // P14: không cho từ chối khi check-in còn dưới 24 giờ — khách không kịp tìm chỗ khác
+        $hours_to_checkin = (strtotime($target['check_in']) - time()) / 3600;
+        if ($hours_to_checkin < 24) {
+            $error = 'Không thể từ chối: ngày nhận phòng còn dưới 24 giờ. Vui lòng liên hệ trực tiếp với khách và báo Admin xử lý qua trang Disputes.';
+        } else {
         if (!$reason) $reason = 'Khách sạn không thể nhận đặt phòng này.';
         $reason_esc = $conn->real_escape_string($reason);
         $conn->query("UPDATE bookings SET status='cancelled' WHERE id=$bid");
@@ -99,6 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['booking_action'])) {
             'reason'      => $reason,
         ]);
         $msg = 'Đã từ chối đặt phòng ' . htmlspecialchars($target['order_code']) . '.';
+        } // end else (hours_to_checkin >= 24)
     }
 }
 

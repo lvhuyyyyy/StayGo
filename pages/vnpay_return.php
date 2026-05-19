@@ -20,8 +20,11 @@ if (!$validSig) {
     $amt_chk->bind_param('s', $orderCode);
     $amt_chk->execute();
     $amt_row = $amt_chk->get_result()->fetch_assoc();
-    if ($amt_row && $vnpAmount < (float)$amt_row['total_price'] * 0.99) {
+    $expected = (float)($amt_row['total_price'] ?? 0);
+    // P10: cả lower-bound (underpay) lẫn upper-bound (upcharge/fraud)
+    if ($amt_row && ($vnpAmount < $expected * 0.99 || $vnpAmount > $expected * 1.01)) {
         $errorMsg = 'Số tiền thanh toán không khớp với đơn hàng. Vui lòng liên hệ hỗ trợ.';
+        error_log("[VNPay] amount mismatch: expected={$expected}, got={$vnpAmount}, order={$orderCode}");
         goto vnpay_done;
     }
 
