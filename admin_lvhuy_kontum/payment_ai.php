@@ -189,6 +189,22 @@ $refund_pending = (int)($conn->query("SELECT COUNT(*) c FROM bookings WHERE refu
             </div>
         </button>
 
+        <button class="pai-mode-btn" data-mode="finance" onclick="switchMode(this,'finance')">
+            <span class="pai-mode-icon">💼</span>
+            <div>
+                <div>Admin Finance</div>
+                <div class="pai-mode-label">Thanh khoản & CFO report</div>
+            </div>
+        </button>
+
+        <button class="pai-mode-btn" data-mode="tax" onclick="switchMode(this,'tax')">
+            <span class="pai-mode-icon">🧾</span>
+            <div>
+                <div>Thuế & Phí DV</div>
+                <div class="pai-mode-label">VAT 10% & E-Invoice</div>
+            </div>
+        </button>
+
         <div style="margin-top:4px"></div>
 
         <div class="pai-info">
@@ -269,6 +285,18 @@ $refund_pending = (int)($conn->query("SELECT COUNT(*) c FROM bookings WHERE refu
             <span class="pai-chip" onclick="chip(this)">Giải thích MYSTERY_TRANSACTION flag</span>
             <span class="pai-chip" onclick="chip(this)">Lập P&L statement tháng này</span>
         </div>
+        <div class="pai-chips" id="chips-finance" style="display:none">
+            <span class="pai-chip" onclick="chip(this)">Phân tích thanh khoản platform hôm nay</span>
+            <span class="pai-chip" onclick="chip(this)">Quy trình manual refund 4-eyes là gì?</span>
+            <span class="pai-chip" onclick="chip(this)">Lập CFO weekly report tuần này</span>
+            <span class="pai-chip" onclick="chip(this)">Khi nào cần HOLD FUNDS của hotel?</span>
+        </div>
+        <div class="pai-chips" id="chips-tax" style="display:none">
+            <span class="pai-chip" onclick="chip(this)">Tính VAT cho đơn phòng 1,200,000đ</span>
+            <span class="pai-chip" onclick="chip(this)">Tax inclusive vs exclusive khác nhau thế nào?</span>
+            <span class="pai-chip" onclick="chip(this)">Service fee 2% áp dụng trước hay sau VAT?</span>
+            <span class="pai-chip" onclick="chip(this)">Quy trình phát hành hóa đơn điện tử</span>
+        </div>
 
         <!-- Messages -->
         <div class="pai-chat" id="chatBox">
@@ -285,7 +313,9 @@ Tôi có thể giúp bạn với 7 chế độ:<br>
 • **↩️ Hoàn tiền** — 5 loại chính sách, routing về PTTT gốc, approval workflow 4 cấp<br>
 • **⚖️ Chargeback Defense** — Phân loại Visa/MC reason codes, evidence package, fight/accept strategy<br>
 • **🏦 Payout Partner** — Tính kỳ payout, 6 reconciliation checks, NAPAS 247 API, ledger entries<br>
-• **📊 EOD Recon & P&L** — Đối soát 3 nguồn (OTA/PSP/Bank), P&L Statement, KPI Take Rate/Cancel/Success<br><br>
+• **📊 EOD Recon & P&L** — Đối soát 3 nguồn (OTA/PSP/Bank), P&L Statement, KPI Take Rate/Cancel/Success<br>
+• **💼 Admin Finance** — Thanh khoản real-time, manual refund/payout 4-eyes, CFO weekly report<br>
+• **🧾 Thuế & Phí DV** — VAT 10% Luật VN, service fee theo tier/PTTT, hóa đơn điện tử<br><br>
 Chọn chế độ bên trái và đặt câu hỏi để bắt đầu!
                 </div>
             </div>

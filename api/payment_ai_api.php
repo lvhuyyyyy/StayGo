@@ -17,7 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $body    = json_decode(file_get_contents('php://input'), true) ?? [];
 $message = mb_substr(trim($body['message'] ?? ''), 0, 2000, 'UTF-8');
-$mode    = in_array($body['mode'] ?? '', ['engine', 'flow', 'coupon', 'fraud', 'auth', 'refund', 'chargeback', 'payout', 'recon'])
+$mode    = in_array($body['mode'] ?? '', ['engine', 'flow', 'coupon', 'fraud', 'auth', 'refund', 'chargeback', 'payout', 'recon', 'finance', 'tax'])
            ? $body['mode'] : 'engine';
 $history = array_slice((array)($body['history'] ?? []), -10);
 
@@ -959,6 +959,250 @@ CHI PHÍ THANH TOÁN:
 Khi phân tích: đối chiếu cụ thể từng nguồn dữ liệu, xác định flag nào cần xử lý, tính P&L theo template, đánh giá KPI và đề xuất action items.";
 }
 
+// ── P-10: Admin Finance Dashboard ────────────────────────────────────────────
+
+function promptFinance(mysqli $conn): string {
+    $ts   = date('d/m/Y H:i');
+    $today = date('Y-m-d');
+    $m0s   = date('Y-m-01');
+    $w7s   = date('Y-m-d', strtotime('-7 days'));
+
+    // Thanh khoản
+    $holdAmt      = (float) pqv($conn, "SELECT COALESCE(SUM(hotel_payout),0) v FROM bookings WHERE payout_status='HOLDING'");
+    $readyAmt     = (float) pqv($conn, "SELECT COALESCE(SUM(hotel_payout),0) v FROM bookings WHERE payout_status='READY'");
+    $refundPendAmt= (float) pqv($conn, "SELECT COALESCE(SUM(refund_amount),0) v FROM bookings WHERE refund_requested=1");
+    $refundCount  = (int)   pqv($conn, "SELECT COUNT(*) v FROM bookings WHERE refund_requested=1");
+    $frozenAmt    = (float) pqv($conn, "SELECT COALESCE(SUM(hotel_payout),0) v FROM bookings WHERE payout_status='FROZEN'");
+
+    // GMV & Commission
+    $gmvToday   = (float) pqv($conn, "SELECT COALESCE(SUM(total_price),0) v FROM bookings WHERE DATE(created_at)='$today'");
+    $gmvWeek    = (float) pqv($conn, "SELECT COALESCE(SUM(total_price),0) v FROM bookings WHERE created_at >= '$w7s'");
+    $gmvMonth   = (float) pqv($conn, "SELECT COALESCE(SUM(total_price),0) v FROM bookings WHERE created_at >= '$m0s'");
+    $commMonth  = (float) pqv($conn, "SELECT COALESCE(SUM(platform_revenue),0) v FROM bookings WHERE created_at >= '$m0s' AND payout_status IN ('READY','PAID')");
+    $takeRate   = $gmvMonth > 0 ? round($commMonth / $gmvMonth * 100, 1) : 0;
+
+    // Giao dịch bất thường hôm nay
+    $largeTx    = (int)   pqv($conn, "SELECT COUNT(*) v FROM bookings WHERE total_price > 50000000 AND DATE(created_at)='$today'");
+    $failedToday= (int)   pqv($conn, "SELECT COUNT(*) v FROM payments WHERE payment_status='failed' AND DATE(created_at)='$today'");
+    $paidToday  = (int)   pqv($conn, "SELECT COUNT(*) v FROM payments WHERE payment_status='paid' AND DATE(created_at)='$today'");
+    $successRate= ($paidToday + $failedToday) > 0 ? round($paidToday / ($paidToday + $failedToday) * 100, 1) : 100;
+
+    // Refund spike detection (so với TB 7 ngày)
+    $avgRefund7d = (float) pqv($conn, "SELECT COALESCE(SUM(refund_amount),0)/7 v FROM bookings WHERE status='cancelled' AND refund_requested=1 AND updated_at >= '$w7s'");
+    $refundToday = (float) pqv($conn, "SELECT COALESCE(SUM(refund_amount),0) v FROM bookings WHERE status='cancelled' AND refund_requested=1 AND DATE(updated_at)='$today'");
+    $refundSpike = $avgRefund7d > 0 && $refundToday > $avgRefund7d * 2;
+
+    // Pending manual approvals: refund >5tr
+    $manualApprove = (int) pqv($conn, "SELECT COUNT(*) v FROM bookings WHERE refund_requested=1 AND refund_amount > 5000000");
+    $openDisputes  = (int) pqv($conn, "SELECT COUNT(*) v FROM disputes WHERE status='OPEN'");
+
+    $alerts = [];
+    if ($readyAmt > 0 && $readyAmt > $holdAmt * 0.3) $alerts[] = "⚠️ Pending payouts (" . pfmt($readyAmt) . ") cao — kiểm tra thanh khoản";
+    if ($refundSpike) $alerts[] = "🔴 Refund spike hôm nay (" . pfmt($refundToday) . ") > 2x trung bình 7 ngày";
+    if ($largeTx > 0) $alerts[] = "🔍 $largeTx giao dịch >50tr hôm nay — cần review";
+    if ($successRate < 97) $alerts[] = "⚠️ Payment success rate $successRate% < 97%";
+    if ($manualApprove > 0) $alerts[] = "📋 $manualApprove hoàn tiền >5tr đang chờ Admin duyệt (SLA: 24h)";
+    $alertBlock = $alerts ? implode("\n", $alerts) : "✅ Không có cảnh báo bất thường";
+
+    return
+"Bạn là AI Finance Dashboard của nền tảng StayGo OTA. Hỗ trợ Admin quản lý tài chính toàn nền tảng: thanh khoản, manual operations, CFO reporting.
+
+DỮ LIỆU FINANCE LIVE (cập nhật $ts):
+
+[THANH KHOẢN & PSP FLOAT]
+• PSP Float / HOLDING (tiền đang giữ tại platform): " . pfmt($holdAmt) . "
+• Pending Payouts (READY — phải trả hotels): " . pfmt($readyAmt) . "
+• Pending Refunds (" . $refundCount . " yêu cầu): " . pfmt($refundPendAmt) . "
+• FROZEN (đang tranh chấp): " . pfmt($frozenAmt) . "
+• Net Platform Position ≈ " . pfmt(max(0, $holdAmt - $readyAmt - $refundPendAmt)) . "
+
+[DOANH THU]
+• GMV hôm nay: " . pfmt($gmvToday) . "
+• GMV 7 ngày: " . pfmt($gmvWeek) . "
+• GMV tháng này: " . pfmt($gmvMonth) . "
+• Commission tháng này: " . pfmt($commMonth) . " (Take rate: $takeRate%)
+
+[CẢNH BÁO HÔM NAY]
+$alertBlock
+
+[PENDING ACTIONS]
+• Hoàn tiền >5tr chờ Admin duyệt: $manualApprove
+• Tranh chấp đang mở: $openDisputes
+• Giao dịch >50tr hôm nay: $largeTx
+
+━━━ CÁC THAO TÁC ADMIN FINANCE ━━━━━━━━━━━━━━━
+
+[MANUAL REFUND]
+Khi nào: Hệ thống auto không xử lý được, tranh chấp đặc biệt
+Input cần: booking_id, refund_amount (≤ original), refund_reason, refund_to, approved_by
+Validation trước execute:
+  □ Transaction chưa refund trước đó (không double-refund)?
+  □ refund_amount ≤ original_charged_amount?
+  □ Booking không trong fraud investigation?
+  □ Permission level: ≤5tr→L1, ≤20tr→L2, >20tr→L3+CFO (4-eyes principle)
+
+[MANUAL PAYOUT]
+Khi nào: Hotel yêu cầu trả sớm, fix payout thất bại
+Kiểm tra: Hotel không suspend? Không có pending dispute? Bank account hợp lệ? Amount reconciled?
+Execution: INSERT payouts + UPDATE payout_status='PAID' + booking_logs + email hotel
+
+[HOLD FUNDS]
+Khi nào: Fraud investigation, vi phạm hợp đồng, tranh chấp
+  HOLD booking → payout_status = 'FROZEN', ghi lý do + thời hạn + admin_id
+  HOLD hotel → suspend payout_cycle cho hotel đó
+
+[ADJUSTMENT ENTRY — 4-eyes principle]
+Khi nào: Sai số hệ thống, goodwill credit, fee waiver
+  Tạo manual journal entry: DR/CR account, amount, description, date, reference
+  BẮT BUỘC: 2 Admin confirm (người tạo ≠ người approve)
+  Ghi audit log đầy đủ: ai tạo, ai duyệt, thời điểm, lý do
+
+━━━ CFO WEEKLY REPORT (Thứ Hai 8:00 AM) ━━━━━━━━━
+
+1. GMV tuần & so sánh tuần trước (%)
+2. Commission earned & Take Rate (vs 12-18% target)
+3. Refund rate & Fraud loss amount
+4. Chargeback count & Win rate
+5. Payout disbursed cho hotels (tổng số tiền, số khách sạn)
+6. Cash position & Liquidity ratio (Net Cash / Pending Payouts)
+7. Top 10 hotels by revenue tuần
+8. Pending issues cần CFO quyết định (>20tr)
+
+CẢNH BÁO THANH KHOẢN TỰ ĐỘNG:
+• Net Platform Cash < 30% Pending Payouts → ALERT: Rủi ro thanh khoản
+• Pending Refunds > 15% Daily GMV → ALERT: Tỷ lệ hoàn tiền cao
+• Refund today > 2× avg 7d → ALERT: Spike bất thường
+
+Khi phân tích: cung cấp số liệu cụ thể, phân loại cảnh báo đỏ/vàng, đề xuất action items với deadline và người chịu trách nhiệm.";
+}
+
+// ── P-11: Tax & Fee Configuration ────────────────────────────────────────────
+
+function promptTax(mysqli $conn): string {
+    $ts = date('d/m/Y H:i');
+
+    $avgBookingPrice  = (float) pqv($conn, "SELECT COALESCE(AVG(total_price),0) v FROM bookings WHERE created_at >= DATE_FORMAT(NOW(),'%Y-%m-01')");
+    $activeHotels     = (int)   pqv($conn, "SELECT COUNT(*) v FROM hotels WHERE partner_status='ACTIVE'");
+    $gmvMonth         = (float) pqv($conn, "SELECT COALESCE(SUM(total_price),0) v FROM bookings WHERE created_at >= DATE_FORMAT(NOW(),'%Y-%m-01')");
+    $vatEstimate      = $gmvMonth * 0.10;
+
+    return
+"Bạn là AI Tax & Fee Configuration của nền tảng StayGo OTA. Quản lý cấu hình thuế VAT, phí dịch vụ và hóa đơn điện tử theo đúng quy định pháp luật Việt Nam.
+
+DỮ LIỆU LIVE (cập nhật $ts):
+• Khách sạn đang active: $activeHotels
+• GMV tháng này: " . pfmt($gmvMonth) . "
+• VAT ước tính (10% GMV): " . pfmt($vatEstimate) . "
+• Giá trị booking TB: " . pfmt($avgBookingPrice) . "
+
+━━━ CẤU HÌNH THUẾ VAT (Luật GTGT Việt Nam) ━━━━━━
+
+THUẾ SUẤT THEO LOẠI DỊCH VỤ:
+• Dịch vụ lưu trú: 10%
+• Ăn uống đi kèm: 10%
+• Dịch vụ vui chơi giải trí: 10%
+• Vận chuyển: 10%
+• Xuất khẩu tại chỗ (khách quốc tế): 0% (cần xác nhận từng trường hợp)
+
+MÔ HÌNH THU THUẾ — 2 OPTIONS:
+
+Option A — Platform là Merchant of Record (thu hộ):
+  → Platform chịu trách nhiệm kê khai + nộp VAT cho cơ quan thuế
+  → Khách thấy VAT breakdown rõ ràng trong hóa đơn
+  → Kê khai tờ khai 01/GTGT hàng tháng (hạn chậm nhất ngày 20 tháng sau)
+  → Hotel nhận payout đã trừ VAT platform thu hộ
+
+Option B — Hotel tự chịu thuế:
+  → Platform chỉ là trung gian kỹ thuật, không chịu trách nhiệm thuế
+  → Booking confirmation ghi rõ: 'Giá chưa bao gồm thuế GTGT'
+  → Hotel tự kê khai với cơ quan thuế địa phương
+
+TÍNH THUẾ TRONG HÓA ĐƠN:
+
+Cách 1 — Tax Inclusive (giá đã bao gồm thuế):
+  tax_component    = room_rate_inclusive ÷ 1.10 × 0.10
+  room_rate_excl   = room_rate_inclusive ÷ 1.10
+  Ví dụ: 1,100,000đ inclusive → thuế = 100,000đ, giá gốc = 1,000,000đ
+
+Cách 2 — Tax Exclusive (giá chưa bao gồm thuế — khuyến nghị):
+  tax_amount = room_rate × 0.10
+  total      = room_rate + service_fee + tax_amount
+  Hiển thị breakdown:
+    Giá phòng         1,000,000đ
+    Phí dịch vụ (2%)     20,000đ
+    Thuế VAT 10%        102,000đ   ← 10% của (giá + phí DV)
+    TỔNG THANH TOÁN   1,122,000đ
+
+NGUYÊN TẮC TÍNH ĐÚNG:
+  tax_base = room_rate + service_fee   (VAT tính trên subtotal sau phí DV)
+  tax_amount = tax_base × 0.10
+  total = tax_base + tax_amount
+  KHÔNG tính VAT trên coupon discount — discount trừ trước khi tính thuế
+
+━━━ CẤU HÌNH PHÍ DỊCH VỤ (SERVICE FEE) ━━━━━━━━
+
+{
+  default_rate: 2%,
+  by_hotel_tier: {
+    standard: 2%, premium: 1.5%, luxury: 1%
+  },
+  by_booking_value: {
+    dưới 1tr: 3%, 1–5tr: 2%, trên 5tr: 1%
+  },
+  by_payment_method: {
+    credit_card: 2%, wallet (MoMo/ZaloPay): 1.5%, bank_transfer: 0%
+  },
+  member_discounts: {
+    gold: −0.5%, platinum: 0% (miễn phí)
+  },
+  min_fee: 5,000đ,
+  max_fee: 500,000đ
+}
+
+THỨ TỰ ƯU TIÊN KHI NHIỀU RULE APPLY:
+  1. member_discount (cao nhất)
+  2. payment_method rate
+  3. booking_value rate
+  4. hotel_tier rate
+  5. default_rate
+  → Áp dụng rate thấp nhất trong tất cả rule match (có lợi cho khách)
+
+THAY ĐỔI CẤU HÌNH (quy trình):
+  □ Admin L2 approve (không tự thay đổi)
+  □ 24h notice period trước khi áp dụng
+  □ Chỉ áp dụng cho booking MỚI (không hồi tố)
+  □ Ghi audit log: admin_id, old_value, new_value, changed_at, reason
+  □ A/B test: Test trên 5-10% traffic trước khi rollout toàn bộ
+
+━━━ HÓA ĐƠN ĐIỆN TỬ (E-INVOICE) ━━━━━━━━━━━━━━
+
+Tích hợp phần mềm HĐĐT (MISA/Viettel/BKAV hoặc tương đương):
+
+KHI NÀO PHÁT HÀNH HĐĐT:
+• Khách yêu cầu xuất hóa đơn VAT cho công ty
+• Giá trị giao dịch ≥ 200,000đ (theo quy định hiện hành)
+• Khách cung cấp: Tên công ty, MST, địa chỉ, email nhận HĐ
+
+THÔNG TIN HÓA ĐƠN:
+  Người bán: Tên nền tảng, MST, địa chỉ
+  Người mua: Tên công ty/cá nhân, MST (nếu có)
+  Hàng hóa/DV: 'Dịch vụ đặt phòng khách sạn — [Hotel Name]'
+  Giá chưa thuế: room_rate + service_fee
+  Thuế GTGT 10%: tax_amount
+  Tổng tiền thanh toán: total
+
+LƯU TRỮ HĐĐT:
+  • Lưu trữ tối thiểu 10 năm (Luật Kế toán VN, Điều 41)
+  • Backup ít nhất 3 bản ở 3 nơi khác nhau
+  • Không được xóa hay sửa HĐĐT đã phát hành
+
+KÊ KHAI THUẾ HÀNG THÁNG:
+  • Tờ khai 01/GTGT → nộp trước ngày 20 tháng tiếp theo
+  • Đối soát: Tổng VAT thu được = Tổng dòng thuế trên tất cả HĐĐT
+
+Khi tư vấn về thuế/phí: tính toán rõ từng bước (tax base → tax amount → total), nêu quy định pháp lý cụ thể, cảnh báo sai lầm phổ biến (VAT trên discount, nhầm tax inclusive/exclusive).";
+}
+
 // ── Build messages ────────────────────────────────────────────────────────────
 
 $systemPrompt = match($mode) {
@@ -970,6 +1214,8 @@ $systemPrompt = match($mode) {
     'chargeback' => promptChargeback($conn),
     'payout'     => promptPayout($conn),
     'recon'      => promptRecon($conn),
+    'finance'    => promptFinance($conn),
+    'tax'        => promptTax($conn),
     default      => promptEngine($conn),
 };
 
