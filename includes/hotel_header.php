@@ -216,6 +216,24 @@ if ($pr) $payout_ready = (int)$pr->fetch_assoc()['c'];
             <?php endif; ?>
         </a>
 
+        <div class="nav-label">Phân tích</div>
+        <a href="/hotel/analytics.php" class="<?= $current_page === 'analytics.php' ? 'active' : '' ?>">
+            📈 Hiệu suất & KPI
+        </a>
+        <a href="/hotel/reviews.php" class="<?= $current_page === 'reviews.php' ? 'active' : '' ?>">
+            ⭐ Đánh giá khách
+            <?php
+            $unresponded = 0;
+            if (@$conn->query("SELECT hotel_response FROM reviews LIMIT 0")) {
+                $ur = $conn->query("SELECT COUNT(*) c FROM reviews WHERE hotel_id=$hotel_id AND is_active=1 AND (hotel_response IS NULL OR hotel_response='')");
+                if ($ur) $unresponded = (int)$ur->fetch_assoc()['c'];
+            }
+            ?>
+            <?php if ($unresponded > 0): ?>
+                <span class="hotel-badge"><?= $unresponded ?></span>
+            <?php endif; ?>
+        </a>
+
         <div class="nav-label">Quản lý</div>
         <a href="/hotel/rooms.php" class="<?= $current_page === 'rooms.php' ? 'active' : '' ?>">
             🛏️ Phòng của tôi
