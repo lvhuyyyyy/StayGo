@@ -182,6 +182,12 @@ $admin_avatar = strtoupper(mb_substr($_SESSION['admin_name'] ?? 'A', 0, 1));
            style="background:<?= $current_page === 'admin_ai.php' ? '' : 'linear-gradient(135deg,#667eea18,#764ba218)' ?>;border:1.5px solid #e9ecff;margin-top:4px">
             🤖 AI Assistant
         </a>
+
+        <a href="/admin_lvhuy_kontum/payment_ai.php"
+           class="<?= $current_page === 'payment_ai.php' ? 'active' : '' ?>"
+           style="background:<?= $current_page === 'payment_ai.php' ? '' : 'linear-gradient(135deg,#0f244418,#1e3a5f18)' ?>;border:1.5px solid #bfdbfe;margin-top:4px">
+            💳 Payment AI
+        </a>
     </nav>
 
     <div class="sidebar-footer">
