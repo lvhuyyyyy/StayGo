@@ -21,6 +21,10 @@ $hotel = $stmt->get_result()->fetch_assoc();
 $cfd = $conn->query("SELECT cancel_free_days FROM hotels WHERE id = $hotel_id");
 $hotel['cancel_free_days'] = ($cfd && $row = $cfd->fetch_assoc()) ? (int)$row['cancel_free_days'] : 1;
 
+// Lấy dispute_window_days (số ngày giữ tiền sau checkout trước khi giải ngân)
+$dwd = $conn->query("SELECT dispute_window_days FROM hotels WHERE id = $hotel_id");
+$hotel['dispute_window_days'] = ($dwd && $row2 = $dwd->fetch_assoc()) ? (int)$row2['dispute_window_days'] : 7;
+
 // ── POST: Cập nhật thông tin liên hệ ─────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_check();
@@ -51,8 +55,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     } elseif ($action === 'cancel_policy') {
         $days = max(0, min(30, (int)($_POST['cancel_free_days'] ?? 1)));
-        $conn->query("UPDATE hotels SET cancel_free_days = $days WHERE id = $hotel_id");
-        $hotel['cancel_free_days'] = $days;
+        $dw   = max(0, min(30, (int)($_POST['dispute_window_days'] ?? 7)));
+        $conn->query("UPDATE hotels SET cancel_free_days = $days, dispute_window_days = $dw WHERE id = $hotel_id");
+        $hotel['cancel_free_days']     = $days;
+        $hotel['dispute_window_days']  = $dw;
         $msg = 'Đã cập nhật chính sách hủy phòng.';
 
     } elseif ($action === 'password') {
@@ -193,6 +199,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div style="font-size:12px;color:#718096;margin-top:6px;line-height:1.5">
                     Khách hủy trong thời hạn này sẽ được hoàn tiền 100%.<br>
                     Hủy sau thời hạn (hoặc nếu chọn "Không cho hủy miễn phí") sẽ bị phí hủy 20%.
+                </div>
+            </div>
+            <div class="form-group" style="margin-top:16px">
+                <label>Dispute window — số ngày giữ tiền sau check-out trước khi giải ngân</label>
+                <select name="dispute_window_days" style="padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;font-family:inherit;width:100%">
+                    <?php
+                    $dw_opts = [0=>'Giải ngân ngay sau check-out',3=>'3 ngày',5=>'5 ngày',7=>'7 ngày (khuyến nghị)',14=>'14 ngày',30=>'30 ngày'];
+                    foreach ($dw_opts as $v => $lbl):
+                    ?>
+                    <option value="<?= $v ?>" <?= (int)$hotel['dispute_window_days'] === $v ? 'selected' : '' ?>>
+                        <?= $lbl ?>
+                    </option>
+                    <?php endforeach; ?>
+                </select>
+                <div style="font-size:12px;color:#718096;margin-top:6px;line-height:1.5">
+                    Sau khi khách check-out, tiền được giữ thêm N ngày để xử lý khiếu nại (no-show, phòng không đúng mô tả...).<br>
+                    Hết thời gian này, booking chuyển sang <strong>READY</strong> và admin có thể giải ngân.
                 </div>
             </div>
             <button type="submit" class="btn btn-primary">💾 Lưu chính sách</button>

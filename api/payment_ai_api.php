@@ -135,12 +135,13 @@ function promptFlow(mysqli $conn): string {
 ━━━ LUỒNG 4 BƯỚC THANH TOÁN (PAYMENT FLOW) ━━━━━━━━━━━━
 
 BƯỚC 1 — KHỞI TẠO ORDER:
-• Validate phòng available (SELECT FOR UPDATE, kiểm tra availability vs existing bookings)
+• Pessimistic lock (SELECT FOR UPDATE, transaction-scoped, vài giây) — không phải timed hold
+  → Availability tính động: COUNT bookings WHERE status NOT IN ('cancelled') AND ngày overlap
 • Tính giá: room_rate × nights × quantity → gross_amount
 • Apply coupon/loyalty points → net_amount (coupon_locked = true)
 • Tạo booking status=pending, tạo payment record status=pending
-• Snapshot commission_rate tại thời điểm này
-• Payment session timeout = 15 phút
+• Snapshot commission_rate tại thời điểm này (bất biến sau đây)
+• UI timeout = 15 phút (client-side countdown), không phải DB lock
 • Sinh idempotency_key = SHA256(user_id + room_id + checkin + checkout + ts)
 
 BƯỚC 2 — CHỌN PHƯƠNG THỨC THANH TOÁN:
@@ -154,16 +155,21 @@ BƯỚC 3 — GỌI PSP & XỬ LÝ KẾT QUẢ:
 • Luồng kép: RETURN URL (user redirect) + IPN/Webhook (server-to-server — quan trọng hơn)
 • Verify signature TRƯỚC KHI cập nhật DB — reject nếu sai chữ ký
 • Idempotency: Bỏ qua nếu payment_verified=1 đã tồn tại (tránh double confirm)
-• Timeout handling: payment EXPIRED → release room availability lock
+• Timeout handling: payment EXPIRED → booking vẫn pending (availability implicit release)
 • VNPay amount check: diff ≤ 1% mới chấp nhận
 • Casso amount tolerance: ±1,000 VND
 
 BƯỚC 4 — XÁC NHẬN & GHI SỔ KẾ TOÁN ĐÔI:
 • booking.status → confirmed
 • payment.payment_status → paid, payment_verified=1, verified_at=NOW()
-• payout_status → HOLDING (platform giữ cho đến khi admin mark completed)
+• payout_status → HOLDING
 • INSERT booking_logs (actor='SYSTEM', action='PAYMENT_CONFIRMED')
 • Gửi email: khách + khách sạn
+
+PAYOUT LIFECYCLE (sau bước 4):
+• HOLDING → sau check_out + dispute_window_days (default 7, cấu hình per-hotel) → READY
+• READY → Admin chạy payout batch → PAID (qua NAPAS 247 / SWIFT)
+• Dispute window bảo vệ: khiếu nại no-show/phòng sai → platform giữ tiền xử lý trước khi trả hotel
 
 GHI SỔ KẾ TOÁN ĐÔI (Double-Entry Ledger):
   [Khi thanh toán xong]
@@ -176,11 +182,18 @@ GHI SỔ KẾ TOÁN ĐÔI (Double-Entry Ledger):
   Credit : Tiền mặt ra (bank transfer)      hotel_payout
   INSERT payouts (amount, commission_amount, processed_by)
 
+LUỒNG HỦY & HOÀN TIỀN (Refund Lifecycle):
+• Hủy → booking.status='cancelled' → phòng tự available (implicit, query dựa vào status)
+• refund_status: none → pending → approved/rejected → processed
+• Auto-approved (không cần admin): refund_amount = total_price (hủy miễn phí, 100%)
+• Manual approval (admin quyết): refund_amount < total_price (có phí hủy, 80%)
+• Refund async — không đồng thời với cancel trong 1 transaction DB
+
 XỬ LÝ LỖI & EDGE CASES:
-• PSP timeout → booking ở trạng thái pending, khách có thể retry hoặc chuyển sang PTTT khác
+• PSP timeout → booking pending, khách retry hoặc chuyển PTTT khác
 • Double webhook → idempotency_key + payment_verified=1 chặn duplicate
 • Cancelled before payment: pending+hotel_collect hoặc pending+chưa thu → hủy tự do
-• Cancelled after confirmed: platform_collect → hoàn 80% (phí 20%), ghi refund_requested=1
+• Cancelled after confirmed: platform_collect → hoàn 80% (phí 20%), refund_status=pending
 
 Khi phân tích luồng thanh toán, xác định bottleneck, so sánh từng PTTT, đề xuất cải tiến cụ thể.";
 }

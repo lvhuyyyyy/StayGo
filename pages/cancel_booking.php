@@ -75,7 +75,8 @@ if ($booking['status'] === 'pending') {
             SET status = 'cancelled',
                 refund_requested    = 1,
                 refund_requested_at = ?,
-                refund_amount       = ?
+                refund_amount       = ?,
+                refund_status       = 'approved'
             WHERE id = ?
         ");
         $stmt3->bind_param("sdi", $now, $refund_amt, $booking_id);
@@ -96,9 +97,10 @@ if ($booking['status'] === 'pending') {
         $stmt2 = $conn->prepare("
             UPDATE bookings
             SET status = 'cancelled',
-                refund_requested = 1,
-                refund_amount = ?,
-                refund_requested_at = ?
+                refund_requested    = 1,
+                refund_amount       = ?,
+                refund_requested_at = ?,
+                refund_status       = 'pending'
             WHERE id = ?
         ");
         $stmt2->bind_param("dsi", $refund_amount, $now, $booking_id);
