@@ -141,6 +141,22 @@ $refund_pending = (int)($conn->query("SELECT COUNT(*) c FROM bookings WHERE refu
             </div>
         </button>
 
+        <button class="pai-mode-btn" data-mode="fraud" onclick="switchMode(this,'fraud')">
+            <span class="pai-mode-icon">🛡️</span>
+            <div>
+                <div>Fraud Detection</div>
+                <div class="pai-mode-label">Scoring & điều tra</div>
+            </div>
+        </button>
+
+        <button class="pai-mode-btn" data-mode="auth" onclick="switchMode(this,'auth')">
+            <span class="pai-mode-icon">🔐</span>
+            <div>
+                <div>3DS2 & OTP</div>
+                <div class="pai-mode-label">Xác thực bảo mật</div>
+            </div>
+        </button>
+
         <div style="margin-top:4px"></div>
 
         <div class="pai-info">
@@ -151,7 +167,8 @@ $refund_pending = (int)($conn->query("SELECT COUNT(*) c FROM bookings WHERE refu
                 <li>Double-entry ledger</li>
                 <li>HOLDING→READY→PAID</li>
                 <li>Coupon fail-fast (7 bước)</li>
-                <li>Loyalty points FIFO</li>
+                <li>Fraud scoring 100 điểm</li>
+                <li>3DS2 frictionless/challenge</li>
             </ul>
         </div>
 
@@ -184,6 +201,18 @@ $refund_pending = (int)($conn->query("SELECT COUNT(*) c FROM bookings WHERE refu
             <span class="pai-chip" onclick="chip(this)">Cách tính điểm thưởng FIFO</span>
             <span class="pai-chip" onclick="chip(this)">Coupon stackable là gì?</span>
         </div>
+        <div class="pai-chips" id="chips-fraud" style="display:none">
+            <span class="pai-chip" onclick="chip(this)">Tính risk score giao dịch 8tr từ IP Tor</span>
+            <span class="pai-chip" onclick="chip(this)">Xử lý khi phát hiện chargeback fraud</span>
+            <span class="pai-chip" onclick="chip(this)">Điều tra tài khoản có 3 lần chargeback</span>
+            <span class="pai-chip" onclick="chip(this)">False positive là gì và cách xử lý?</span>
+        </div>
+        <div class="pai-chips" id="chips-auth" style="display:none">
+            <span class="pai-chip" onclick="chip(this)">So sánh frictionless vs challenge flow 3DS2</span>
+            <span class="pai-chip" onclick="chip(this)">OTP hết hạn 5 phút — thiết kế thế nào?</span>
+            <span class="pai-chip" onclick="chip(this)">Khi nào dùng Biometric thay OTP?</span>
+            <span class="pai-chip" onclick="chip(this)">Chống replay attack trong OTP</span>
+        </div>
 
         <!-- Messages -->
         <div class="pai-chat" id="chatBox">
@@ -191,10 +220,12 @@ $refund_pending = (int)($conn->query("SELECT COUNT(*) c FROM bookings WHERE refu
                 <div class="pai-avatar">💳</div>
                 <div class="pai-bubble">
 Xin chào! Tôi là **AI Payment Engine** của nền tảng StayGo.<br><br>
-Tôi có thể giúp bạn:<br>
-• **💳 Payment Engine** — Phân tích trạng thái giao dịch, payout, refund theo dữ liệu thực tế<br>
-• **🔄 Luồng 4 Bước** — Tư vấn về toàn bộ flow từ khởi tạo order → PSP → ghi sổ kế toán đôi<br>
-• **🎟️ Coupon & Điểm** — Phân tích logic validate 7 bước fail-fast, tính giá khuyến mãi theo thứ tự ưu tiên<br><br>
+Tôi có thể giúp bạn với 5 chế độ:<br>
+• **💳 Payment Engine** — Tổng quan entities, PCI DSS, payout lifecycle, dữ liệu live<br>
+• **🔄 Luồng 4 Bước** — Order khởi tạo → PSP → callback verify → double-entry ledger<br>
+• **🎟️ Coupon & Điểm** — 7-bước fail-fast validate, tính giá theo thứ tự ưu tiên, FIFO points<br>
+• **🛡️ Fraud Detection** — Scoring matrix 100 điểm, Allow/Review/Challenge/Block, điều tra post-fraud<br>
+• **🔐 3DS2 & OTP** — Frictionless vs Challenge flow, OTP replay-proof, Biometric mobile<br><br>
 Chọn chế độ bên trái và đặt câu hỏi để bắt đầu!
                 </div>
             </div>
