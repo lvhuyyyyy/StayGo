@@ -40,6 +40,16 @@ function adminConfirmPost(msg, formId, icon) {
     m.style.display = 'flex';
     m.onclick = function(e){ if(e.target===this) closeAdminConfirm(); };
 }
+function adminConfirmCallback(msg, cb, icon) {
+    document.getElementById('adminConfirmMsg').textContent = msg;
+    document.getElementById('adminConfirmIcon').textContent = icon || '⚠️';
+    const btn = document.getElementById('adminConfirmBtn');
+    btn.href = 'javascript:void(0)';
+    btn.onclick = function(e) { e.preventDefault(); closeAdminConfirm(); cb(); };
+    const m = document.getElementById('adminConfirmModal');
+    m.style.display = 'flex';
+    m.onclick = function(e){ if(e.target===this) closeAdminConfirm(); };
+}
 function closeAdminConfirm() {
     document.getElementById('adminConfirmModal').style.display = 'none';
     const btn = document.getElementById('adminConfirmBtn');

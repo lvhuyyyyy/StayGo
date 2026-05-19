@@ -205,10 +205,12 @@ if (isset($_GET['error'])) {
         </a>
     </form>
     <?php if (!empty($ready_bookings)): ?>
-    <form method="POST" style="margin:0" onsubmit="return confirm('Xác nhận đã chuyển khoản cho <?= count($ready_bookings) ?> booking? Hành động này không thể hoàn tác.')">
+    <form method="POST" style="margin:0" id="payoutAllForm">
         <input type="hidden" name="action" value="payout_all">
         <input type="hidden" name="hotel_id" value="<?= $filter_hotel ?>">
-        <button type="submit" style="padding:8px 18px;background:#276749;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700">
+        <button type="button"
+                onclick="adminConfirmPost('Xác nhận đã chuyển khoản cho <?= count($ready_bookings) ?> booking? Hành động này không thể hoàn tác.', 'payoutAllForm', '💸')"
+                style="padding:8px 18px;background:#276749;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700">
             ✅ Giải ngân tất cả (<?= count($ready_bookings) ?>)
         </button>
     </form>

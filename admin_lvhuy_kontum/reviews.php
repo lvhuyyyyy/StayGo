@@ -234,10 +234,8 @@ function applyFilter(key, val) {
     window.location = '?' + params.toString();
 }
 
-function rvAction(id, action, btn) {
+function _rvActionExec(id, action, btn) {
     var label = action === 'delete' ? 'Xoá' : (action === 'hide' ? 'Ẩn' : 'Hiện');
-    if (action === 'delete' && !confirm('Xoá vĩnh viễn đánh giá này?')) return;
-
     var fd = new FormData();
     fd.append('rv_action', action);
     fd.append('rv_id', id);
@@ -257,6 +255,16 @@ function rvAction(id, action, btn) {
             }
         })
         .catch(() => showToast('Có lỗi, vui lòng thử lại.'));
+}
+
+function rvAction(id, action, btn) {
+    if (action === 'delete') {
+        adminConfirmCallback('Xoá vĩnh viễn đánh giá này? Không thể khôi phục.', function() {
+            _rvActionExec(id, action, btn);
+        }, '🗑️');
+        return;
+    }
+    _rvActionExec(id, action, btn);
 }
 
 function showToast(msg) {

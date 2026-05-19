@@ -165,11 +165,12 @@ $images = $conn->query("
                         </button>
                     </form>
                     <?php endif; ?>
-                    <form method="POST" onsubmit="return confirm('Xóa ảnh này?')">
+                    <form method="POST" id="del-img-<?= $img['id'] ?>">
                         <?= csrf_field() ?>
                         <input type="hidden" name="_action" value="delete">
                         <input type="hidden" name="img_id" value="<?= $img['id'] ?>">
-                        <button type="submit" class="btn btn-danger btn-sm" style="font-size:11px">🗑️</button>
+                        <button type="button" class="btn btn-danger btn-sm" style="font-size:11px"
+                                onclick="hotelConfirmPost('Xóa ảnh này? Không thể khôi phục.','del-img-<?= $img['id'] ?>','🗑️')">🗑️</button>
                     </form>
                 </div>
             </div>

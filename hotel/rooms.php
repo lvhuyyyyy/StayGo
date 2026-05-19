@@ -93,12 +93,12 @@ $rooms = $conn->query("
 
         <div style="display:flex;gap:8px">
             <a href="/hotel/edit_room.php?id=<?= $r['id'] ?>" class="btn btn-primary btn-sm" style="flex:1;text-align:center">✏️ Chỉnh sửa</a>
-            <form method="POST" style="flex:1">
+            <form method="POST" style="flex:1" id="toggle-room-<?= $r['id'] ?>">
                 <?= csrf_field() ?>
                 <input type="hidden" name="room_id" value="<?= $r['id'] ?>">
                 <input type="hidden" name="toggle_room" value="1">
-                <button type="submit" class="btn <?= $r['is_active'] ? 'btn-outline' : 'btn-success' ?> btn-sm" style="width:100%"
-                        onclick="return confirm('<?= $r['is_active'] ? 'Tắt' : 'Bật' ?> phòng này?')">
+                <button type="button" class="btn <?= $r['is_active'] ? 'btn-outline' : 'btn-success' ?> btn-sm" style="width:100%"
+                        onclick="hotelConfirmPost('<?= $r['is_active'] ? 'Tắt' : 'Bật' ?> phòng này?','toggle-room-<?= $r['id'] ?>','<?= $r['is_active'] ? '🔕' : '✅' ?>')">
                     <?= $r['is_active'] ? '🔕 Tắt' : '✅ Bật' ?>
                 </button>
             </form>

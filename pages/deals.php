@@ -217,6 +217,20 @@ $rating_label = function($r) {
 
 </div>
 
+<!-- Modal đăng nhập (centered) -->
+<div id="loginPromptModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:99999;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:18px;padding:36px 32px 28px;max-width:380px;width:92%;box-shadow:0 24px 64px rgba(0,0,0,.22);text-align:center;animation:lpmIn .18s ease">
+    <div style="font-size:44px;margin-bottom:10px">🔐</div>
+    <div style="font-size:15.5px;font-weight:700;color:#1a365d;margin-bottom:8px">Bạn chưa đăng nhập</div>
+    <div style="font-size:13.5px;color:#718096;margin-bottom:26px">Đăng nhập để tiếp tục đặt phòng.</div>
+    <div style="display:flex;gap:12px;justify-content:center">
+      <button onclick="document.getElementById('loginPromptModal').style.display='none'" style="padding:11px 24px;border-radius:10px;border:1.5px solid #e2e8f0;background:#edf2f7;color:#4a5568;font-weight:600;font-size:14px;cursor:pointer">Để sau</button>
+      <a href="/auth/login.php" style="padding:11px 24px;border-radius:10px;background:linear-gradient(135deg,#1e73be,#2d9cdb);color:#fff;font-weight:700;font-size:14px;text-decoration:none;display:inline-flex;align-items:center">Đăng nhập</a>
+    </div>
+  </div>
+</div>
+<style>@keyframes lpmIn{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:scale(1)}}</style>
+
 <!-- JS bookNow - dùng chung cho deals.php -->
 <script>
 const isLoggedIn = <?= $is_logged_in ?>;
@@ -225,11 +239,12 @@ function bookNow(url) {
     if (isLoggedIn) {
         window.location.href = url;
     } else {
-        if (confirm('Bạn cần đăng nhập để đặt phòng.\nĐăng nhập ngay?')) {
-            window.location.href = '/auth/login.php';
-        }
+        var m = document.getElementById('loginPromptModal');
+        m.style.display = 'flex';
+        m.onclick = function(e){ if(e.target===this) this.style.display='none'; };
     }
 }
+document.addEventListener('keydown', function(e){ if(e.key==='Escape') document.getElementById('loginPromptModal').style.display='none'; });
 </script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
