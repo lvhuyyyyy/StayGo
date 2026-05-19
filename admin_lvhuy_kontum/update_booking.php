@@ -56,6 +56,27 @@ $admin_name = $conn->real_escape_string($_SESSION['admin_name'] ?? 'Admin');
 if ($status === 'completed') {
     $payment_flow = $booking['payment_flow'] ?? 'platform_collect';
 
+    // P15: platform_collect phải có payment_status='paid' trước khi mark completed
+    if ($payment_flow === 'platform_collect') {
+        $pay_chk = $conn->prepare("SELECT id FROM payments WHERE booking_id = ? AND payment_status = 'paid' LIMIT 1");
+        $pay_chk->bind_param('i', $id);
+        $pay_chk->execute();
+        if (!$pay_chk->get_result()->fetch_assoc()) {
+            $conn->query("
+                INSERT INTO booking_logs (booking_id, actor_type, actor_id, actor_name, action, description)
+                VALUES ($id, 'ADMIN', $admin_id, '$admin_name',
+                        'COMPLETE_BLOCKED', 'Bị chặn mark completed — chưa có payment_status=paid')
+            ");
+            log_activity($conn, 'complete_blocked', 'booking', $id, "Đơn #$id bị chặn: chưa có payment paid");
+            if (($_POST['redirect'] ?? '') === 'detail') {
+                header("Location: booking_detail.php?id=$id&error=payment_not_verified");
+            } else {
+                header("Location: bookings.php?error=payment_not_verified");
+            }
+            exit;
+        }
+    }
+
     if ($payment_flow === 'hotel_collect') {
         // Hotel thu tiền trực tiếp — platform không có gì để giải ngân
         $commission_rate = 0.0;

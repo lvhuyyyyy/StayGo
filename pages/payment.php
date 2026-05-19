@@ -206,27 +206,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         // Xác định luồng thu tiền
         $payment_flow = ($payment_method === 'hotel') ? 'hotel_collect' : 'platform_collect';
+        // P13: snapshot commission_rate tại thời điểm đặt phòng — bất biến với thay đổi rate sau này
+        $snap_rate = ($payment_flow === 'hotel_collect') ? 0.0 : (float)($room_lock['commission_rate'] ?? 10.0);
 
         $user_id = $_SESSION['user_id'] ?? null;
-        $stmt = $conn->prepare("INSERT INTO bookings (order_code, user_id, room_id, full_name, email, phone, check_in, check_out, total_price, payment_method, payment_flow, note, status, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())");
+        $stmt = $conn->prepare("INSERT INTO bookings (order_code, user_id, room_id, full_name, email, phone, check_in, check_out, total_price, payment_method, payment_flow, commission_rate, note, status, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())");
         if ($stmt) {
             $has_payment_flow_col = true;
-            $stmt->bind_param("siisssssdsss", $order_code, $user_id, $room_id, $full_name, $email, $phone, $checkin, $checkout, $total_price, $payment_method, $payment_flow, $note);
+            $stmt->bind_param("siisssssdssds", $order_code, $user_id, $room_id, $full_name, $email, $phone, $checkin, $checkout, $total_price, $payment_method, $payment_flow, $snap_rate, $note);
         } else {
             // payment_flow column not yet migrated — insert without it
             $has_payment_flow_col = false;
-            $stmt = $conn->prepare("INSERT INTO bookings (order_code, user_id, room_id, full_name, email, phone, check_in, check_out, total_price, payment_method, note, status, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())");
-            $stmt->bind_param("siisssssdss", $order_code, $user_id, $room_id, $full_name, $email, $phone, $checkin, $checkout, $total_price, $payment_method, $note);
+            $stmt = $conn->prepare("INSERT INTO bookings (order_code, user_id, room_id, full_name, email, phone, check_in, check_out, total_price, payment_method, commission_rate, note, status, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())");
+            $stmt->bind_param("siisssssdsds", $order_code, $user_id, $room_id, $full_name, $email, $phone, $checkin, $checkout, $total_price, $payment_method, $snap_rate, $note);
         }
         $exec_ok = $stmt->execute();
         if (!$exec_ok && $conn->errno == 1062) {
             $order_code = 'ORD' . time() . rand(1000, 9999);
             if ($has_payment_flow_col) {
-                $stmt->bind_param("siisssssdsss", $order_code, $user_id, $room_id, $full_name, $email, $phone, $checkin, $checkout, $total_price, $payment_method, $payment_flow, $note);
+                $stmt->bind_param("siisssssdssds", $order_code, $user_id, $room_id, $full_name, $email, $phone, $checkin, $checkout, $total_price, $payment_method, $payment_flow, $snap_rate, $note);
             } else {
-                $stmt->bind_param("siisssssdss", $order_code, $user_id, $room_id, $full_name, $email, $phone, $checkin, $checkout, $total_price, $payment_method, $note);
+                $stmt->bind_param("siisssssdsds", $order_code, $user_id, $room_id, $full_name, $email, $phone, $checkin, $checkout, $total_price, $payment_method, $snap_rate, $note);
             }
             $exec_ok = $stmt->execute();
         }
@@ -236,9 +238,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $conn->rollback();
             $error_msg = 'Không thể tạo đơn đặt phòng (' . $conn->error . '). Vui lòng thử lại.';
         } else {
-        // Snapshot commission_rate nếu cột tồn tại (bỏ qua nếu chưa migrate)
-        $snap_rate = ($payment_flow === 'hotel_collect') ? 0.0 : (float)($room_lock['commission_rate'] ?? 0);
-        @$conn->query("UPDATE bookings SET commission_rate = $snap_rate WHERE id = $booking_id");
 
         $conn->commit();
 

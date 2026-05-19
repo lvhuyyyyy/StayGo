@@ -82,10 +82,11 @@ $success_map = [
     'completed' => ['🎉 Đã đánh dấu hoàn thành!',        '#1e73be', '#ebf8ff'],
 ];
 $error_map = [
-    'invalid'      => 'Yêu cầu không hợp lệ.',
-    'notfound'     => 'Không tìm thấy đơn đặt phòng.',
-    'already_done' => 'Đơn này đã được xử lý trước đó.',
-    'overbooking'  => 'Không thể xác nhận — phòng đã hết chỗ trong ngày này (overbooking).',
+    'invalid'              => 'Yêu cầu không hợp lệ.',
+    'notfound'             => 'Không tìm thấy đơn đặt phòng.',
+    'already_done'         => 'Đơn này đã được xử lý trước đó.',
+    'overbooking'          => 'Không thể xác nhận — phòng đã hết chỗ trong ngày này (overbooking).',
+    'payment_not_verified' => 'Không thể đánh dấu hoàn thành — đơn này chưa có bản ghi thanh toán hợp lệ (payment_status = paid). Vui lòng kiểm tra lại trạng thái thanh toán.',
 ];
 if(isset($_GET['success']) && isset($success_map[$_GET['success']])):
     $n = $success_map[$_GET['success']];

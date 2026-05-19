@@ -72,6 +72,12 @@ $refund_status_map = [
 $rs = $refund_status_map[(int)($booking['refund_requested'] ?? 0)];
 ?>
 
+<?php if (isset($_GET['error']) && $_GET['error'] === 'payment_not_verified'): ?>
+<div style="padding:12px 16px;border-radius:10px;margin-bottom:14px;font-size:13.5px;font-weight:600;color:#c53030;background:#fff5f5;border:1px solid #feb2b2">
+    ⚠️ Không thể đánh dấu hoàn thành — đơn này chưa có bản ghi thanh toán hợp lệ (<code>payment_status = paid</code>). Vui lòng kiểm tra lại trạng thái thanh toán.
+</div>
+<?php endif; ?>
+
 <!-- Back button -->
 <div style="margin-bottom:18px">
     <a href="bookings.php" style="display:inline-flex;align-items:center;gap:6px;color:#4a5568;text-decoration:none;font-size:13.5px;font-weight:600;
