@@ -56,18 +56,32 @@ $admin_name = $conn->real_escape_string($_SESSION['admin_name'] ?? 'Admin');
 if ($status === 'completed') {
     $payment_flow = $booking['payment_flow'] ?? 'platform_collect';
 
-    // P15: platform_collect phải có payment_status='paid' trước khi mark completed
+    // P15: platform_collect — tổng tiền đã paid phải đạt >= 99% total_price
+    // Dùng SUM thay vì EXISTS để xử lý đúng split payment trong tương lai
     if ($payment_flow === 'platform_collect') {
-        $pay_chk = $conn->prepare("SELECT id FROM payments WHERE booking_id = ? AND payment_status = 'paid' LIMIT 1");
+        $pay_chk = $conn->prepare("
+            SELECT COALESCE(SUM(p.amount), 0) AS paid_sum
+            FROM payments p
+            WHERE p.booking_id = ? AND p.payment_status = 'paid'
+        ");
         $pay_chk->bind_param('i', $id);
         $pay_chk->execute();
-        if (!$pay_chk->get_result()->fetch_assoc()) {
+        $paid_sum = (float)$pay_chk->get_result()->fetch_assoc()['paid_sum'];
+
+        if ($paid_sum < (float)$booking['total_price'] * 0.99) {
+            $meta_esc = $conn->real_escape_string(json_encode([
+                'paid_sum'    => $paid_sum,
+                'total_price' => $booking['total_price'],
+            ]));
             $conn->query("
-                INSERT INTO booking_logs (booking_id, actor_type, actor_id, actor_name, action, description)
+                INSERT INTO booking_logs (booking_id, actor_type, actor_id, actor_name, action, description, metadata)
                 VALUES ($id, 'ADMIN', $admin_id, '$admin_name',
-                        'COMPLETE_BLOCKED', 'Bị chặn mark completed — chưa có payment_status=paid')
+                        'COMPLETE_BLOCKED',
+                        'Bị chặn mark completed — tổng paid chưa đủ so với total_price',
+                        '$meta_esc')
             ");
-            log_activity($conn, 'complete_blocked', 'booking', $id, "Đơn #$id bị chặn: chưa có payment paid");
+            log_activity($conn, 'complete_blocked', 'booking', $id,
+                "Đơn #$id bị chặn: paid_sum={$paid_sum}, total={$booking['total_price']}");
             if (($_POST['redirect'] ?? '') === 'detail') {
                 header("Location: booking_detail.php?id=$id&error=payment_not_verified");
             } else {
