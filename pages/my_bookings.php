@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../includes/security.php';
 require_once __DIR__ . '/../includes/header.php';
 
 if (!isset($_SESSION['user_id'])): ?>
@@ -465,12 +466,16 @@ $method_map = [
                 onmouseout="this.style.background='#fff'">
                 Giữ đơn
             </button>
-            <a id="cc-cancel-link" href="#"
-                style="flex:1;padding:12px;border-radius:10px;background:#e53e3e;color:#fff;font-size:14px;font-weight:700;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:6px"
-                onmouseover="this.style.background='#c53030'"
-                onmouseout="this.style.background='#e53e3e'">
-                ❌ Xác nhận hủy
-            </a>
+            <form id="cc-cancel-form" method="POST" action="/pages/cancel_booking.php" style="flex:1">
+                <?= csrf_field() ?>
+                <input type="hidden" name="id" id="cc-cancel-id">
+                <button type="submit"
+                    style="width:100%;padding:12px;border-radius:10px;background:#e53e3e;color:#fff;font-size:14px;font-weight:700;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px"
+                    onmouseover="this.style.background='#c53030'"
+                    onmouseout="this.style.background='#e53e3e'">
+                    ❌ Xác nhận hủy
+                </button>
+            </form>
         </div>
     </div>
 </div>
@@ -491,12 +496,16 @@ $method_map = [
                 onmouseout="this.style.background='#fff'">
                 Giữ đơn
             </button>
-            <a id="cancel-confirm-btn" href="#"
-                style="flex:1;padding:12px;border-radius:10px;background:#e53e3e;color:#fff;font-size:14px;font-weight:700;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:6px"
-                onmouseover="this.style.background='#c53030'"
-                onmouseout="this.style.background='#e53e3e'">
-                ✅ Xác nhận hủy
-            </a>
+            <form id="cancel-pending-form" method="POST" action="/pages/cancel_booking.php" style="flex:1">
+                <?= csrf_field() ?>
+                <input type="hidden" name="id" id="cancel-booking-id">
+                <button type="submit"
+                    style="width:100%;padding:12px;border-radius:10px;background:#e53e3e;color:#fff;font-size:14px;font-weight:700;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px"
+                    onmouseover="this.style.background='#c53030'"
+                    onmouseout="this.style.background='#e53e3e'">
+                    ✅ Xác nhận hủy
+                </button>
+            </form>
         </div>
     </div>
 </div>
@@ -646,7 +655,7 @@ function confirmCancelConfirmed(id, code, refundAmt, isHotelCollect) {
         feeBox.style.display  = 'block';
         freeBox.style.display = 'none';
     }
-    document.getElementById('cc-cancel-link').href = '/pages/cancel_booking.php?id=' + id;
+    document.getElementById('cc-cancel-id').value = id;
     var m = document.getElementById('cancelConfirmedModal');
     m.style.display = 'flex';
 }
@@ -657,7 +666,7 @@ function closeCancelConfirmedModal() {
 
 function confirmCancel(id, code) {
     document.getElementById('cancel-order-code').textContent = '#' + code;
-    document.getElementById('cancel-confirm-btn').href = '/pages/cancel_booking.php?id=' + id;
+    document.getElementById('cancel-booking-id').value = id;
     document.getElementById('cancelModal').style.display = 'flex';
 }
 function closeCancelModal() {

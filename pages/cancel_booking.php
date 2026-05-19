@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../includes/security.php';
 if (session_status() === PHP_SESSION_NONE) session_start();
 
 if (!isset($_SESSION['user_id'])) {
@@ -7,7 +8,14 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
-$booking_id = (int)($_GET['id'] ?? 0);
+// Yêu cầu POST + CSRF để chống tấn công CSRF qua link GET
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    header("Location: my_bookings.php?error=invalid");
+    exit();
+}
+csrf_verify();
+
+$booking_id = (int)($_POST['id'] ?? 0);
 $user_id    = $_SESSION['user_id'];
 
 if (!$booking_id) {

@@ -1,5 +1,12 @@
 <?php
+if (session_status() === PHP_SESSION_NONE) session_start();
 include "../config/database.php";
+
+// Auth guard — phải kiểm tra trước khi xử lý bất kỳ POST nào
+if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_role']) || $_SESSION['admin_role'] !== 'admin') {
+    header("Location: /auth/login_admin.php");
+    exit;
+}
 
 // ── Giải ngân tất cả READY bookings (batch) ──────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'payout_all') {
