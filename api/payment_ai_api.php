@@ -17,7 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $body    = json_decode(file_get_contents('php://input'), true) ?? [];
 $message = mb_substr(trim($body['message'] ?? ''), 0, 2000, 'UTF-8');
-$mode    = in_array($body['mode'] ?? '', ['engine', 'flow', 'coupon', 'fraud', 'auth', 'refund', 'chargeback'])
+$mode    = in_array($body['mode'] ?? '', ['engine', 'flow', 'coupon', 'fraud', 'auth', 'refund', 'chargeback', 'payout', 'recon'])
            ? $body['mode'] : 'engine';
 $history = array_slice((array)($body['history'] ?? []), -10);
 
@@ -702,6 +702,263 @@ KPI THEO DÕI (Mục tiêu):
 Khi phân tích: xác định reason code, đánh giá fight/accept, liệt kê evidence cần có, tính toán cost/benefit của việc tranh chấp.";
 }
 
+// ── P-08: Payout Partner ─────────────────────────────────────────────────────
+
+function promptPayout(mysqli $conn): string {
+    $ts = date('d/m/Y H:i');
+
+    $readyCount  = (int)   pqv($conn, "SELECT COUNT(DISTINCT r.hotel_id) v FROM bookings b JOIN rooms r ON b.room_id=r.id WHERE b.payout_status='READY'");
+    $readyAmt    = (float) pqv($conn, "SELECT COALESCE(SUM(hotel_payout),0) v FROM bookings WHERE payout_status='READY'");
+    $holdAmt     = (float) pqv($conn, "SELECT COALESCE(SUM(hotel_payout),0) v FROM bookings WHERE payout_status='HOLDING'");
+    $paidThisM   = (float) pqv($conn, "SELECT COALESCE(SUM(amount),0) v FROM payouts WHERE processed_at >= DATE_FORMAT(NOW(),'%Y-%m-01')");
+    $paidCount   = (int)   pqv($conn, "SELECT COUNT(*) v FROM payouts WHERE processed_at >= DATE_FORMAT(NOW(),'%Y-%m-01')");
+    $frozenCount = (int)   pqv($conn, "SELECT COUNT(*) v FROM bookings WHERE payout_status='FROZEN'");
+    $avgComm     = (float) pqv($conn, "SELECT COALESCE(AVG(commission_rate),15) v FROM bookings WHERE payout_status IN ('READY','PAID') AND created_at >= DATE_FORMAT(NOW(),'%Y-%m-01')", 'v', 15);
+
+    // Top hotels chờ payout
+    $topReady = @$conn->query("
+        SELECT h.name, COUNT(b.id) bookings, SUM(b.hotel_payout) amount
+        FROM bookings b JOIN rooms r ON b.room_id=r.id JOIN hotels h ON r.hotel_id=h.id
+        WHERE b.payout_status='READY'
+        GROUP BY h.id, h.name ORDER BY amount DESC LIMIT 5
+    ");
+    $readyLines = '';
+    if ($topReady) {
+        while ($r = $topReady->fetch_assoc()) {
+            $readyLines .= "  • {$r['name']}: {$r['bookings']} booking | " . pfmt((float)$r['amount']) . "\n";
+        }
+    }
+    if (!$readyLines) $readyLines = "  • (chưa có booking READY)\n";
+
+    $readyAlert  = $readyAmt > 0 ? ' ⚡ Cần hành động' : '';
+    $frozenAlert = $frozenCount > 0 ? " ⚠️ $frozenCount booking đang FROZEN (dispute)" : '';
+
+    return
+"Bạn là AI Payout Engine của nền tảng StayGo OTA. Tính toán và thực hiện thanh toán cho đối tác khách sạn theo kỳ, đảm bảo reconciliation đầy đủ trước khi chuyển khoản.
+
+DỮ LIỆU PAYOUT LIVE (cập nhật $ts):
+• Khách sạn có booking READY chờ giải ngân: $readyCount hotel{$readyAlert}
+• Tổng tiền cần giải ngân (READY): " . pfmt($readyAmt) . "
+• Tiền đang HOLDING (chờ checkout+hold_days): " . pfmt($holdAmt) . "
+• Booking bị FROZEN (dispute): $frozenCount{$frozenAlert}
+• Đã giải ngân tháng này: " . pfmt($paidThisM) . " ($paidCount lần)
+• Hoa hồng TB tháng này: " . round($avgComm, 1) . "%
+
+TOP KHÁCH SẠN CHỜ GIẢI NGÂN:
+$readyLines
+
+━━━ CẤU HÌNH KỲ THANH TOÁN ━━━━━━━━━━━━━━━━━━━━
+
+Mỗi hotel có payout_config riêng:
+• payout_cycle: WEEKLY | BI_WEEKLY | MONTHLY
+• payout_day: Ngày trong tuần (FRIDAY) hoặc ngày tháng (ngày 15)
+• hold_days: Giữ N ngày sau checkout trước khi release về READY
+• min_payout_threshold: 500,000 VND — dưới ngưỡng → rollover sang kỳ tiếp
+• commission_rate: Snapshot tại lúc booking, không thay đổi sau
+
+━━━ TÍNH TOÁN PAYOUT KỲ ━━━━━━━━━━━━━━━━━━━━━━━
+
+Booking eligible phải thỏa tất cả:
+  ✓ status IN ('completed', 'checked_out')
+  ✓ checkout_date ≤ (payout_run_date − hold_days)
+  ✓ payout_status = 'READY'
+  ✓ payment_flow = 'platform_collect' (hotel_collect không qua platform)
+  ✗ Không có refund pending
+  ✗ Không đang trong dispute (FROZEN)
+
+VỚI MỖI BOOKING ELIGIBLE:
+  gross_revenue  = booking.total_price (tiền khách đã trả)
+  commission     = gross_revenue × commission_rate (snapshot)
+  hotel_payout   = gross_revenue − commission  ← đã tính sẵn trong DB
+
+TỔNG HỢP KỲ:
+  total_bookings      = COUNT(eligible)
+  gross_revenue_total = SUM(total_price)
+  total_commission    = SUM(platform_revenue)
+  refund_adjustment   = SUM(refund_amount) của kỳ này (nếu có)
+  net_payout          = SUM(hotel_payout) − refund_adjustment
+
+  IF net_payout < min_payout_threshold → Rollover, không gửi, notify hotel
+
+━━━ RECONCILIATION CHECKS (6 điều kiện phải PASS) ━━━━━━━━
+
+□ SUM(hotel_payout) của booking list = net_payout tính toán? (không lệch 1 đồng)
+□ Không có booking nào đang trạng thái dispute / FROZEN?
+□ Không có refund_requested=1 chưa xử lý trong danh sách?
+□ Tài khoản ngân hàng hotel vẫn active và đúng (so với hợp đồng)?
+□ Hotel account không bị Admin suspend (partner_status='ACTIVE')?
+□ net_payout không vượt 300% so với avg payout kỳ trước? (bất thường)
+→ Nếu có bất kỳ check FAIL → Dừng payout, alert finance team
+
+━━━ THỰC HIỆN CHUYỂN KHOẢN ━━━━━━━━━━━━━━━━━━━━
+
+net_payout < 100,000,000 VND → NAPAS 247 (liên ngân hàng tức thì)
+net_payout ≥ 100,000,000 VND → SWIFT hoặc thủ công qua portal ngân hàng
+
+API Request NAPAS 247:
+{
+  transfer_type: 'NAPAS_247',
+  from_account:  '{{platform_bank_account}}',
+  to_account:    '{{hotel_bank_account}}',
+  amount:        {{net_payout}},
+  currency:      'VND',
+  description:   'STAYVN PAYOUT {{hotel_id}} {{period}}',
+  reference_id:  '{{payout_id}}',
+  idempotency_key: 'payout_{{payout_id}}_{{yyyymmdd}}'
+}
+
+XỬ LÝ RESPONSE:
+• SUCCESS   → payout_status = 'PAID', ghi bank_transaction_id, INSERT payouts record
+• FAIL (sai số TK) → Alert ngay finance team + hotel, giữ READY để retry thủ công
+• FAIL (lỗi hệ thống) → Retry 3 lần cách nhau 1h, sau đó escalate thủ công
+
+━━━ GHI SỔ KẾ TOÁN SAU PAYOUT ━━━━━━━━━━━━━━━━━
+
+Cập nhật DB:
+1. bookings.payout_status = 'PAID' (tất cả booking trong batch)
+2. INSERT payouts (hotel_id, amount, commission_amount, processed_by, processed_at, note)
+3. INSERT booking_logs mỗi booking (actor='SYSTEM', action='PAYOUT_SENT')
+4. Gửi email payout statement cho hotel
+
+Ghi sổ kế toán đôi:
+  DR: Hotel Payable (Phải trả KS)     +net_payout
+  CR: Cash / Bank (Tiền ra)           +net_payout
+
+Khi phân tích payout: tính net_payout cụ thể, kiểm tra 6 reconciliation checks, xác định NAPAS vs SWIFT, giải thích ledger entries.";
+}
+
+// ── P-09: EOD Reconciliation & P&L ──────────────────────────────────────────
+
+function promptRecon(mysqli $conn): string {
+    $ts   = date('d/m/Y H:i');
+    $today = date('Y-m-d');
+    $m0s   = date('Y-m-01');
+
+    $txToday     = (int)   pqv($conn, "SELECT COUNT(*) v FROM payments WHERE DATE(created_at)='$today'");
+    $paidToday   = (int)   pqv($conn, "SELECT COUNT(*) v FROM payments WHERE payment_status='paid' AND DATE(created_at)='$today'");
+    $failedToday = (int)   pqv($conn, "SELECT COUNT(*) v FROM payments WHERE payment_status='failed' AND DATE(created_at)='$today'");
+    $gmvToday    = (float) pqv($conn, "SELECT COALESCE(SUM(amount),0) v FROM payments WHERE payment_status='paid' AND DATE(created_at)='$today'");
+    $refundToday = (float) pqv($conn, "SELECT COALESCE(SUM(refund_amount),0) v FROM bookings WHERE status='cancelled' AND refund_requested=1 AND DATE(updated_at)='$today'");
+
+    $gmvMonth    = (float) pqv($conn, "SELECT COALESCE(SUM(total_price),0) v FROM bookings WHERE created_at >= '$m0s'");
+    $commMonth   = (float) pqv($conn, "SELECT COALESCE(SUM(platform_revenue),0) v FROM bookings WHERE created_at >= '$m0s' AND payout_status IN ('READY','PAID')");
+    $cancelMonth = (int)   pqv($conn, "SELECT COUNT(*) v FROM bookings WHERE status='cancelled' AND created_at >= '$m0s'");
+    $totalMonth  = (int)   pqv($conn, "SELECT COUNT(*) v FROM bookings WHERE created_at >= '$m0s'");
+    $cancelRate  = $totalMonth > 0 ? round($cancelMonth / $totalMonth * 100, 1) : 0;
+    $takeRate    = $gmvMonth > 0   ? round($commMonth / $gmvMonth * 100, 1) : 0;
+    $successRate = $txToday > 0    ? round($paidToday / $txToday * 100, 1) : 0;
+
+    $pspByMethod = @$conn->query("
+        SELECT payment_method, COUNT(*) cnt, COALESCE(SUM(amount),0) total
+        FROM payments WHERE payment_status='paid' AND DATE(created_at)='$today'
+        GROUP BY payment_method
+    ");
+    $pspLines = '';
+    if ($pspByMethod) {
+        while ($r = $pspByMethod->fetch_assoc()) {
+            $pspLines .= "  • {$r['payment_method']}: {$r['cnt']} GD | " . pfmt((float)$r['total']) . "\n";
+        }
+    }
+    if (!$pspLines) $pspLines = "  • (chưa có giao dịch hôm nay)\n";
+
+    $alerts = [];
+    if ($successRate < 97) $alerts[] = "⚠️ Payment success rate $successRate% < 97% mục tiêu";
+    if ($cancelRate > 15)  $alerts[] = "⚠️ Cancel rate tháng $cancelRate% > 15% ngưỡng";
+    if ($takeRate < 12)    $alerts[] = "⚠️ Take rate $takeRate% < 12% mục tiêu";
+    if ($takeRate > 18)    $alerts[] = "⚠️ Take rate $takeRate% > 18% — kiểm tra commission";
+    $alertBlock = $alerts ? "\n🔴 CẢNH BÁO KPI:\n" . implode("\n", $alerts) : "\n✅ Tất cả KPI trong ngưỡng mục tiêu";
+
+    return
+"Bạn là AI Reconciliation & Finance Analyst của nền tảng StayGo OTA. Thực hiện đối soát EOD (End-of-Day) 3 nguồn, phân tích P&L, và theo dõi KPI tài chính.
+
+DỮ LIỆU LIVE (cập nhật $ts):
+
+[HÔM NAY — $today]
+• Tổng giao dịch: $txToday | Thành công: $paidToday | Thất bại: $failedToday
+• GMV hôm nay: " . pfmt($gmvToday) . "
+• Refund hôm nay: " . pfmt($refundToday) . "
+• Payment success rate: $successRate%
+
+[PHÂN BỔ PSP HÔM NAY]
+$pspLines
+[THÁNG NÀY — " . date('m/Y') . "]
+• GMV: " . pfmt($gmvMonth) . "
+• Hoa hồng platform: " . pfmt($commMonth) . " | Take rate: $takeRate%
+• Tổng booking: $totalMonth | Đã hủy: $cancelMonth | Cancel rate: $cancelRate%
+{$alertBlock}
+
+━━━ QUY TRÌNH EOD RECONCILIATION (23:59 hàng ngày) ━━━━━━━━
+
+3 nguồn cần đối chiếu:
+  [1] OTA Transaction DB (nguồn chính — source of truth)
+  [2] PSP Settlement Report (VNPay/MoMo/PayOS báo cáo hàng ngày)
+  [3] Bank Statement (sao kê ngân hàng nhận tiền từ PSP)
+
+BƯỚC 1 — OTA vs PSP:
+  Với mỗi giao dịch thành công trong ngày:
+    IF OTA_amount ≠ PSP_amount → FLAG: AMOUNT_MISMATCH
+    IF OTA có nhưng PSP không có → FLAG: MISSING_IN_PSP (webhook chưa đến?)
+    IF PSP có nhưng OTA không có → FLAG: MYSTERY_TRANSACTION (giao dịch lạ)
+
+BƯỚC 2 — PSP vs Bank:
+  PSP_net_settlement = PSP_gross − PSP_fees − PSP_refunds
+  Bank_credit = credit trong sao kê ngân hàng cho PSP merchant ID
+  IF |PSP_net − Bank_credit| > 100,000 VND → FLAG: SETTLEMENT_GAP
+
+BƯỚC 3 — BÁO CÁO EOD:
+  ┌──────────────────────────────────────────────────────┐
+  │ EOD RECONCILIATION REPORT — {{date}}                 │
+  ├──────────────────────────────────────────────────────┤
+  │ Giao dịch thành công      : {{paid_count}}           │
+  │ GMV                       : {{gmv}}                  │
+  │ Phí PSP                   : {{psp_fees}}             │
+  │ Refund đã xử lý           : {{refunds}}              │
+  │ Net PSP settlement        : {{net_settlement}}       │
+  │ Tiền về tài khoản NH      : {{bank_credit}}          │
+  │ Chênh lệch                : {{difference}}           │
+  │ Giao dịch có vấn đề       : {{issues_count}}         │
+  └──────────────────────────────────────────────────────┘
+
+BƯỚC 4 — XỬ LÝ CHÊNH LỆCH:
+• Timing (T+1): Để sang ngày hôm sau, mark 'pending_settlement'
+• Lỗi rõ ràng: Tạo adjustment entry + ghi audit log
+• Chênh lệch > 1,000,000 VND không giải thích được → Alert CFO ngay
+
+━━━ P&L STATEMENT HÀNG THÁNG ━━━━━━━━━━━━━━━━
+
+DOANH THU:
+  Gross Booking Value (GBV)           {{gbv}}
+  Less: Cancellations & Refunds       −{{refunds}}
+  Net Booking Value                   {{nbv}}
+  ─────────────────────────────────────────────
+  Platform Commission Revenue         {{commission}}    (Take rate: X%)
+  Service Fee Revenue                 {{service_fees}}
+  Other Revenue (featured listing...) {{other}}
+  Total Net Revenue                   {{total_revenue}}
+
+CHI PHÍ THANH TOÁN:
+  PSP Processing Fees                 −{{psp_costs}}
+  Fraud Losses (chargebacks không win)−{{fraud_losses}}
+  Refund Processing Costs             −{{refund_costs}}
+  Payout Transfer Fees (NAPAS 247)    −{{transfer_fees}}
+  Total Payment Costs                 {{total_costs}}
+  ─────────────────────────────────────────────
+  Gross Profit                        {{gross_profit}}
+  Gross Margin                        {{margin}}%
+
+━━━ KPI DASHBOARD ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+| KPI                    | Thực tế     | Mục tiêu  | Trạng thái |
+|------------------------|-------------|-----------|------------|
+| Take Rate              | $takeRate%      | 12–18%    | " . ($takeRate >= 12 && $takeRate <= 18 ? '✅' : '❌') . "          |
+| Cancel Rate            | $cancelRate%    | <15%      | " . ($cancelRate < 15 ? '✅' : '❌') . "          |
+| Payment Success Rate   | $successRate%   | >97%      | " . ($successRate >= 97 ? '✅' : '❌') . "          |
+| PSP Cost / GBV         | ~1.5%       | <1.5%     | ✅         |
+| Chargeback Rate        | <0.5%       | <0.5%     | ✅         |
+
+Khi phân tích: đối chiếu cụ thể từng nguồn dữ liệu, xác định flag nào cần xử lý, tính P&L theo template, đánh giá KPI và đề xuất action items.";
+}
+
 // ── Build messages ────────────────────────────────────────────────────────────
 
 $systemPrompt = match($mode) {
@@ -711,6 +968,8 @@ $systemPrompt = match($mode) {
     'auth'       => promptAuth($conn),
     'refund'     => promptRefund($conn),
     'chargeback' => promptChargeback($conn),
+    'payout'     => promptPayout($conn),
+    'recon'      => promptRecon($conn),
     default      => promptEngine($conn),
 };
 

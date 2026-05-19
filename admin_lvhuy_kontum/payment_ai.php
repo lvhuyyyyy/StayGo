@@ -173,6 +173,22 @@ $refund_pending = (int)($conn->query("SELECT COUNT(*) c FROM bookings WHERE refu
             </div>
         </button>
 
+        <button class="pai-mode-btn" data-mode="payout" onclick="switchMode(this,'payout')">
+            <span class="pai-mode-icon">🏦</span>
+            <div>
+                <div>Payout Partner</div>
+                <div class="pai-mode-label">Kỳ TT & NAPAS 247</div>
+            </div>
+        </button>
+
+        <button class="pai-mode-btn" data-mode="recon" onclick="switchMode(this,'recon')">
+            <span class="pai-mode-icon">📊</span>
+            <div>
+                <div>EOD Recon & P&L</div>
+                <div class="pai-mode-label">3 nguồn & KPI tài chính</div>
+            </div>
+        </button>
+
         <div style="margin-top:4px"></div>
 
         <div class="pai-info">
@@ -241,6 +257,18 @@ $refund_pending = (int)($conn->query("SELECT COUNT(*) c FROM bookings WHERE refu
             <span class="pai-chip" onclick="chip(this)">Khi nào nên accept thay vì fight?</span>
             <span class="pai-chip" onclick="chip(this)">Chargeback rate vượt 1% thì sao?</span>
         </div>
+        <div class="pai-chips" id="chips-payout" style="display:none">
+            <span class="pai-chip" onclick="chip(this)">Khách sạn nào đang chờ giải ngân?</span>
+            <span class="pai-chip" onclick="chip(this)">6 reconciliation checks trước khi chuyển</span>
+            <span class="pai-chip" onclick="chip(this)">Khi nào dùng NAPAS 247 vs SWIFT?</span>
+            <span class="pai-chip" onclick="chip(this)">Xử lý khi NAPAS 247 thất bại 3 lần</span>
+        </div>
+        <div class="pai-chips" id="chips-recon" style="display:none">
+            <span class="pai-chip" onclick="chip(this)">EOD hôm nay có chênh lệch không?</span>
+            <span class="pai-chip" onclick="chip(this)">Take rate tháng này đang ở mức nào?</span>
+            <span class="pai-chip" onclick="chip(this)">Giải thích MYSTERY_TRANSACTION flag</span>
+            <span class="pai-chip" onclick="chip(this)">Lập P&L statement tháng này</span>
+        </div>
 
         <!-- Messages -->
         <div class="pai-chat" id="chatBox">
@@ -255,7 +283,9 @@ Tôi có thể giúp bạn với 7 chế độ:<br>
 • **🛡️ Fraud Detection** — Scoring matrix 100 điểm, Allow/Review/Challenge/Block, điều tra post-fraud<br>
 • **🔐 3DS2 & OTP** — Frictionless vs Challenge flow, OTP replay-proof, Biometric mobile<br>
 • **↩️ Hoàn tiền** — 5 loại chính sách, routing về PTTT gốc, approval workflow 4 cấp<br>
-• **⚖️ Chargeback Defense** — Phân loại Visa/MC reason codes, evidence package, fight/accept strategy<br><br>
+• **⚖️ Chargeback Defense** — Phân loại Visa/MC reason codes, evidence package, fight/accept strategy<br>
+• **🏦 Payout Partner** — Tính kỳ payout, 6 reconciliation checks, NAPAS 247 API, ledger entries<br>
+• **📊 EOD Recon & P&L** — Đối soát 3 nguồn (OTA/PSP/Bank), P&L Statement, KPI Take Rate/Cancel/Success<br><br>
 Chọn chế độ bên trái và đặt câu hỏi để bắt đầu!
                 </div>
             </div>
