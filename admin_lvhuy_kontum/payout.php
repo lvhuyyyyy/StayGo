@@ -16,12 +16,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'payou
     $hotel_cond = isset($_POST['hotel_id']) && (int)$_POST['hotel_id'] > 0
                 ? 'AND r.hotel_id = ' . (int)$_POST['hotel_id'] : '';
 
+    // Fix #6: chỉ giải ngân hotel đang ACTIVE, bỏ qua SUSPENDED/REJECTED
     $batch = $conn->query("
         SELECT b.id, b.hotel_payout, b.platform_revenue, r.hotel_id, h.name AS hotel_name
         FROM bookings b
         JOIN rooms r ON b.room_id = r.id
         JOIN hotels h ON r.hotel_id = h.id
-        WHERE b.payout_status = 'READY' AND b.payment_flow = 'platform_collect' AND b.hotel_payout > 0
+        WHERE b.payout_status = 'READY' AND b.payment_flow = 'platform_collect'
+          AND b.hotel_payout > 0 AND h.partner_status = 'ACTIVE'
         $hotel_cond
     ");
     $done = 0;
@@ -127,6 +129,7 @@ $hotels_list = $conn->query("SELECT id, name FROM hotels ORDER BY name ASC")->fe
 // ── Lấy danh sách booking READY cần giải ngân ─────────────────────────
 $hotel_cond = $filter_hotel ? "AND r.hotel_id = $filter_hotel" : '';
 
+// Fix #6: chỉ hiện booking của hotel ACTIVE để tránh giải ngân nhầm hotel bị suspend
 $ready_bookings = $conn->query("
     SELECT b.*,
            r.hotel_id, h.name AS hotel_name,
@@ -136,9 +139,20 @@ $ready_bookings = $conn->query("
     JOIN hotels h ON r.hotel_id = h.id
     WHERE b.payout_status = 'READY'
       AND b.payment_flow = 'platform_collect'
+      AND h.partner_status = 'ACTIVE'
     $hotel_cond
     ORDER BY b.updated_at ASC
 ")->fetch_all(MYSQLI_ASSOC);
+
+// Đếm booking READY của hotel suspended để cảnh báo admin
+$suspended_skipped = (int)$conn->query("
+    SELECT COUNT(*) AS cnt FROM bookings b
+    JOIN rooms r ON b.room_id = r.id
+    JOIN hotels h ON r.hotel_id = h.id
+    WHERE b.payout_status = 'READY' AND b.payment_flow = 'platform_collect'
+      AND h.partner_status != 'ACTIVE'
+    " . ($filter_hotel ? "AND r.hotel_id = $filter_hotel" : '')
+)->fetch_assoc()['cnt'];
 
 // ── Lịch sử giải ngân ─────────────────────────────────────────────────
 $hist_cond = $filter_hotel ? "WHERE p.hotel_id = $filter_hotel" : '';
@@ -180,6 +194,13 @@ if (isset($_GET['error'])) {
 <?php if ($error_msg): ?>
 <div style="padding:12px 16px;border-radius:10px;margin-bottom:14px;font-size:13.5px;font-weight:600;color:#c53030;background:#fff5f5;border:1px solid #c53030">
     <?= $error_msg ?>
+</div>
+<?php endif; ?>
+
+<?php if ($suspended_skipped > 0): ?>
+<div style="padding:12px 16px;border-radius:10px;margin-bottom:14px;font-size:13.5px;font-weight:600;color:#b7791f;background:#fffbeb;border:1px solid #f6ad55">
+    ⚠️ Có <strong><?= $suspended_skipped ?></strong> booking READY của hotel đang <strong>SUSPENDED</strong> bị ẩn khỏi danh sách giải ngân.
+    Vui lòng xử lý trạng thái hotel trước khi giải ngân.
 </div>
 <?php endif; ?>
 

@@ -9,19 +9,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
     if ($id && in_array($action, ['approve', 'reject'], true)) {
-        $stmt = $conn->prepare("SELECT * FROM bookings WHERE id = ? AND refund_requested = 1");
+        // Fix #9: lấy thêm status + refund_amount để validate trước khi xử lý
+        $stmt = $conn->prepare("
+            SELECT id, status, refund_requested, refund_amount, total_price, payment_flow
+            FROM bookings WHERE id = ? AND refund_requested = 1
+        ");
         $stmt->bind_param('i', $id);
         $stmt->execute();
         $booking = $stmt->get_result()->fetch_assoc();
 
         if ($booking) {
+            $admin_id   = (int)($_SESSION['admin_id'] ?? 0);
+            $admin_name = $conn->real_escape_string($_SESSION['admin_name'] ?? 'Admin');
+
             if ($action === 'approve') {
-                $conn->query("UPDATE bookings SET status = 'cancelled', refund_requested = 2 WHERE id = $id");
+                // Fix #9a: không approve khi booking đang checked_in (khách đang ở)
+                if ($booking['status'] === 'checked_in') {
+                    header("Location: refund_requests.php?error=checked_in_cannot_refund");
+                    exit;
+                }
+
+                $refund_fmt = number_format((float)$booking['refund_amount'], 0, ',', '.');
+
+                $conn->begin_transaction();
+                // Đánh dấu refund_requested = 2 (approved) + set cancelled + freeze payout
+                $conn->query("
+                    UPDATE bookings
+                    SET status = 'cancelled', refund_requested = 2, payout_status = 'FROZEN'
+                    WHERE id = $id AND refund_requested = 1
+                ");
                 $conn->query("UPDATE payments SET payment_status = 'refunded' WHERE booking_id = $id");
+                // Fix #9b: ghi booking_log
+                $conn->query("
+                    INSERT INTO booking_logs
+                        (booking_id, actor_type, actor_id, actor_name, action, description)
+                    VALUES ($id, 'ADMIN', $admin_id, '$admin_name',
+                            'REFUND_APPROVED',
+                            'Duyệt hoàn tiền {$refund_fmt}đ — booking chuyển cancelled, payout FROZEN')
+                ");
+                $conn->commit();
+
                 log_activity($conn, 'approve_refund', 'booking', $id, "Duyệt hoàn tiền đơn #$id");
                 header("Location: refund_requests.php?success=approved");
+
             } elseif ($action === 'reject') {
-                $conn->query("UPDATE bookings SET refund_requested = 3 WHERE id = $id");
+                $conn->begin_transaction();
+                $conn->query("UPDATE bookings SET refund_requested = 3 WHERE id = $id AND refund_requested = 1");
+                // Fix #9b: ghi booking_log
+                $conn->query("
+                    INSERT INTO booking_logs
+                        (booking_id, actor_type, actor_id, actor_name, action, description)
+                    VALUES ($id, 'ADMIN', $admin_id, '$admin_name',
+                            'REFUND_REJECTED', 'Từ chối yêu cầu hoàn tiền')
+                ");
+                $conn->commit();
+
                 log_activity($conn, 'reject_refund', 'booking', $id, "Từ chối hoàn tiền đơn #$id");
                 header("Location: refund_requests.php?success=rejected");
             }
@@ -60,13 +102,18 @@ $count_rejected = $conn->query("SELECT COUNT(*) as c FROM bookings WHERE refund_
 <?php if(isset($_GET['success'])): ?>
     <?php if($_GET['success'] === 'approved'): ?>
         <div style="padding:12px 16px;border-radius:10px;margin-bottom:14px;font-size:13.5px;font-weight:600;color:#276749;background:#f0fff4;border:1px solid #9ae6b4">
-            ✅ Đã duyệt hoàn tiền thành công! Booking đã bị huỷ.
+            ✅ Đã duyệt hoàn tiền thành công! Booking đã bị huỷ, payout đã bị đóng băng.
         </div>
     <?php elseif($_GET['success'] === 'rejected'): ?>
         <div style="padding:12px 16px;border-radius:10px;margin-bottom:14px;font-size:13.5px;font-weight:600;color:#c53030;background:#fff5f5;border:1px solid #feb2b2">
             ❌ Đã từ chối yêu cầu hoàn tiền.
         </div>
     <?php endif; ?>
+<?php endif; ?>
+<?php if(isset($_GET['error']) && $_GET['error'] === 'checked_in_cannot_refund'): ?>
+    <div style="padding:12px 16px;border-radius:10px;margin-bottom:14px;font-size:13.5px;font-weight:600;color:#b7791f;background:#fffbeb;border:1px solid #f6ad55">
+        ⚠️ Không thể duyệt hoàn tiền: khách đang check-in tại khách sạn. Vui lòng xử lý qua trang Disputes.
+    </div>
 <?php endif; ?>
 
 <!-- Tabs -->

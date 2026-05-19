@@ -82,14 +82,19 @@ foreach ((array)$body['data'] as $txn) {
 
     if (!$booking) continue; // Không tìm thấy booking
 
-    // Đã xử lý rồi → bỏ qua (idempotent — check cả DB flag lẫn status)
-    if ($booking['payment_verified'] || $booking['payment_status'] === 'paid' || $booking['status'] === 'confirmed') continue;
+    // Fix #4a: Idempotency check đầy đủ — skip mọi trạng thái đã xử lý
+    if ($booking['payment_verified']
+        || $booking['payment_status'] === 'paid'
+        || in_array($booking['status'], ['confirmed', 'checked_in', 'completed'])) {
+        continue;
+    }
 
-    // Xác minh số tiền — cho phép sai lệch tối đa 1.000đ (làm tròn)
+    // Fix #4b: Tolerance = max(1.000đ, 1% tổng giá) — tránh lỏng với booking nhỏ
+    $max_diff = max(1000, (float)$booking['total_price'] * 0.01);
     $diff = abs($amount - (float)$booking['total_price']);
-    if ($diff > 1000) {
+    if ($diff > $max_diff) {
         // Ghi log nhưng không confirm (có thể khách CK sai số tiền)
-        error_log("[Casso] Order $order_code: amount mismatch — expected {$booking['total_price']}, got $amount (diff=$diff)");
+        error_log("[Casso] Order $order_code: amount mismatch — expected {$booking['total_price']}, got $amount (diff=$diff, max_allowed=$max_diff)");
         continue;
     }
 

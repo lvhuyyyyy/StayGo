@@ -38,14 +38,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!$contact_name) $errors[] = 'Tên liên hệ không được để trống.';
 
         if (empty($errors)) {
-            $cn_esc = $conn->real_escape_string($contact_name);
-            $cp_esc = $conn->real_escape_string($contact_phone);
-            $bi_esc = $conn->real_escape_string($bank_info);
-            $conn->query("
+            // Fix #7: prepared statement thay real_escape_string
+            $upd = $conn->prepare("
                 UPDATE hotels
-                SET contact_name = '$cn_esc', contact_phone = '$cp_esc', bank_info = '$bi_esc'
-                WHERE id = $hotel_id
+                SET contact_name = ?, contact_phone = ?, bank_info = ?
+                WHERE id = ?
             ");
+            $upd->bind_param('sssi', $contact_name, $contact_phone, $bank_info, $hotel_id);
+            $upd->execute();
             $_SESSION['hotel_contact'] = $contact_name;
             $msg = 'Đã cập nhật thông tin liên hệ.';
             $hotel['contact_name']  = $contact_name;
@@ -76,9 +76,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($new_pw !== $conf_pw) {
             $errors[] = 'Xác nhận mật khẩu không khớp.';
         } else {
+            // Fix #7: prepared statement cho password update
             $hashed = password_hash($new_pw, PASSWORD_BCRYPT);
-            $h_esc  = $conn->real_escape_string($hashed);
-            $conn->query("UPDATE hotels SET partner_password = '$h_esc' WHERE id = $hotel_id");
+            $pw_upd = $conn->prepare("UPDATE hotels SET partner_password = ? WHERE id = ?");
+            $pw_upd->bind_param('si', $hashed, $hotel_id);
+            $pw_upd->execute();
             $msg = 'Đã đổi mật khẩu thành công.';
         }
     }

@@ -30,6 +30,17 @@ $errorMsg = 'Giao dịch thất bại.';
 if (!$validSig) {
     $errorMsg = 'Chữ ký không hợp lệ. Giao dịch không được xác nhận.';
 } elseif ($resultCode === 0) {
+    // Fix #3: Defense-in-depth — cross-check amount vs DB (như VNPay)
+    $momoAmount = (float)($_GET['amount'] ?? 0);
+    $amt_chk = $conn->prepare("SELECT total_price FROM bookings WHERE order_code = ? LIMIT 1");
+    $amt_chk->bind_param('s', $orderCode);
+    $amt_chk->execute();
+    $amt_row = $amt_chk->get_result()->fetch_assoc();
+    if ($amt_row && $momoAmount < (float)$amt_row['total_price'] * 0.99) {
+        $errorMsg = 'Số tiền MoMo không khớp với đơn hàng. Vui lòng liên hệ hỗ trợ.';
+        goto momo_done;
+    }
+
     $stmt = $conn->prepare("
         UPDATE payments p
         JOIN bookings b ON p.booking_id = b.id
@@ -85,6 +96,7 @@ if (!$validSig) {
 }
 
 // ── Lấy thông tin booking để hiển thị và gửi email ──────────────
+momo_done:
 $booking = null;
 if ($orderCode) {
     $s = $conn->prepare("

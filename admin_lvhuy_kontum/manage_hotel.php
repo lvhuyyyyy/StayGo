@@ -9,8 +9,20 @@ if (!$id) { header("Location: hotels.php?error=invalid"); exit; }
 
 // -- XÓA KHÁCH SẠN ----------------------------------------------
 if ($action === 'delete') {
+    // Fix #5a: chỉ cho xóa khi không còn booking pending/confirmed/checked_in
     $check = $conn->query("SELECT id FROM hotels WHERE id = $id");
     if ($check->num_rows === 0) { header("Location: hotels.php?error=notfound"); exit; }
+
+    $active_count = (int)$conn->query("
+        SELECT COUNT(*) AS cnt FROM bookings b
+        JOIN rooms r ON b.room_id = r.id
+        WHERE r.hotel_id = $id AND b.status IN ('pending','confirmed','checked_in')
+    ")->fetch_assoc()['cnt'];
+
+    if ($active_count > 0) {
+        header("Location: hotels.php?error=has_active_bookings&count=$active_count"); exit;
+    }
+
     $conn->query("DELETE FROM hotels WHERE id = $id");
     log_activity($conn, 'delete_hotel', 'hotel', $id, "Xóa khách sạn #$id");
     header("Location: hotels.php?success=deleted"); exit;
@@ -102,9 +114,11 @@ if ($action === 'update_image' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // -- THAY ĐỔI PARTNER STATUS (approve/reject/suspend) ---------------
-if (in_array($action, ['approve', 'reject', 'suspend'])) {
+// Fix #5b: chuyển sang POST + CSRF để chặn CSRF qua GET link
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($action, ['approve', 'reject', 'suspend'])) {
+    csrf_check();
     $new_status = ['approve' => 'ACTIVE', 'reject' => 'REJECTED', 'suspend' => 'SUSPENDED'][$action];
-    $reason_raw = $conn->real_escape_string(trim($_GET['reason'] ?? ''));
+    $reason_raw = $conn->real_escape_string(trim($_POST['reason'] ?? ''));
     $is_active  = ($new_status === 'ACTIVE') ? 1 : 0;
 
     $conn->query("UPDATE hotels SET partner_status='$new_status', is_active=$is_active,
@@ -128,7 +142,6 @@ if (in_array($action, ['approve', 'reject', 'suspend'])) {
         }
     }
 
-    $label = ['ACTIVE' => 'duyệt', 'REJECTED' => 'từ chối', 'SUSPENDED' => 'tạm đình chỉ'][$new_status];
     log_activity($conn, "hotel_$action", 'hotel', $id, "Khách sạn #$id → $new_status");
     header("Location: hotels.php?success=updated"); exit;
 }
@@ -319,26 +332,39 @@ $psm = $ps_map[$ps] ?? $ps_map['ACTIVE'];
               color:<?= $psm[1] ?>;background:<?= $psm[2] ?>;border:1.5px solid <?= $psm[1] ?>33">
             <?= $psm[0] ?>
         </span>
+
         <?php if ($ps !== 'ACTIVE'): ?>
-        <a href="manage_hotel.php?id=<?= $id ?>&action=approve"
-           style="padding:8px 18px;border-radius:9px;background:#276749;color:#fff;text-decoration:none;font-size:13px;font-weight:700"
-           onclick="adminConfirm('Duyệt khách sạn này?', this.href, '✅'); return false;">
-            ✅ Duyệt (Approve)
-        </a>
+        <!-- Fix #5b: POST + CSRF thay GET link -->
+        <form method="POST" action="manage_hotel.php?id=<?= $id ?>&action=approve" style="display:inline" id="formApprove_<?= $id ?>">
+            <?= csrf_field() ?>
+            <button type="button"
+                onclick="adminConfirmPost('Duyệt khách sạn này?', 'formApprove_<?= $id ?>', '✅')"
+                style="padding:8px 18px;border-radius:9px;background:#276749;color:#fff;border:none;cursor:pointer;font-size:13px;font-weight:700">
+                ✅ Duyệt (Approve)
+            </button>
+        </form>
         <?php endif; ?>
+
         <?php if ($ps === 'ACTIVE' || $ps === 'PENDING'): ?>
-        <a href="manage_hotel.php?id=<?= $id ?>&action=suspend"
-           style="padding:8px 18px;border-radius:9px;background:#c53030;color:#fff;text-decoration:none;font-size:13px;font-weight:700"
-           onclick="adminConfirm('Tạm đình chỉ khách sạn này? (booking PENDING sẽ tự động bị huỷ)', this.href, '⏸'); return false;">
-            ⏸ Tạm đình chỉ
-        </a>
+        <form method="POST" action="manage_hotel.php?id=<?= $id ?>&action=suspend" style="display:inline" id="formSuspend_<?= $id ?>">
+            <?= csrf_field() ?>
+            <button type="button"
+                onclick="adminConfirmPost('Tạm đình chỉ khách sạn này? (booking PENDING sẽ tự động bị huỷ)', 'formSuspend_<?= $id ?>', '⏸')"
+                style="padding:8px 18px;border-radius:9px;background:#c53030;color:#fff;border:none;cursor:pointer;font-size:13px;font-weight:700">
+                ⏸ Tạm đình chỉ
+            </button>
+        </form>
         <?php endif; ?>
+
         <?php if ($ps === 'PENDING'): ?>
-        <a href="manage_hotel.php?id=<?= $id ?>&action=reject"
-           style="padding:8px 18px;border-radius:9px;background:#718096;color:#fff;text-decoration:none;font-size:13px;font-weight:700"
-           onclick="adminConfirm('Từ chối khách sạn này?', this.href, '❌'); return false;">
-            ❌ Từ chối
-        </a>
+        <form method="POST" action="manage_hotel.php?id=<?= $id ?>&action=reject" style="display:inline" id="formReject_<?= $id ?>">
+            <?= csrf_field() ?>
+            <button type="button"
+                onclick="adminConfirmPost('Từ chối khách sạn này?', 'formReject_<?= $id ?>', '❌')"
+                style="padding:8px 18px;border-radius:9px;background:#718096;color:#fff;border:none;cursor:pointer;font-size:13px;font-weight:700">
+                ❌ Từ chối
+            </button>
+        </form>
         <?php endif; ?>
     </div>
     <?php if (!empty($hotel['suspend_reason'])): ?>

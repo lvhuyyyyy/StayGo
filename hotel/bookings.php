@@ -30,13 +30,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['booking_action'])) {
     if (!$target) {
         $error = 'Không tìm thấy đơn hoặc đơn không ở trạng thái chờ.';
     } elseif ($action === 'confirm') {
-        $conn->query("UPDATE bookings SET status='confirmed' WHERE id=$bid");
-        $conn->query("
-            INSERT INTO booking_logs (booking_id, actor_type, actor_id, actor_name, action, description)
-            VALUES ($bid, 'HOTEL', $hotel_id, '" . $conn->real_escape_string($_SESSION['hotel_name']) . "',
-                    'CONFIRMED', 'Khách sạn đã xác nhận đặt phòng.')
-        ");
-        $msg = 'Đã xác nhận đặt phòng ' . htmlspecialchars($target['order_code']) . '.';
+        // Fix #8: transaction + FOR UPDATE để chặn overbooking race condition
+        $conn->begin_transaction();
+        try {
+            // Lock room row để đọc quantity chính xác
+            $room_lock = $conn->prepare("
+                SELECT r.quantity, b2.room_id
+                FROM bookings b2
+                JOIN rooms r ON r.id = b2.room_id
+                WHERE b2.id = ? FOR UPDATE
+            ");
+            $room_lock->bind_param('i', $bid);
+            $room_lock->execute();
+            $lock_row = $room_lock->get_result()->fetch_assoc();
+
+            if (!$lock_row) {
+                $conn->rollback();
+                $error = 'Không tìm thấy thông tin phòng.';
+            } else {
+                // Đếm booking đang active cùng phòng, cùng ngày (không tính booking này)
+                $ovb = $conn->prepare("
+                    SELECT COUNT(*) AS cnt FROM bookings b2
+                    WHERE b2.room_id = ?
+                      AND b2.id != ?
+                      AND b2.status IN ('confirmed','checked_in')
+                      AND b2.check_in  < ?
+                      AND b2.check_out > ?
+                ");
+                $ovb->bind_param('iiss', $lock_row['room_id'], $bid,
+                                         $target['check_out'], $target['check_in']);
+                $ovb->execute();
+                $overlap_count = (int)$ovb->get_result()->fetch_assoc()['cnt'];
+
+                if ($overlap_count >= (int)$lock_row['quantity']) {
+                    $conn->rollback();
+                    $error = 'Phòng đã hết chỗ trong ngày này, không thể xác nhận.';
+                } else {
+                    $conn->query("UPDATE bookings SET status='confirmed' WHERE id=$bid");
+                    $hotel_name_esc = $conn->real_escape_string($_SESSION['hotel_name']);
+                    $conn->query("
+                        INSERT INTO booking_logs (booking_id, actor_type, actor_id, actor_name, action, description)
+                        VALUES ($bid, 'HOTEL', $hotel_id, '$hotel_name_esc',
+                                'CONFIRMED', 'Khách sạn đã xác nhận đặt phòng.')
+                    ");
+                    $conn->commit();
+                    $msg = 'Đã xác nhận đặt phòng ' . htmlspecialchars($target['order_code']) . '.';
+                }
+            }
+        } catch (Exception $e) {
+            $conn->rollback();
+            $error = 'Lỗi hệ thống khi xác nhận. Vui lòng thử lại.';
+        }
     } elseif ($action === 'reject') {
         if (!$reason) $reason = 'Khách sạn không thể nhận đặt phòng này.';
         $reason_esc = $conn->real_escape_string($reason);
@@ -83,12 +127,12 @@ $bookings = $conn->query("
 function badge_status(string $s): string {
     $map = ['pending'=>'badge-pending','confirmed'=>'badge-confirmed','completed'=>'badge-completed','cancelled'=>'badge-cancelled','checked_in'=>'badge-checked_in'];
     $lbl = ['pending'=>'Chờ xác nhận','confirmed'=>'Đã xác nhận','completed'=>'Hoàn thành','cancelled'=>'Đã hủy','checked_in'=>'Đang ở'];
-    return '<span class="badge '.($map[$s]??'badge-pending').'">'.(($lbl[$s]??$s)).'</span>';
+    return '<span class="badge '.($map[$s]??'badge-pending').'">' . ($lbl[$s]??$s) . '</span>';
 }
 function badge_payout(string $s): string {
     $map = ['HOLDING'=>'badge-holding','READY'=>'badge-ready','FROZEN'=>'badge-frozen','PAID'=>'badge-paid'];
     $lbl = ['HOLDING'=>'Đang giữ','READY'=>'Sẵn sàng','FROZEN'=>'Đóng băng','PAID'=>'Đã giải ngân'];
-    return '<span class="badge '.($map[$s]??'badge-holding').'">'.(($lbl[$s]??$s)).'</span>';
+    return '<span class="badge '.($map[$s]??'badge-holding').'">' . ($lbl[$s]??$s) . '</span>';
 }
 ?>
 
