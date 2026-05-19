@@ -157,6 +157,22 @@ $refund_pending = (int)($conn->query("SELECT COUNT(*) c FROM bookings WHERE refu
             </div>
         </button>
 
+        <button class="pai-mode-btn" data-mode="refund" onclick="switchMode(this,'refund')">
+            <span class="pai-mode-icon">↩️</span>
+            <div>
+                <div>Hoàn tiền</div>
+                <div class="pai-mode-label">5 chính sách & routing</div>
+            </div>
+        </button>
+
+        <button class="pai-mode-btn" data-mode="chargeback" onclick="switchMode(this,'chargeback')">
+            <span class="pai-mode-icon">⚖️</span>
+            <div>
+                <div>Chargeback Defense</div>
+                <div class="pai-mode-label">Visa/MC evidence package</div>
+            </div>
+        </button>
+
         <div style="margin-top:4px"></div>
 
         <div class="pai-info">
@@ -213,6 +229,18 @@ $refund_pending = (int)($conn->query("SELECT COUNT(*) c FROM bookings WHERE refu
             <span class="pai-chip" onclick="chip(this)">Khi nào dùng Biometric thay OTP?</span>
             <span class="pai-chip" onclick="chip(this)">Chống replay attack trong OTP</span>
         </div>
+        <div class="pai-chips" id="chips-refund" style="display:none">
+            <span class="pai-chip" onclick="chip(this)">Tính refund cho booking confirmed hủy trước 2 ngày</span>
+            <span class="pai-chip" onclick="chip(this)">Hoàn tiền MoMo vs VNPAY khác nhau thế nào?</span>
+            <span class="pai-chip" onclick="chip(this)">NON_REFUNDABLE có ngoại lệ không?</span>
+            <span class="pai-chip" onclick="chip(this)">Quy trình approval 4 cấp theo số tiền</span>
+        </div>
+        <div class="pai-chips" id="chips-chargeback" style="display:none">
+            <span class="pai-chip" onclick="chip(this)">Chargeback 4855 — khách nói không nhận dịch vụ</span>
+            <span class="pai-chip" onclick="chip(this)">Chuẩn bị evidence package để fight chargeback</span>
+            <span class="pai-chip" onclick="chip(this)">Khi nào nên accept thay vì fight?</span>
+            <span class="pai-chip" onclick="chip(this)">Chargeback rate vượt 1% thì sao?</span>
+        </div>
 
         <!-- Messages -->
         <div class="pai-chat" id="chatBox">
@@ -220,12 +248,14 @@ $refund_pending = (int)($conn->query("SELECT COUNT(*) c FROM bookings WHERE refu
                 <div class="pai-avatar">💳</div>
                 <div class="pai-bubble">
 Xin chào! Tôi là **AI Payment Engine** của nền tảng StayGo.<br><br>
-Tôi có thể giúp bạn với 5 chế độ:<br>
+Tôi có thể giúp bạn với 7 chế độ:<br>
 • **💳 Payment Engine** — Tổng quan entities, PCI DSS, payout lifecycle, dữ liệu live<br>
 • **🔄 Luồng 4 Bước** — Order khởi tạo → PSP → callback verify → double-entry ledger<br>
 • **🎟️ Coupon & Điểm** — 7-bước fail-fast validate, tính giá theo thứ tự ưu tiên, FIFO points<br>
 • **🛡️ Fraud Detection** — Scoring matrix 100 điểm, Allow/Review/Challenge/Block, điều tra post-fraud<br>
-• **🔐 3DS2 & OTP** — Frictionless vs Challenge flow, OTP replay-proof, Biometric mobile<br><br>
+• **🔐 3DS2 & OTP** — Frictionless vs Challenge flow, OTP replay-proof, Biometric mobile<br>
+• **↩️ Hoàn tiền** — 5 loại chính sách, routing về PTTT gốc, approval workflow 4 cấp<br>
+• **⚖️ Chargeback Defense** — Phân loại Visa/MC reason codes, evidence package, fight/accept strategy<br><br>
 Chọn chế độ bên trái và đặt câu hỏi để bắt đầu!
                 </div>
             </div>
