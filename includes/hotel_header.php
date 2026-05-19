@@ -226,6 +226,13 @@ if ($pr) $payout_ready = (int)$pr->fetch_assoc()['c'];
         <a href="/hotel/profile.php" class="<?= $current_page === 'profile.php' ? 'active' : '' ?>">
             ⚙️ Thông tin khách sạn
         </a>
+
+        <div class="nav-label">AI</div>
+        <a href="/hotel/hotel_ai.php"
+           class="<?= $current_page === 'hotel_ai.php' ? 'active' : '' ?>"
+           style="background:<?= $current_page === 'hotel_ai.php' ? '' : 'rgba(49,130,206,.12)' ?>">
+            🤖 AI Assistant
+        </a>
     </nav>
 
     <div class="hotel-sidebar-footer">

@@ -180,6 +180,12 @@ $admin_avatar = strtoupper(mb_substr($_SESSION['admin_name'] ?? 'A', 0, 1));
         <a href="/download_report.php" target="_blank">
             📥 Tải báo cáo Word
         </a>
+
+        <a href="/admin_lvhuy_kontum/admin_ai.php"
+           class="<?= $current_page === 'admin_ai.php' ? 'active' : '' ?>"
+           style="background:<?= $current_page === 'admin_ai.php' ? '' : 'linear-gradient(135deg,#667eea18,#764ba218)' ?>;border:1.5px solid #e9ecff;margin-top:4px">
+            🤖 AI Assistant
+        </a>
     </nav>
 
     <div class="sidebar-footer">
