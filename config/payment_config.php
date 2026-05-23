@@ -166,9 +166,9 @@ function momo_create_payment(string $order_code, float $amount, int $booking_id)
 // PayOS — cổng thanh toán Việt Nam (by VNPay)
 // Đăng ký tại: https://payos.vn → Dashboard → Lấy API Keys
 // ═══════════════════════════════════════════════════════════════════
-define('PAYOS_CLIENT_ID',    getenv('PAYOS_CLIENT_ID')    ?: 'ae5ad459-f562-4513-9ae5-1a66cae70928');
-define('PAYOS_API_KEY',      getenv('PAYOS_API_KEY')      ?: '743049b3-0896-4560-a247-d34ce146263d');
-define('PAYOS_CHECKSUM_KEY', getenv('PAYOS_CHECKSUM_KEY') ?: '7ea8fef4d5ad3de4bc95128c4d8e193aa91a671801c32a683b0fd6ceb8d7c601');
+define('PAYOS_CLIENT_ID',    getenv('PAYOS_CLIENT_ID')    ?: '14ecdae9-5776-417d-896c-b1e9630bf333');
+define('PAYOS_API_KEY',      getenv('PAYOS_API_KEY')      ?: '65492cd4-49a4-441c-bbca-c8436d6e77d2');
+define('PAYOS_CHECKSUM_KEY', getenv('PAYOS_CHECKSUM_KEY') ?: '3654824fdc9c127e80c4dffa2f0509cede424871b9235f7957deb78b5b1865f8');
 define('PAYOS_ENDPOINT',     'https://api-merchant.payos.vn/v2/payment-requests');
 
 /**
