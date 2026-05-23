@@ -30,12 +30,11 @@ $linkId    = $data['paymentLinkId']   ?? '';
 $sigIn     = $body['signature']       ?? '';
 
 // ── Xác minh chữ ký PayOS (HMAC SHA256 từ data fields sorted by key) ─
+// PayOS SDK tính signature bao gồm TẤT CẢ fields kể cả empty string/null
 ksort($data);
 $signParts = [];
 foreach ($data as $k => $v) {
-    if ($v !== null && $v !== '') {
-        $signParts[] = "$k=$v";
-    }
+    $signParts[] = "$k=" . ($v ?? '');
 }
 $expectedSig = hash_hmac('sha256', implode('&', $signParts), PAYOS_CHECKSUM_KEY);
 
