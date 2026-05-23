@@ -82,7 +82,20 @@ foreach ((array)$body['data'] as $txn) {
 
     if (!$booking) continue; // Không tìm thấy booking
 
-    // Fix #4a: Idempotency check đầy đủ — skip mọi trạng thái đã xử lý
+    // Idempotency layer 1: tid (transaction ID ngân hàng) — bắt duplicate webhook
+    if ($tid) {
+        $tid_idem = $conn->prepare("SELECT id FROM payments WHERE bank_txn_id = ? LIMIT 1");
+        $tid_idem->bind_param('s', $tid);
+        $tid_idem->execute();
+        $already = $tid_idem->get_result()->fetch_assoc();
+        $tid_idem->close();
+        if ($already) {
+            error_log("[Casso] Duplicate tid=$tid — skipped");
+            continue;
+        }
+    }
+
+    // Idempotency layer 2: booking/payment status
     if ($booking['payment_verified']
         || $booking['payment_status'] === 'paid'
         || in_array($booking['status'], ['confirmed', 'checked_in', 'completed'])) {
@@ -100,9 +113,6 @@ foreach ((array)$body['data'] as $txn) {
 
     // ── 6. Auto-confirm ──────────────────────────────────────────
     $booking_id = (int)$booking['id'];
-    $tid_esc    = $conn->real_escape_string($tid);
-    $desc_esc   = $conn->real_escape_string(mb_substr($description, 0, 200));
-    $when_esc   = $conn->real_escape_string($when);
 
     // Cập nhật booking
     $upd_bk = $conn->prepare("UPDATE bookings SET status = 'confirmed' WHERE id = ? AND status = 'pending'");

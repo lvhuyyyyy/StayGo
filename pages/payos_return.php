@@ -43,7 +43,7 @@ if ($cancelled || $status === 'CANCELLED') {
         $bk_amt_stmt->execute();
         $bk_amt_row = $bk_amt_stmt->get_result()->fetch_assoc();
         $expected   = (float)($bk_amt_row['total_price'] ?? 0);
-        if ($expected > 0 && ($api_amount < $expected * 0.99 || $api_amount > $expected * 1.01)) {
+        if ($expected > 0 && abs($api_amount - $expected) > 1) {
             error_log("[PayOS return] amount mismatch: expected={$expected}, got={$api_amount}, booking={$booking_id}");
             $verified = false;
             $errorMsg = 'Số tiền thanh toán không khớp với đơn hàng. Vui lòng liên hệ hỗ trợ.';

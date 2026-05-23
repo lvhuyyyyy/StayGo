@@ -68,18 +68,31 @@ if (!$booking) {
     exit;
 }
 
-// Idempotency: đã xử lý rồi → bỏ qua
+// Idempotency layer 1: booking/payment status
 if ($booking['payment_status'] === 'paid'
     || in_array($booking['status'], ['confirmed', 'checked_in', 'completed'])) {
     echo json_encode(['error' => 0, 'message' => 'Already processed', 'data' => null]);
     exit;
 }
 
-// Amount check: ±1% tolerance
+// Idempotency layer 2: paymentLinkId duy nhất — bắt duplicate webhook
+if ($linkId) {
+    $idem = $conn->prepare("SELECT id FROM payments WHERE bank_txn_id = ? LIMIT 1");
+    $idem->bind_param('s', $linkId);
+    $idem->execute();
+    if ($idem->get_result()->fetch_assoc()) {
+        echo json_encode(['error' => 0, 'message' => 'Already processed', 'data' => null]);
+        exit;
+    }
+    $idem->close();
+}
+
+// Amount check: chênh lệch tuyệt đối ≤ 1 VNĐ (bù làm tròn float, không dùng %)
 $expected = (float)$booking['total_price'];
-if ($amount < $expected * 0.99 || $amount > $expected * 1.01) {
+if (abs($amount - $expected) > 1) {
     error_log("[PayOS webhook] amount mismatch: expected={$expected}, got={$amount}, booking={$orderCode}");
-    echo json_encode(['error' => 0, 'message' => 'Amount mismatch logged', 'data' => null]);
+    http_response_code(400);
+    echo json_encode(['error' => 1, 'message' => 'Amount mismatch']);
     exit;
 }
 
@@ -87,10 +100,11 @@ if ($amount < $expected * 0.99 || $amount > $expected * 1.01) {
 $conn->begin_transaction();
 
 $upd_pay = $conn->prepare("
-    UPDATE payments SET payment_status='paid', payment_verified=1, verified_at=NOW()
+    UPDATE payments SET payment_status='paid', payment_verified=1, verified_at=NOW(),
+           bank_txn_id=?
     WHERE booking_id = ? AND payment_status = 'pending'
 ");
-$upd_pay->bind_param('i', $orderCode);
+$upd_pay->bind_param('si', $linkId, $orderCode);
 $upd_pay->execute();
 
 $upd_bk = $conn->prepare("

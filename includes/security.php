@@ -8,60 +8,38 @@
 if (session_status() === PHP_SESSION_NONE) session_start();
 
 // ========================================================
-// CSRF TOKEN
+// CSRF TOKEN — stateful, per-session, 1h expiry, single-use rotation
 // ========================================================
 
-// Secret dùng cho stateless CSRF (đổi nếu cần rotate)
-define('_CSRF_SECRET', 'staygo_csrf_lvhuy_2024_secure');
-
-/**
- * Tạo CSRF token stateless: HMAC(session_id + ngày).
- * Hoạt động đúng kể cả khi Railway dùng nhiều instance vì
- * session_id lấy từ cookie nên giống nhau trên mọi instance.
- */
 function csrf_token(): string {
-    $sid = session_id() ?: 'nosid';
-    $token = hash_hmac('sha256', $sid . '|' . date('Ymd'), _CSRF_SECRET);
-    $_SESSION['csrf_token'] = $token; // giữ cho tương thích
-    return $token;
+    if (empty($_SESSION['csrf_token']) || time() > ($_SESSION['csrf_exp'] ?? 0)) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        $_SESSION['csrf_exp']   = time() + 3600;
+    }
+    return $_SESSION['csrf_token'];
 }
 
-/**
- * Xuất hidden input chứa CSRF token
- * Dùng trong form: <?= csrf_field() ?>
- */
 function csrf_field(): string {
-    return '<input type="hidden" name="csrf_token" value="' . csrf_token() . '">';
+    $t = htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8');
+    return "<input type='hidden' name='csrf_token' value='$t'>";
 }
 
-/**
- * Kiểm tra CSRF token từ POST request (stateless, cross-instance safe)
- */
 function csrf_verify(): bool {
     $submitted = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
     if (empty($submitted)) return false;
 
-    $sid = session_id() ?: 'nosid';
+    $valid = !empty($_SESSION['csrf_token'])
+          && time() <= ($_SESSION['csrf_exp'] ?? 0)
+          && hash_equals($_SESSION['csrf_token'], $submitted);
 
-    // Chấp nhận token hôm nay và hôm qua (tránh lỗi khi qua 00:00)
-    $today     = hash_hmac('sha256', $sid . '|' . date('Ymd'), _CSRF_SECRET);
-    $yesterday = hash_hmac('sha256', $sid . '|' . date('Ymd', strtotime('-1 day')), _CSRF_SECRET);
-
-    if (hash_equals($today, $submitted) || hash_equals($yesterday, $submitted)) {
-        return true;
+    if ($valid) {
+        // Rotate ngay sau khi dùng — token cũ không thể tái sử dụng
+        unset($_SESSION['csrf_token'], $_SESSION['csrf_exp']);
     }
 
-    // Fallback: so sánh với token cũ trong session (dev / backward compat)
-    if (!empty($_SESSION['csrf_token'])) {
-        return hash_equals($_SESSION['csrf_token'], $submitted);
-    }
-
-    return false;
+    return $valid;
 }
 
-/**
- * Kiểm tra CSRF và dừng nếu không hợp lệ
- */
 function csrf_check(): void {
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && !csrf_verify()) {
         http_response_code(403);
@@ -178,7 +156,7 @@ function clean_input(string $input): string {
 /**
  * Làm sạch số
  */
-function clean_int($input): int {
+function clean_int(mixed $input): int {
     return (int) filter_var($input, FILTER_SANITIZE_NUMBER_INT);
 }
 

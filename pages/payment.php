@@ -279,9 +279,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $conn->query("UPDATE vouchers SET used_count = used_count + 1 WHERE id = $vid");
         $vu_email = strtolower($email);
         $vu_phone = $phone_clean ?? preg_replace('/[\s\-\.]/', '', $phone);
-        $vu_uid   = $userId ? (int)$userId : null;
-        $vu_stmt  = $conn->prepare("INSERT INTO voucher_uses (voucher_id, user_id, email, phone, booking_id) VALUES (?, ?, ?, ?, ?)");
-        $vu_stmt->bind_param('iissi', $vid, $vu_uid, $vu_email, $vu_phone, $booking_id);
+        // Dùng 2 query riêng để tránh vấn đề nullable bind trên PHP < 8.1
+        if ($userId) {
+            $vu_uid_val = (int)$userId;
+            $vu_stmt    = $conn->prepare("INSERT INTO voucher_uses (voucher_id, user_id, email, phone, booking_id) VALUES (?, ?, ?, ?, ?)");
+            $vu_stmt->bind_param('iissi', $vid, $vu_uid_val, $vu_email, $vu_phone, $booking_id);
+        } else {
+            $vu_stmt = $conn->prepare("INSERT INTO voucher_uses (voucher_id, user_id, email, phone, booking_id) VALUES (?, NULL, ?, ?, ?)");
+            $vu_stmt->bind_param('issi', $vid, $vu_email, $vu_phone, $booking_id);
+        }
         @$vu_stmt->execute();
         $vu_stmt->close();
         $bk_vc = $conn->prepare("UPDATE bookings SET voucher_code=?, discount_amount=? WHERE id=?");
