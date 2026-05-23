@@ -1,0 +1,19 @@
+name: Expire pending bookings
+
+on:
+  schedule:
+    # Chạy mỗi 10 phút (GitHub Actions tối thiểu 5 phút)
+    - cron: '*/10 * * * *'
+  workflow_dispatch: # Cho phép chạy thủ công từ tab Actions
+
+jobs:
+  expire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+
+    steps:
+      - name: Call expire endpoint
+        run: |
+          curl -s -o /dev/null -w "%{http_code}" \
+            "https://staygo-local.up.railway.app/cron/expire_pending_bookings.php?token=${{ secrets.CRON_SECRET }}" \
+            | grep -q "200" && echo "OK" || echo "FAILED"
