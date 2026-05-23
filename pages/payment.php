@@ -275,15 +275,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Tăng used_count voucher + ghi log voucher_uses (chống lợi dụng)
     if ($voucher_row) {
-        $conn->query("UPDATE vouchers SET used_count = used_count + 1 WHERE id = " . (int)$voucher_row['id']);
-        $vu_email = $conn->real_escape_string(strtolower($email));
-        $vu_phone = $conn->real_escape_string($phone_clean ?? preg_replace('/[\s\-\.]/', '', $phone));
-        $vu_uid   = $userId ? (int)$userId : 'NULL';
-        @$conn->query("INSERT INTO voucher_uses (voucher_id, user_id, email, phone, booking_id)
-            VALUES ({$voucher_row['id']}, $vu_uid, '$vu_email', '$vu_phone', $booking_id)");
-        // Lưu voucher_code và discount vào bản ghi booking
-        $vc_esc = $conn->real_escape_string($voucher_code);
-        @$conn->query("UPDATE bookings SET voucher_code='$vc_esc', discount_amount=$voucher_disc WHERE id=$booking_id");
+        $vid = (int)$voucher_row['id'];
+        $conn->query("UPDATE vouchers SET used_count = used_count + 1 WHERE id = $vid");
+        $vu_email = strtolower($email);
+        $vu_phone = $phone_clean ?? preg_replace('/[\s\-\.]/', '', $phone);
+        $vu_uid   = $userId ? (int)$userId : null;
+        $vu_stmt  = $conn->prepare("INSERT INTO voucher_uses (voucher_id, user_id, email, phone, booking_id) VALUES (?, ?, ?, ?, ?)");
+        $vu_stmt->bind_param('iissi', $vid, $vu_uid, $vu_email, $vu_phone, $booking_id);
+        @$vu_stmt->execute();
+        $vu_stmt->close();
+        $bk_vc = $conn->prepare("UPDATE bookings SET voucher_code=?, discount_amount=? WHERE id=?");
+        $bk_vc->bind_param('sdi', $voucher_code, $voucher_disc, $booking_id);
+        $bk_vc->execute();
+        $bk_vc->close();
     }
 
     // ── Redirect sang cổng thanh toán thật ────────────────────────────

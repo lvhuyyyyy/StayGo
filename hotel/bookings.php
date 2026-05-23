@@ -66,13 +66,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['booking_action'])) {
                     $conn->rollback();
                     $error = 'Phòng đã hết chỗ trong ngày này, không thể xác nhận.';
                 } else {
-                    $conn->query("UPDATE bookings SET status='confirmed' WHERE id=$bid");
-                    $hotel_name_esc = $conn->real_escape_string($_SESSION['hotel_name']);
-                    $conn->query("
+                    $upd_bk = $conn->prepare("UPDATE bookings SET status='confirmed' WHERE id=?");
+                    $upd_bk->bind_param('i', $bid);
+                    $upd_bk->execute();
+                    $upd_bk->close();
+                    $hotel_name_s = $_SESSION['hotel_name'];
+                    $log_s = $conn->prepare("
                         INSERT INTO booking_logs (booking_id, actor_type, actor_id, actor_name, action, description)
-                        VALUES ($bid, 'HOTEL', $hotel_id, '$hotel_name_esc',
-                                'CONFIRMED', 'Khách sạn đã xác nhận đặt phòng.')
+                        VALUES (?, 'HOTEL', ?, ?, 'CONFIRMED', 'Khách sạn đã xác nhận đặt phòng.')
                     ");
+                    $log_s->bind_param('iis', $bid, $hotel_id, $hotel_name_s);
+                    $log_s->execute();
+                    $log_s->close();
                     $conn->commit();
                     $msg = 'Đã xác nhận đặt phòng ' . htmlspecialchars($target['order_code']) . '.';
                 }
@@ -88,13 +93,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['booking_action'])) {
             $error = 'Không thể từ chối: ngày nhận phòng còn dưới 24 giờ. Vui lòng liên hệ trực tiếp với khách và báo Admin xử lý qua trang Disputes.';
         } else {
         if (!$reason) $reason = 'Khách sạn không thể nhận đặt phòng này.';
-        $reason_esc = $conn->real_escape_string($reason);
-        $conn->query("UPDATE bookings SET status='cancelled' WHERE id=$bid");
-        $conn->query("
+        $upd_rej = $conn->prepare("UPDATE bookings SET status='cancelled' WHERE id=?");
+        $upd_rej->bind_param('i', $bid);
+        $upd_rej->execute();
+        $upd_rej->close();
+        $hotel_name_s = $_SESSION['hotel_name'];
+        $log_rej = $conn->prepare("
             INSERT INTO booking_logs (booking_id, actor_type, actor_id, actor_name, action, description)
-            VALUES ($bid, 'HOTEL', $hotel_id, '" . $conn->real_escape_string($_SESSION['hotel_name']) . "',
-                    'REJECTED', '$reason_esc')
+            VALUES (?, 'HOTEL', ?, ?, 'REJECTED', ?)
         ");
+        $log_rej->bind_param('iiss', $bid, $hotel_id, $hotel_name_s, $reason);
+        $log_rej->execute();
+        $log_rej->close();
         send_booking_rejected_email($target['email'], $target['full_name'], [
             'order_code'  => $target['order_code'],
             'hotel_name'  => $_SESSION['hotel_name'],

@@ -1,12 +1,6 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) session_start();
-include "../config/database.php";
-
-// Auth guard — phải kiểm tra trước khi xử lý bất kỳ POST nào
-if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_role']) || $_SESSION['admin_role'] !== 'admin') {
-    header("Location: /auth/login_admin.php");
-    exit;
-}
+require_once 'admin_bootstrap.php';
+if ($_SERVER['REQUEST_METHOD'] === 'POST') csrf_check();
 
 // ── Giải ngân tất cả READY bookings (batch) ──────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'payout_all') {
@@ -26,17 +20,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'payou
           AND b.hotel_payout > 0 AND h.partner_status = 'ACTIVE'
         $hotel_cond
     ");
+    $ins_po = $conn->prepare("
+        INSERT INTO payouts (hotel_id, booking_id, amount, commission_amount, processed_by_admin_id, processed_by_name, note)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    ");
+    $upd_po = $conn->prepare("UPDATE bookings SET payout_status='PAID' WHERE id=?");
     $done = 0;
+    $admin_name_raw = $_SESSION['admin_name'] ?? 'Admin';
+    $note_raw = trim($_POST['note'] ?? 'Giải ngân tất cả theo xác nhận admin');
     while ($batch && $br = $batch->fetch_assoc()) {
         $_bid  = (int)$br['id'];
         $_hid  = (int)$br['hotel_id'];
         $_amt  = (float)$br['hotel_payout'];
         $_comm = (float)$br['platform_revenue'];
-        $conn->query("INSERT INTO payouts (hotel_id, booking_id, amount, commission_amount, processed_by_admin_id, processed_by_name, note)
-                      VALUES ($_hid, $_bid, $_amt, $_comm, $admin_id, '$admin_name', '$note_esc')");
-        $conn->query("UPDATE bookings SET payout_status='PAID' WHERE id=$_bid");
+        $ins_po->bind_param('iiddiss', $_hid, $_bid, $_amt, $_comm, $admin_id, $admin_name_raw, $note_raw);
+        $ins_po->execute();
+        $upd_po->bind_param('i', $_bid);
+        $upd_po->execute();
         $done++;
     }
+    $ins_po->close();
+    $upd_po->close();
     $redir = isset($_POST['hotel_id']) ? '?hotel_id=' . (int)$_POST['hotel_id'] : '';
     header("Location: payout.php{$redir}&success=payout_all&count=$done");
     exit;
@@ -59,29 +63,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         ")->fetch_assoc();
 
         if ($b) {
-            $hotel_id         = (int)$b['hotel_id'];
-            $amount           = (float)$b['hotel_payout'];
+            $hotel_id          = (int)$b['hotel_id'];
+            $amount            = (float)$b['hotel_payout'];
             $commission_amount = (float)$b['platform_revenue'];
+            $admin_name_raw    = $_SESSION['admin_name'] ?? 'Admin';
+            $note_raw          = trim($_POST['note'] ?? '');
 
-            // Ghi vào bảng payouts
-            $conn->query("
+            $ins_p = $conn->prepare("
                 INSERT INTO payouts (hotel_id, booking_id, amount, commission_amount,
                                      processed_by_admin_id, processed_by_name, note)
-                VALUES ($hotel_id, $booking_id, $amount, $commission_amount,
-                        $admin_id, '$admin_name', '$note')
+                VALUES (?, ?, ?, ?, ?, ?, ?)
             ");
+            $ins_p->bind_param('iiddiss', $hotel_id, $booking_id, $amount, $commission_amount, $admin_id, $admin_name_raw, $note_raw);
+            $ins_p->execute();
+            $ins_p->close();
 
-            // Cập nhật payout_status → PAID
-            $conn->query("UPDATE bookings SET payout_status='PAID' WHERE id=$booking_id");
+            $upd_p = $conn->prepare("UPDATE bookings SET payout_status='PAID' WHERE id=?");
+            $upd_p->bind_param('i', $booking_id);
+            $upd_p->execute();
+            $upd_p->close();
 
-            // Ghi booking_log
-            $desc = $conn->real_escape_string("Giải ngân " . number_format($amount, 0, ',', '.') . "đ cho " . $b['hotel_name']);
-            $meta = json_encode(['amount' => $amount, 'commission' => $commission_amount, 'admin' => $_SESSION['admin_name'] ?? 'Admin']);
-            $meta_esc = $conn->real_escape_string($meta);
-            $conn->query("
+            $log_desc = "Giải ngân " . number_format($amount, 0, ',', '.') . "đ cho " . $b['hotel_name'];
+            $log_meta = json_encode(['amount' => $amount, 'commission' => $commission_amount, 'admin' => $admin_name_raw]);
+            $ins_log  = $conn->prepare("
                 INSERT INTO booking_logs (booking_id, actor_type, actor_id, actor_name, action, description, metadata)
-                VALUES ($booking_id, 'ADMIN', $admin_id, '$admin_name', 'PAYOUT_PROCESSED', '$desc', '$meta_esc')
+                VALUES (?, 'ADMIN', ?, ?, 'PAYOUT_PROCESSED', ?, ?)
             ");
+            $ins_log->bind_param('iisss', $booking_id, $admin_id, $admin_name_raw, $log_desc, $log_meta);
+            $ins_log->execute();
+            $ins_log->close();
 
             $redirect_hotel = isset($_POST['hotel_id']) ? '?hotel_id=' . (int)$_POST['hotel_id'] : '';
             header("Location: payout.php{$redirect_hotel}&success=payout");
@@ -227,6 +237,7 @@ if (isset($_GET['error'])) {
     </form>
     <?php if (!empty($ready_bookings)): ?>
     <form method="POST" style="margin:0" id="payoutAllForm">
+        <?= csrf_field() ?>
         <input type="hidden" name="action" value="payout_all">
         <input type="hidden" name="hotel_id" value="<?= $filter_hotel ?>">
         <button type="button"
@@ -380,6 +391,7 @@ if (isset($_GET['error'])) {
         </div>
 
         <form method="POST">
+            <?= csrf_field() ?>
             <input type="hidden" name="action" value="payout">
             <input type="hidden" name="booking_id" id="modal-booking-id">
             <input type="hidden" name="hotel_id" value="<?= $filter_hotel ?>">

@@ -86,19 +86,27 @@ if ($amount < $expected * 0.99 || $amount > $expected * 1.01) {
 // ── Cập nhật DB trong transaction ────────────────────────────────────
 $conn->begin_transaction();
 
-$conn->query("
+$upd_pay = $conn->prepare("
     UPDATE payments SET payment_status='paid', payment_verified=1, verified_at=NOW()
-    WHERE booking_id = $orderCode AND payment_status = 'pending'
+    WHERE booking_id = ? AND payment_status = 'pending'
 ");
-$conn->query("
+$upd_pay->bind_param('i', $orderCode);
+$upd_pay->execute();
+
+$upd_bk = $conn->prepare("
     UPDATE bookings SET status='confirmed'
-    WHERE id = $orderCode AND status = 'pending'
+    WHERE id = ? AND status = 'pending'
 ");
-$conn->query("
+$upd_bk->bind_param('i', $orderCode);
+$upd_bk->execute();
+
+$ins_log = $conn->prepare("
     INSERT INTO booking_logs (booking_id, actor_type, actor_name, action, description)
-    VALUES ($orderCode, 'SYSTEM', 'PayOS-Webhook', 'PAYMENT_CONFIRMED',
+    VALUES (?, 'SYSTEM', 'PayOS-Webhook', 'PAYMENT_CONFIRMED',
             'PayOS IPN xác nhận thanh toán thành công')
 ");
+$ins_log->bind_param('i', $orderCode);
+$ins_log->execute();
 
 $conn->commit();
 

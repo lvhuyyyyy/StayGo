@@ -105,7 +105,10 @@ foreach ((array)$body['data'] as $txn) {
     $when_esc   = $conn->real_escape_string($when);
 
     // Cập nhật booking
-    $conn->query("UPDATE bookings SET status = 'confirmed' WHERE id = $booking_id AND status = 'pending'");
+    $upd_bk = $conn->prepare("UPDATE bookings SET status = 'confirmed' WHERE id = ? AND status = 'pending'");
+    $upd_bk->bind_param('i', $booking_id);
+    $upd_bk->execute();
+    $upd_bk->close();
 
     // Cập nhật payment: ghi rõ bank_txn_id + verified_at
     if ($booking['payment_id']) {
@@ -124,16 +127,16 @@ foreach ((array)$body['data'] as $txn) {
         $upd->close();
     }
 
-    // Ghi booking_log
-    $conn->query("
+    // Ghi booking_log (prepared statement để tránh injection từ description/tid)
+    $log_desc = 'Chuyển khoản tự động xác nhận qua Casso. Nội dung CK: ' . mb_substr($description, 0, 200);
+    $log_meta = json_encode(['tid' => $tid, 'amount' => $amount, 'when' => $when]);
+    $ins_log  = $conn->prepare("
         INSERT INTO booking_logs (booking_id, actor_type, actor_name, action, description, metadata)
-        VALUES (
-            $booking_id, 'SYSTEM', 'Casso',
-            'PAYMENT_CONFIRMED',
-            'Chuyển khoản tự động xác nhận qua Casso. Nội dung CK: $desc_esc',
-            '{\"tid\":\"$tid_esc\",\"amount\":$amount,\"when\":\"$when_esc\"}'
-        )
+        VALUES (?, 'SYSTEM', 'Casso', 'PAYMENT_CONFIRMED', ?, ?)
     ");
+    $ins_log->bind_param('iss', $booking_id, $log_desc, $log_meta);
+    $ins_log->execute();
+    $ins_log->close();
 
     // ── 7. Gửi email ─────────────────────────────────────────────
     $email_data = [

@@ -35,6 +35,21 @@ if ($cancelled || $status === 'CANCELLED') {
               && ($vdata['data']['status'] ?? '') === 'PAID'
               && (int)($vdata['data']['orderCode'] ?? 0) === $booking_id);
 
+    // Kiểm tra amount từ API response khớp với booking total_price (±1%)
+    if ($verified) {
+        $api_amount = (float)($vdata['data']['amount'] ?? 0);
+        $bk_amt_stmt = $conn->prepare("SELECT total_price FROM bookings WHERE id = ? LIMIT 1");
+        $bk_amt_stmt->bind_param('i', $booking_id);
+        $bk_amt_stmt->execute();
+        $bk_amt_row = $bk_amt_stmt->get_result()->fetch_assoc();
+        $expected   = (float)($bk_amt_row['total_price'] ?? 0);
+        if ($expected > 0 && ($api_amount < $expected * 0.99 || $api_amount > $expected * 1.01)) {
+            error_log("[PayOS return] amount mismatch: expected={$expected}, got={$api_amount}, booking={$booking_id}");
+            $verified = false;
+            $errorMsg = 'Số tiền thanh toán không khớp với đơn hàng. Vui lòng liên hệ hỗ trợ.';
+        }
+    }
+
     if ($verified) {
         // Cập nhật payments + bookings
         $stmt = $conn->prepare("
