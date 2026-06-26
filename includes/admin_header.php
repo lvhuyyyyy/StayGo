@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // -- Bảo vệ toàn bộ admin --
 if (session_status() === PHP_SESSION_NONE) session_start();
 require_once __DIR__ . '/security.php';
@@ -57,29 +57,29 @@ $admin_avatar = strtoupper(mb_substr($_SESSION['admin_name'] ?? 'A', 0, 1));
     <nav class="sidebar-menu">
         <div class="menu-label">Tổng quan</div>
 
-        <a href="/admin_lvhuy_kontum/dashboard.php"
+        <a href="/admin/dashboard.php"
            class="<?= $current_page === 'dashboard.php' ? 'active' : '' ?>">
             Dashboard
         </a>
 
         <div class="menu-label">Quản lý</div>
 
-        <a href="/admin_lvhuy_kontum/users.php"
+        <a href="/admin/users.php"
            class="<?= $current_page === 'users.php' ? 'active' : '' ?>">
             Quản lý User
         </a>
 
-        <a href="/admin_lvhuy_kontum/hotels.php"
+        <a href="/admin/hotels.php"
            class="<?= $current_page === 'hotels.php' ? 'active' : '' ?>">
             Khách sạn
         </a>
 
-        <a href="/admin_lvhuy_kontum/rooms.php"
+        <a href="/admin/rooms.php"
            class="<?= $current_page === 'rooms.php' ? 'active' : '' ?>">
             Phòng
         </a>
 
-        <a href="/admin_lvhuy_kontum/bookings.php"
+        <a href="/admin/bookings.php"
            class="<?= $current_page === 'bookings.php' ? 'active' : '' ?>">
             Đặt phòng
             <?php if($pending_count > 0): ?>
@@ -87,12 +87,12 @@ $admin_avatar = strtoupper(mb_substr($_SESSION['admin_name'] ?? 'A', 0, 1));
             <?php endif; ?>
         </a>
 
-        <a href="/admin_lvhuy_kontum/payments.php"
+        <a href="/admin/payments.php"
            class="<?= $current_page === 'payments.php' ? 'active' : '' ?>">
             Thanh toán
         </a>
 
-        <a href="/admin_lvhuy_kontum/refund_requests.php"
+        <a href="/admin/refund_requests.php"
            class="<?= $current_page === 'refund_requests.php' ? 'active' : '' ?>">
             Hoàn tiền
             <?php if($refund_pending > 0): ?>
@@ -102,12 +102,12 @@ $admin_avatar = strtoupper(mb_substr($_SESSION['admin_name'] ?? 'A', 0, 1));
 
         <div class="menu-label">Tài chính Platform</div>
 
-        <a href="/admin_lvhuy_kontum/finance.php"
+        <a href="/admin/finance.php"
            class="<?= $current_page === 'finance.php' ? 'active' : '' ?>">
             💰 Hoa hồng & Sao kê
         </a>
 
-        <a href="/admin_lvhuy_kontum/payout.php"
+        <a href="/admin/payout.php"
            class="<?= $current_page === 'payout.php' ? 'active' : '' ?>">
             <?php
             $payout_ready = 0;
@@ -122,17 +122,17 @@ $admin_avatar = strtoupper(mb_substr($_SESSION['admin_name'] ?? 'A', 0, 1));
             <?php endif; ?>
         </a>
 
-        <a href="/admin_lvhuy_kontum/blog_list.php"
+        <a href="/admin/blog_list.php"
            class="<?= in_array($current_page, ['blog_list.php', 'blog_form.php']) ? 'active' : '' ?>">
             Bài viết
         </a>
 
-        <a href="/admin_lvhuy_kontum/reviews.php"
+        <a href="/admin/reviews.php"
            class="<?= $current_page === 'reviews.php' ? 'active' : '' ?>">
             Đánh giá
         </a>
 
-        <a href="/admin_lvhuy_kontum/support_requests.php"
+        <a href="/admin/support_requests.php"
            class="<?= $current_page === 'support_requests.php' ? 'active' : '' ?>">
             Hỗ trợ
             <?php if($support_pending > 0): ?>
@@ -147,7 +147,7 @@ $admin_avatar = strtoupper(mb_substr($_SESSION['admin_name'] ?? 'A', 0, 1));
             if ($dr) $dispute_open = (int)$dr->fetch_assoc()['c'];
         }
         ?>
-        <a href="/admin_lvhuy_kontum/disputes.php"
+        <a href="/admin/disputes.php"
            class="<?= $current_page === 'disputes.php' ? 'active' : '' ?>">
             ⚖️ Khiếu nại
             <?php if($dispute_open > 0): ?>
@@ -157,33 +157,33 @@ $admin_avatar = strtoupper(mb_substr($_SESSION['admin_name'] ?? 'A', 0, 1));
 
         <div class="menu-label">Công cụ</div>
 
-        <a href="/admin_lvhuy_kontum/hotel_stats.php"
+        <a href="/admin/hotel_stats.php"
            class="<?= $current_page === 'hotel_stats.php' ? 'active' : '' ?>">
             📊 Thống kê khách sạn
         </a>
 
-        <a href="/admin_lvhuy_kontum/vouchers.php"
+        <a href="/admin/vouchers.php"
            class="<?= $current_page === 'vouchers.php' ? 'active' : '' ?>">
             🏷️ Voucher
         </a>
 
-        <a href="/admin_lvhuy_kontum/activity_log.php"
+        <a href="/admin/activity_log.php"
            class="<?= $current_page === 'activity_log.php' ? 'active' : '' ?>">
             📋 Nhật ký hoạt động
         </a>
 
-        <a href="/admin_lvhuy_kontum/site_settings.php"
+        <a href="/admin/site_settings.php"
            class="<?= $current_page === 'site_settings.php' ? 'active' : '' ?>">
             ⚙️ Cài đặt hệ thống
         </a>
 
-        <a href="/admin_lvhuy_kontum/admin_ai.php"
+        <a href="/admin/admin_ai.php"
            class="<?= $current_page === 'admin_ai.php' ? 'active' : '' ?>"
            style="background:<?= $current_page === 'admin_ai.php' ? '' : 'linear-gradient(135deg,#667eea18,#764ba218)' ?>;border:1.5px solid #e9ecff;margin-top:4px">
             🤖 AI Assistant
         </a>
 
-        <a href="/admin_lvhuy_kontum/payment_ai.php"
+        <a href="/admin/payment_ai.php"
            class="<?= $current_page === 'payment_ai.php' ? 'active' : '' ?>"
            style="background:<?= $current_page === 'payment_ai.php' ? '' : 'linear-gradient(135deg,#0f244418,#1e3a5f18)' ?>;border:1.5px solid #bfdbfe;margin-top:4px">
             💳 Payment AI

@@ -52,7 +52,7 @@ $blogs = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
         <p class="bl-hero-label">KHÁM PHÁ & TRẢI NGHIỆM</p>
         <h1 class="bl-hero-title">Danh sách BLOG</h1>
         <p class="bl-hero-sub">
-            Những câu chuyện du lịch hấp dẫn về Kon Tum, Măng Đen &amp; Quảng Ngãi
+            Những câu chuyện du lịch hấp dẫn về Đà Nẵng, Vũng Tàu &amp; Phan Thiết
         </p>
     </div>
 </div>
@@ -108,7 +108,7 @@ $blogs = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
                 <a href="/pages/blog-detail.php?id=<?= $blog['id'] ?>"
                 class="bl-img-link">
                     <div class="bl-img-wrap">
-                        <img src="<?= htmlspecialchars($blog['thumb']) ?>"
+                        <img src="/assets/images/<?= htmlspecialchars($blog['thumb']) ?>"
                             alt="<?= htmlspecialchars($blog['title']) ?>"
                             loading="lazy">
                         <div class="bl-img-overlay">

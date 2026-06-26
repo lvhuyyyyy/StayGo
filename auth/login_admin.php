@@ -1,9 +1,9 @@
-<?php
+﻿<?php
 session_start();
 include "../config/database.php";
 
 if (isset($_SESSION['user_id']) && $_SESSION['role'] === 'admin') {
-    header("Location: /admin_lvhuy_kontum/dashboard.php");
+    header("Location: /admin/dashboard.php");
     exit;
 }
 
@@ -54,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error)) {
             // Xóa session user nếu đang đăng nhập user trước đó
             unset($_SESSION['user_id'], $_SESSION['role'], $_SESSION['full_name']);
 
-            header("Location: /admin_lvhuy_kontum/dashboard.php");
+            header("Location: /admin/dashboard.php");
             exit;
 
         } else {

@@ -19,6 +19,10 @@ reset_*_temp.php
 # Claude Code internal memory (không cần thiết trên git)
 .claude/
 
+# Node
+node_modules/
+package-lock.json
+
 # Hệ thống
 .DS_Store
 Thumbs.db

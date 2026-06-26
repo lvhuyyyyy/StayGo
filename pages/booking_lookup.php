@@ -16,7 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $stmt = $conn->prepare("
             SELECT b.*, r.room_name, r.price as room_price,
-                   h.name as hotel_name, h.address as hotel_address
+                h.name as hotel_name, h.address as hotel_address
             FROM bookings b
             JOIN rooms r ON b.room_id = r.id
             JOIN hotels h ON r.hotel_id = h.id

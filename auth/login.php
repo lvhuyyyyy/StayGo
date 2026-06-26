@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 session_start();
 require_once '../config/database.php';
 require_once __DIR__ . '/../includes/security.php';
@@ -74,7 +74,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && empty($error)) {
                     }
 
                     if ($user['role'] === 'admin') {
-                        header("Location: /admin_lvhuy_kontum/dashboard.php");
+                        header("Location: /admin/dashboard.php");
                     } else {
                         $redirect = $_SESSION['redirect_after_login'] ?? '../index.php';
                         unset($_SESSION['redirect_after_login']);

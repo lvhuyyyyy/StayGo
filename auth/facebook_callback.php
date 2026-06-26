@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 session_start();
 require_once '../config/database.php';
 
@@ -76,7 +76,7 @@ $_SESSION['role']    = $role;
 
 // Redirect
 if ($role === 'admin') {
-    header("Location: /admin_lvhuy_kontum/dashboard.php");
+    header("Location: /admin/dashboard.php");
 } else {
     $redirect = $_SESSION['redirect_after_login'] ?? '../index.php';
     unset($_SESSION['redirect_after_login']);

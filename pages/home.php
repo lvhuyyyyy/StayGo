@@ -28,7 +28,7 @@
 ---------------------------------------- -->
 <section class="destinations">
     <div class="container">
-        <h1>Địa điểm đến đang thịnh hành tại tỉnh Quảng Ngãi</h1>
+        <h1>Địa điểm đến đang thịnh hành tại Việt Nam</h1>
         <div class="destination-grid">
             <?php
             $result = $conn->query("
@@ -199,6 +199,18 @@
 <!-- ----------------------------------------
     BLOG DU LỊCH
 ---------------------------------------- -->
+<?php
+$blogResult = $conn->query("
+    SELECT id, title, category, summary, thumb, author, read_time,
+        DATE_FORMAT(created_at, '%d/%m/%Y') AS date
+    FROM blog_posts
+    WHERE is_active = 1
+    ORDER BY created_at DESC
+    LIMIT 3
+");
+$blogs = [];
+while ($b = $blogResult->fetch_assoc()) $blogs[] = $b;
+?>
 <?php include 'pages/blog-section.php'; ?>
 
 <!-- ĐỊA ĐIỂM THAM QUAN NỔI BẬT: tạm ẩn, dữ liệu vẫn còn trong DB -->

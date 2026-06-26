@@ -20,7 +20,7 @@ $featured_blogs = isset($blogs) ? array_slice($blogs, 0, 3) : [];
             <div>
                 <h2 class="hs-blog-title">Danh sách bài viết</h2>
                 <p class="hs-blog-sub">
-                    Khám phá những câu chuyện du lịch hấp dẫn về Kon Tum, Măng Đen &amp; Quảng Ngãi
+                    Khám phá những câu chuyện du lịch hấp dẫn về Đà Nẵng, Vũng Tàu &amp; Phan Thiết
                 </p>
             </div>
             <a href="/pages/blog-list.php" class="hs-blog-viewall">
@@ -37,7 +37,7 @@ $featured_blogs = isset($blogs) ? array_slice($blogs, 0, 3) : [];
 
                 <a href="/pages/blog-detail.php?id=<?= $blog['id'] ?>" class="hs-blog-img-link">
                     <div class="hs-blog-img">
-                        <img src="<?= htmlspecialchars($blog['thumb']) ?>"
+                        <img src="/assets/images/<?= htmlspecialchars($blog['thumb']) ?>"
                             alt="<?= htmlspecialchars($blog['title']) ?>" loading="lazy">
                         <span class="hs-blog-cat"><?= htmlspecialchars($blog['category']) ?></span>
                     </div>

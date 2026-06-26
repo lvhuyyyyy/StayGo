@@ -1,4 +1,4 @@
-// ===== USERS PAGE =====
+﻿// ===== USERS PAGE =====
 (function () {
     window.confirmDelete = function (userId, userName, userEmail) {
         document.getElementById('delete-username').textContent = userName;
@@ -396,7 +396,7 @@
         formData.append('image', file);
 
         try {
-            const res  = await fetch('/admin_lvhuy_kontum/blog_form.php', { method: 'POST', body: formData });
+            const res  = await fetch('/admin/blog_form.php', { method: 'POST', body: formData });
             const data = await res.json();
             if (data.url) {
                 document.getElementById(targetId).value = data.url;

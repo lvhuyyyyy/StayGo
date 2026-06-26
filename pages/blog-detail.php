@@ -68,7 +68,7 @@ include __DIR__ . '/../includes/header.php';
 
 <!-- HERO -->
 <div class="bd-hero">
-    <img src="<?= htmlspecialchars($current['img'] ?: $current['thumb']) ?>"
+    <img src="/assets/images/<?= htmlspecialchars($current['img'] ?: $current['thumb']) ?>"
         alt="<?= htmlspecialchars($current['title']) ?>">
     <div class="bd-hero-overlay">
         <div class="bd-container">
@@ -174,7 +174,7 @@ include __DIR__ . '/../includes/header.php';
                     <?php foreach ($related as $r): ?>
                     <a href="/pages/blog-detail.php?id=<?= $r['id'] ?>"
                     class="bd-related-item">
-                        <img src="<?= htmlspecialchars($r['thumb']) ?>" loading="lazy">
+                        <img src="/assets/images/<?= htmlspecialchars($r['thumb']) ?>" loading="lazy">
                         <div>
                             <span><?= htmlspecialchars($r['category']) ?></span>
                             <p><?= htmlspecialchars(mb_substr($r['title'], 0, 55)) ?>...</p>
@@ -213,7 +213,7 @@ include __DIR__ . '/../includes/header.php';
             <a href="/pages/blog-detail.php?id=<?= $r['id'] ?>"
             class="bd-more-card">
                 <div class="bd-more-img">
-                    <img src="<?= htmlspecialchars($r['thumb']) ?>" loading="lazy">
+                    <img src="/assets/images/<?= htmlspecialchars($r['thumb']) ?>" loading="lazy">
                     <span><?= htmlspecialchars($r['category']) ?></span>
                 </div>
                 <div class="bd-more-body">

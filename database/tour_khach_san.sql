@@ -311,9 +311,9 @@ CREATE TABLE `locations` (
 --
 
 INSERT INTO `locations` (`id`, `name`, `description`, `is_active`, `created_at`, `image`) VALUES
-(1, 'Măng Đen', 'Thị trấn du lịch sinh thái, khí hậu mát mẻ quanh năm', 1, '2026-04-15 06:33:10', 'mangden.jpg'),
-(2, 'Kon Tum', 'Vùng đất Tây Nguyên với nhà rông và văn hóa bản địa', 1, '2026-04-15 06:33:10', 'kontum.jpg'),
-(3, 'Quảng Ngãi', 'Nổi tiếng với biển đảo và danh thắng thiên nhiên', 1, '2026-04-15 06:33:10', 'quangngai.jpg');
+(1, 'Đà Nẵng', 'Thành phố biển năng động, nổi tiếng với bãi biển Mỹ Khê và cầu Rồng', 1, '2026-04-15 06:33:10', 'danang.jpg'),
+(2, 'Vũng Tàu', 'Thành phố biển gần TP.HCM, điểm đến nghỉ dưỡng cuối tuần lý tưởng', 1, '2026-04-15 06:33:10', 'vungtau.webp'),
+(3, 'Phan Thiết', 'Thiên đường biển với đồi cát, resort sang trọng và hải sản tươi ngon', 1, '2026-04-15 06:33:10', 'phanthiet.webp');
 
 -- --------------------------------------------------------
 
