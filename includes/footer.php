@@ -11,7 +11,7 @@
                 </div>
 
                 <p class="footer-desc">
-                    Nền tảng đặt phòng khách sạn hàng đầu tại Kon Tum, Măng Đen & Quảng Ngãi.
+                    Nền tảng đặt phòng khách sạn hàng đầu tại Đà Nẵng, Vũng Tàu & Phan Thiết.
                     Giá tốt nhất – Dễ sử dụng – Trải nghiệm tuyệt vời.
                 </p>
 
@@ -72,7 +72,7 @@
                 <h4 class="footer-heading">Liên hệ</h4>
                 <ul class="footer-contact">
                     <li>
-                        <span>📍 146 Nguyễn Văn Cừ, Kon Tum</span>
+                        <span>📍 146 Nguyễn Văn Cừ, Vũng Tàu</span>
                     </li>
                     <li>
                         <a href="tel:0373848395">📞 037 384 8395</a>
@@ -137,7 +137,6 @@
 </footer>
 
 <?php include __DIR__ . "/chatbot.php"; ?>
-<?php include __DIR__ . "/contact_floating.php"; ?>
 
 <!-- ===== MODAL HỖ TRỢ (FOOTER) ===== -->
 <?php
@@ -151,18 +150,18 @@ $fs_email = htmlspecialchars($_SESSION['user_cache']['email']     ?? '');
         <p>Mô tả vấn đề bạn gặp phải, chúng tôi sẽ phản hồi sớm nhất!</p>
         <form id="footerSupportForm" onsubmit="submitFooterSupport(event)">
             <?= csrf_field() ?>
-            <label>Họ và tên *</label>
-            <input type="text" name="full_name" placeholder="Nhập họ tên" required
+            <label for="fs_full_name">Họ và tên *</label>
+            <input type="text" id="fs_full_name" name="full_name" placeholder="Nhập họ tên" required autocomplete="name"
                 value="<?= $fs_name ?>">
-            <label>Số điện thoại *</label>
-            <input type="tel" name="phone" placeholder="Nhập số điện thoại" required>
-            <label>Email</label>
-            <input type="email" name="email" placeholder="Nhập email liên hệ"
+            <label for="fs_phone">Số điện thoại *</label>
+            <input type="tel" id="fs_phone" name="phone" placeholder="Nhập số điện thoại" required autocomplete="tel">
+            <label for="fs_email">Email</label>
+            <input type="email" id="fs_email" name="email" placeholder="Nhập email liên hệ" autocomplete="email"
                 value="<?= $fs_email ?>">
-            <label>Chủ đề</label>
-            <input type="text" name="subject" placeholder="Ví dụ: Lỗi thanh toán, Hỏi về phòng...">
-            <label>Nội dung yêu cầu *</label>
-            <textarea name="note" placeholder="Mô tả chi tiết vấn đề của bạn..." required rows="4"></textarea>
+            <label for="fs_subject">Chủ đề</label>
+            <input type="text" id="fs_subject" name="subject" placeholder="Ví dụ: Lỗi thanh toán, Hỏi về phòng..." autocomplete="off">
+            <label for="fs_note">Nội dung yêu cầu *</label>
+            <textarea id="fs_note" name="note" placeholder="Mô tả chi tiết vấn đề của bạn..." required rows="4"></textarea>
             <button type="submit" class="sp-submit">Gửi yêu cầu hỗ trợ</button>
         </form>
         <div class="sp-msg" id="footerSpMsg"></div>

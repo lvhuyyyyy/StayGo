@@ -66,7 +66,7 @@ $blog_pages = ['blog-list.php', 'blog-detail.php'];
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Be+Vietnam+Pro:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/assets/css/style.css">
+    <link rel="stylesheet" href="/assets/css/style.css?v=<?= filemtime(__DIR__ . '/../assets/css/style.css') ?>">
     <link rel="stylesheet" href="/assets/css/responsive.css">
     <script src="/assets/js/main.js" defer></script>
     <script src="/assets/js/payment.js" defer></script>
@@ -210,13 +210,14 @@ if ($hl) $hero_locations = $hl->fetch_all(MYSQLI_ASSOC);
 ?>
 <div class="hero-search-section">
     <div class="hero-search-title">Tìm khách sạn hoàn hảo cho bạn</div>
-    <div class="hero-search-sub">Hàng trăm khách sạn tại Kon Tum, Măng Đen & Quảng Ngãi</div>
+    <div class="hero-search-sub">Hàng trăm khách sạn tại Đà Nẵng, Vũng Tàu & Phan Thiết</div>
     <form action="/pages/hotels.php" method="GET" class="hero-search-box" id="heroSearchForm">
         <input type="hidden" name="location_id" id="heroLocationId" value="">
         <div class="hsb-field hsb-keyword" style="position:relative;">
             <span class="hsb-label">📍 Địa điểm / Tên khách sạn</span>
             <input class="hsb-input" type="text" name="keyword" id="heroKeyword"
                    placeholder="Tên KS, địa điểm..."
+                   aria-label="Nhập tên khách sạn hoặc địa điểm"
                    autocomplete="off"
                    onfocus="heroShowDropdown()"
                    oninput="heroFilterDropdown(this.value)"
@@ -238,11 +239,11 @@ if ($hl) $hero_locations = $hl->fetch_all(MYSQLI_ASSOC);
         </div>
         <div class="hsb-field">
             <span class="hsb-label">📅 Nhận phòng</span>
-            <input class="hsb-input" type="date" name="checkin" id="h_checkin" onchange="heroCalcNights()">
+            <input class="hsb-input" type="date" name="checkin" id="h_checkin" onchange="heroCalcNights()" title="Ngày nhận phòng" aria-label="Ngày nhận phòng" autocomplete="off">
         </div>
         <div class="hsb-field">
             <span class="hsb-label">📅 Trả phòng</span>
-            <input class="hsb-input" type="date" name="checkout" id="h_checkout" onchange="heroCalcNights()">
+            <input class="hsb-input" type="date" name="checkout" id="h_checkout" onchange="heroCalcNights()" title="Ngày trả phòng" aria-label="Ngày trả phòng" autocomplete="off">
         </div>
         <script>
         // Set min date = today khi trang tải
