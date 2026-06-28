@@ -74,7 +74,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && empty($error)) {
                     }
 
                     if ($user['role'] === 'admin') {
-                        header("Location: /admin/dashboard.php");
+                        header("Location: " . BASE_PATH . "/admin/dashboard.php");
                     } else {
                         $redirect = $_SESSION['redirect_after_login'] ?? '../index.php';
                         unset($_SESSION['redirect_after_login']);

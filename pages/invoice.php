@@ -1,9 +1,9 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../config/database.php';
 if (session_status() === PHP_SESSION_NONE) session_start();
 
 if (!isset($_SESSION['user_id'])) {
-    header("Location: /auth/login.php");
+    header("Location: " . BASE_PATH . "/auth/login.php");
     exit();
 }
 
@@ -170,7 +170,7 @@ body { font-family:'Segoe UI',Arial,sans-serif; background:#f4f6f9; color:#2d374
         <div class="inv-brand">
             <h2>🏨 StayGo</h2>
             <p>Nền tảng đặt phòng khách sạn</p>
-            <p style="margin-top:2px">146 Nguyễn Văn Cừ, Kon Tum</p>
+            <p style="margin-top:2px">146 Nguyễn Văn Cừ, Vũng Tàu</p>
         </div>
         <div class="inv-meta">
             <div class="inv-num">#<?= htmlspecialchars($b['order_code']) ?></div>
@@ -265,7 +265,7 @@ body { font-family:'Segoe UI',Arial,sans-serif; background:#f4f6f9; color:#2d374
         <!-- Ghi chú -->
         <div class="inv-note">
             📌 Vui lòng xuất trình hóa đơn này (bản in hoặc ảnh chụp màn hình) khi đến nhận phòng.<br>
-            Mọi thắc mắc vui lòng liên hệ <strong>StayGo</strong> qua email <strong>lvhuy.kontum@gmail.com</strong> hoặc hotline <strong>037 384 8395</strong>.
+            Mọi thắc mắc vui lòng liên hệ <strong>StayGo</strong> qua email <strong>lvhuy.k22tt@kontum.udn.vn</strong> hoặc hotline <strong>037 384 8395</strong>.
         </div>
     </div>
 

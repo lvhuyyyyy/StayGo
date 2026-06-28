@@ -7,8 +7,20 @@ $client_id     = GOOGLE_CLIENT_ID;
 $client_secret = GOOGLE_CLIENT_SECRET;
 $redirect_uri  = GOOGLE_REDIRECT_URI;
 
-// Kiểm tra state
-if (!isset($_GET['state']) || $_GET['state'] !== $_SESSION['oauth_state']) {
+// Kiểm tra state — ưu tiên DB (cross-domain), fallback session
+$incoming_state = $_GET['state'] ?? '';
+$state_ok = false;
+if ($incoming_state !== '') {
+    $s_esc = $conn->real_escape_string($incoming_state);
+    $sr = $conn->query("SELECT state FROM oauth_states WHERE state='$s_esc' AND created_at >= DATE_SUB(NOW(), INTERVAL 10 MINUTE)");
+    if ($sr && $sr->num_rows > 0) {
+        $conn->query("DELETE FROM oauth_states WHERE state='$s_esc'");
+        $state_ok = true;
+    } elseif (isset($_SESSION['oauth_state']) && $_SESSION['oauth_state'] === $incoming_state) {
+        $state_ok = true;
+    }
+}
+if (!$state_ok) {
     die("Lỗi xác thực state!");
 }
 
@@ -72,7 +84,7 @@ $_SESSION['role']    = $role;
 
 // Redirect
 if ($role === 'admin') {
-    header("Location: /admin/dashboard.php");
+    header("Location: " . BASE_PATH . "/admin/dashboard.php");
 } else {
     $redirect = $_SESSION['redirect_after_login'] ?? '../index.php';
     unset($_SESSION['redirect_after_login']);

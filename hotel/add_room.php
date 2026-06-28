@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 $page_title    = 'Thêm phòng mới';
 $page_subtitle = 'Tạo loại phòng mới cho khách sạn';
 require_once __DIR__ . '/../includes/hotel_header.php';
@@ -64,7 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             WHERE id = $hotel_id
         ");
 
-        header('Location: /hotel/rooms.php?added=1');
+        header('Location: ' . BASE_PATH . '/hotel/rooms.php?added=1');
         exit;
     }
 }

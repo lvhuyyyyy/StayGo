@@ -1,10 +1,10 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../includes/header.php';
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/security.php';
 
 if (!isset($_SESSION['user_id'])) {
-    header("Location: /auth/login.php");
+    header("Location: " . BASE_PATH . "/auth/login.php");
     exit();
 }
 

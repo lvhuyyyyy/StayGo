@@ -2,19 +2,19 @@
 require_once 'admin_bootstrap.php'; // auth + CSRF
 csrf_check();
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: /admin/rooms.php'); exit;
+    header('Location: ' . BASE_PATH . '/admin/rooms.php'); exit;
 }
 
 $id = (int)($_POST['id'] ?? 0);
 if (!$id) {
-    header('Location: /admin/rooms.php?error=invalid_id');
+    header('Location: ' . BASE_PATH . '/admin/rooms.php?error=invalid_id');
     exit;
 }
 
 $res  = $conn->query("SELECT * FROM rooms WHERE id = $id");
 $room = $res ? $res->fetch_assoc() : null;
 if (!$room) {
-    header('Location: /admin/rooms.php?error=not_found');
+    header('Location: ' . BASE_PATH . '/admin/rooms.php?error=not_found');
     exit;
 }
 
@@ -22,7 +22,7 @@ $res2 = $conn->query("SELECT COUNT(*) as total FROM bookings WHERE room_id = $id
 $active_bookings = $res2 ? (int)$res2->fetch_assoc()['total'] : 0;
 
 if ($active_bookings > 0) {
-    header('Location: /admin/rooms.php?error=has_bookings&count=' . $active_bookings);
+    header('Location: ' . BASE_PATH . '/admin/rooms.php?error=has_bookings&count=' . $active_bookings);
     exit;
 }
 
@@ -45,9 +45,9 @@ if ($deleted > 0) {
 }
 
 if ($deleted > 0) {
-    header('Location: /admin/rooms.php?success=deleted');
+    header('Location: ' . BASE_PATH . '/admin/rooms.php?success=deleted');
 } else {
-    header('Location: /admin/rooms.php?error=failed');
+    header('Location: ' . BASE_PATH . '/admin/rooms.php?error=failed');
 }
 exit;
 

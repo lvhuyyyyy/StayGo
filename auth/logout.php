@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 session_start();
 
 // FIX: Chỉ xóa session user, giữ nguyên session admin
@@ -14,6 +14,6 @@ unset($_SESSION['user_cache']);
 // vì sẽ xóa cả session admin đang đăng nhập
 
 // Chuyển về trang chủ
-header("Location: /index.php");
+header("Location: " . BASE_PATH . "/index.php");
 exit();
 ?>

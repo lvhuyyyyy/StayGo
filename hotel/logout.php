@@ -1,5 +1,5 @@
-<?php
+﻿<?php
 if (session_status() === PHP_SESSION_NONE) session_start();
 session_destroy();
-header("Location: /hotel/login.php");
+header("Location: " . BASE_PATH . "/hotel/login.php");
 exit;

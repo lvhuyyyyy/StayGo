@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 session_start();
 
 // Chỉ xóa session liên quan đến admin
@@ -11,6 +11,6 @@ unset($_SESSION['admin_name']);
 session_destroy();
 
 // Về trang login admin
-header("Location: /auth/login_admin.php?logout=1");
+header("Location: " . BASE_PATH . "/auth/login_admin.php?logout=1");
 exit;
 ?>

@@ -1,16 +1,16 @@
-<?php
+﻿<?php
 // Auth guard cho Hotel Portal
 if (session_status() === PHP_SESSION_NONE) session_start();
 
 if (empty($_SESSION['hotel_id'])) {
-    header("Location: /hotel/login.php");
+    header("Location: " . BASE_PATH . "/hotel/login.php");
     exit;
 }
 
 // Kiểm tra partner_status — nếu bị suspend thì không cho vào
 if (isset($_SESSION['hotel_status']) && $_SESSION['hotel_status'] !== 'ACTIVE') {
     session_destroy();
-    header("Location: /hotel/login.php?err=suspended");
+    header("Location: " . BASE_PATH . "/hotel/login.php?err=suspended");
     exit;
 }
 

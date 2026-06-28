@@ -1,11 +1,11 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/security.php';
 
 if (session_status() === PHP_SESSION_NONE) session_start();
 
 if (!empty($_SESSION['hotel_id'])) {
-    header("Location: /hotel/dashboard.php");
+    header("Location: " . BASE_PATH . "/hotel/dashboard.php");
     exit;
 }
 
@@ -48,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['hotel_contact'] = $hotel['contact_name'];
             $_SESSION['hotel_status']  = $hotel['partner_status'];
             session_regenerate_id(true);
-            header("Location: /hotel/dashboard.php");
+            header("Location: " . BASE_PATH . "/hotel/dashboard.php");
             exit;
         }
     }

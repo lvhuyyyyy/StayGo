@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // --------------------------------------------------------
 //  blog-detail.php  —  Đặt tại: pages/blog-detail.php
 //  URL: /pages/blog-detail.php?id=1
@@ -17,7 +17,7 @@ $current = $stmt->get_result()->fetch_assoc();
 
 // Nếu không tìm thấy → redirect
 if (!$current) {
-    header('Location: /index.php');
+    header('Location: ' . BASE_PATH . '/index.php');
     exit;
 }
 
@@ -163,7 +163,7 @@ include __DIR__ . '/../includes/header.php';
                         </div>
                     </div>
                     <p class="bd-author-desc">
-                        Chuyên viên tư vấn du lịch với nhiều năm kinh nghiệm khám phá các vùng đất Kon Tum, Măng Đen và Quảng Ngãi.
+                        Chuyên viên tư vấn du lịch với nhiều năm kinh nghiệm khám phá các vùng đất Đà Nẵng, Vũng Tàu và Phan Thiết.
                     </p>
                 </div>
 

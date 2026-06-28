@@ -5,7 +5,7 @@ require_once __DIR__ . '/security.php';
 
 // FIX: Dùng admin_id và admin_role thay vì user_id và role
 if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_role']) || $_SESSION['admin_role'] !== 'admin') {
-    header("Location: /auth/login_admin.php");
+    header("Location: " . BASE_PATH . "/auth/login_admin.php");
     exit;
 }
 
