@@ -85,7 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (!$room_id || !$payment_method) {
-        $error_msg = $error_msg ?? 'Vui lòng chọn phòng và phương thức thanh toán.';
+        $error_msg ??= 'Vui lòng chọn phòng và phương thức thanh toán.';
     }
 
     // -- Lấy tên phòng để lưu vào payments --
@@ -236,7 +236,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if (!$exec_ok || $booking_id <= 0) {
             $conn->rollback();
-            $error_msg = 'Không thể tạo đơn đặt phòng (' . $conn->error . '). Vui lòng thử lại.';
+            $error_msg = "Không thể tạo đơn đặt phòng ({$conn->error}). Vui lòng thử lại.";
         } else {
 
         $conn->commit();
@@ -310,7 +310,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error_msg = 'MoMo: ' . $momo['message'];
     }
     if ($payment_method === 'payos') {
-        $desc  = substr('Dat phong ' . $booking_id, 0, 25);
+        $desc  = substr("Dat phong $booking_id", 0, 25);
         $payos = payos_create_payment($booking_id, $total_price, $desc);
         if ($payos['success']) {
             header('Location: ' . $payos['pay_url']);
@@ -340,7 +340,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Gửi email thông báo đặt phòng mới đến khách sạn (hotel_collect)
         if ($payment_method === 'hotel') {
             $hotel_email_row = $conn->query("SELECT partner_email FROM hotels WHERE id=$hotel_id LIMIT 1");
-            $hotel_partner   = $hotel_email_row ? $hotel_email_row->fetch_assoc() : null;
+            $hotel_partner   = $hotel_email_row?->fetch_assoc();
             if ($hotel_partner && !empty($hotel_partner['partner_email'])) {
                 send_hotel_new_booking_email($hotel_partner['partner_email'], [
                     'order_code'     => $order_code,
@@ -474,7 +474,7 @@ require_once __DIR__ . '/../includes/header.php';
                             <option value="<?php echo $rm['id']; ?>" data-price="<?php echo $rm['price']; ?>"
                                 <?= ($prefill_room_id && $prefill_room_id == $rm['id']) ? 'selected' : '' ?>>
                                 <?php echo htmlspecialchars($rm['room_name']); ?> – <?php echo number_format($rm['price'],0,',','.'); ?> VNĐ/đêm
-                                <?= $prefill_checkin ? '(Còn ' . $avail . ' phòng)' : '' ?>
+                                <?= $prefill_checkin ? "(Còn $avail phòng)" : '' ?>
                             </option>
                         <?php else: ?>
                             <option disabled><?php echo htmlspecialchars($rm['room_name']); ?> (Hết phòng cho ngày này)</option>
@@ -624,32 +624,6 @@ require_once __DIR__ . '/../includes/header.php';
                 </div>
                 <div class="bank-detail-layout">
                     <div class="bank-info-col">
-                        <div class="bank-info-row">
-                            <span class="bank-info-label">Ngân hàng</span>
-                            <span class="bank-info-val bank-name-tag"><?= htmlspecialchars($vqr_bank_name) ?></span>
-                        </div>
-                        <div class="bank-info-row">
-                            <span class="bank-info-label">Số tài khoản</span>
-                            <div class="bank-stk-wrap">
-                                <span class="bank-stk" id="stkText"><?= htmlspecialchars($vqr_stk) ?></span>
-                                <button type="button" class="btn-copy" onclick="copySTK()">
-                                    <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75"/></svg>
-                                    <span id="copyBtnText">Sao chép</span>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="bank-info-row">
-                            <span class="bank-info-label">Chủ tài khoản</span>
-                            <span class="bank-info-val"><?= htmlspecialchars($vqr_name) ?></span>
-                        </div>
-                        <div class="bank-info-row">
-                            <span class="bank-info-label">Chi nhánh</span>
-                            <span class="bank-info-val"><?= htmlspecialchars($vqr_branch) ?></span>
-                        </div>
-                        <div class="bank-info-row" id="bankAmountRow" style="display:none">
-                            <span class="bank-info-label">Số tiền</span>
-                            <span class="bank-info-val" id="bankAmountDisplay" style="color:#276749;font-weight:800">—</span>
-                        </div>
                         <div class="bank-transfer-note">
                             <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#744210" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z"/></svg>
                             Nội dung CK bắt buộc ghi đúng mã đơn:<br>
