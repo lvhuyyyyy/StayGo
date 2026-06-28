@@ -657,19 +657,6 @@ require_once __DIR__ . '/../includes/header.php';
                             <small style="color:#a0aec0">Hệ thống tự xác nhận sau khi nhận được tiền</small>
                         </div>
                     </div>
-                    <div class="bank-qr-col">
-                        <div class="qr-placeholder-wrap">
-                            <div class="qr-placeholder-box" id="bankQrBox">
-                                <!-- VietQR động — cập nhật khi chọn phòng + ngày -->
-                                <img id="vietqrImg"
-                                    src="https://img.vietqr.io/image/<?= $vqr_bank ?>-<?= $vqr_stk ?>-compact2.png?addInfo=StayGo&accountName=<?= urlencode($vqr_name) ?>"
-                                    alt="VietQR"
-                                    style="width:180px;height:180px;object-fit:contain;border-radius:8px">
-                            </div>
-                        </div>
-                        <p class="qr-scan-hint">Quét bằng app ngân hàng bất kỳ</p>
-                        <p style="font-size:11px;color:#a0aec0;text-align:center;margin-top:2px">QR cập nhật tự động theo số tiền</p>
-                    </div>
                 </div>
             </div>
 
@@ -680,25 +667,7 @@ require_once __DIR__ . '/../includes/header.php';
                     Thanh toán qua Ví MoMo
                 </div>
                 <div class="momo-detail-layout">
-                    <div class="momo-qr-col">
-                        <div class="qr-placeholder-box momo-qr-box">
-                            <img src="/assets/images/qr_momo.jpg"
-                                alt="QR MoMo"
-                                style="width:160px;height:160px;object-fit:contain;border-radius:12px;">
-                        </div>
-                        <p class="qr-scan-hint">Mở app MoMo → Quét mã QR</p>
-                    </div>
                     <div class="momo-info-col">
-                        <div class="momo-phone-wrap">
-                            <div class="momo-phone-label">Số điện thoại MoMo</div>
-                            <div class="momo-phone-val">
-                                <span id="momoPhone">037 384 8395</span>
-                                <button type="button" class="btn-copy btn-copy-momo" onclick="copyMoMo()">
-                                    <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75"/></svg>
-                                    <span id="momoCopyText">Sao chép</span>
-                                </button>
-                            </div>
-                        </div>
                         <div class="momo-steps">
                             <div class="momo-step"><span class="step-num">1</span> Mở ứng dụng MoMo trên điện thoại</div>
                             <div class="momo-step"><span class="step-num">2</span> Chọn <strong>Quét mã QR</strong> hoặc <strong>Chuyển tiền</strong></div>
